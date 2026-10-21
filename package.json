@@ -20,10 +20,11 @@
     "check:database": "node scripts/require-test-database.mjs && uv run pytest -q -m integration apps/backend/api/tests",
     "check": "pnpm check:web && pnpm check:backend && pnpm check:database",
     "dev:api": "uv run --package fisheye-api uvicorn fisheye_api.main:app --host 127.0.0.1 --port 8000",
-    "api-client:generate": "uv run --package fisheye-api python scripts/export-openapi.py && pnpm exec prettier --write packages/api-client/openapi.json && pnpm --filter @fisheye/api-client generate",
+    "api-client:generate": "uv run --package fisheye-api python scripts/export-openapi.py && pnpm exec prettier --write packages/api-client/openapi.json && pnpm --filter @fisheye/api-client generate && pnpm exec prettier --write packages/api-client/src/generated/schema.d.ts",
     "dev:worker": "uv run --package fisheye-worker fisheye-worker",
     "db:start": "docker compose -f infra/compose.yaml up -d --wait",
-    "db:stop": "docker compose -f infra/compose.yaml down"
+    "db:stop": "docker compose -f infra/compose.yaml down",
+    "db:migrate": "uv run --package fisheye-api alembic -c apps/backend/api/alembic.ini upgrade head"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",

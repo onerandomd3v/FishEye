@@ -50,9 +50,9 @@ def test_initial_migration_and_rollback() -> None:
             assert inspect(connection).has_table("alembic_version")
             assert (
                 connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-                == "0001_initial"
+                == "0002_datasets"
             )
-            assert inspect(connection).get_table_names() == ["alembic_version"]
+            assert inspect(connection).get_table_names() == ["alembic_version", "datasets"]
 
         command.downgrade(config, "base")
         with engine.connect() as connection:

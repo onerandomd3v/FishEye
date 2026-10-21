@@ -5,6 +5,7 @@ requires-python = "==3.12.*"
 [manifest]
 members = [
     "fisheye-api",
+    "fisheye-persistence",
     "fisheye-worker",
     "fisheye-workspace",
 ]
@@ -207,6 +208,8 @@ source = { editable = "apps/backend/api" }
 dependencies = [
     { name = "alembic" },
     { name = "fastapi" },
+    { name = "fisheye-persistence" },
+    { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
     { name = "sqlalchemy" },
     { name = "uvicorn", extra = ["standard"] },
@@ -216,10 +219,23 @@ dependencies = [
 requires-dist = [
     { name = "alembic", specifier = ">=1.16,<2" },
     { name = "fastapi", specifier = ">=0.116,<1" },
+    { name = "fisheye-persistence", editable = "apps/backend/packages/persistence" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.2,<4" },
     { name = "pydantic", specifier = ">=2.11,<3" },
     { name = "sqlalchemy", specifier = ">=2.0,<3" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.35,<1" },
 ]
+
+[[package]]
+name = "fisheye-persistence"
+version = "0.1.0"
+source = { editable = "apps/backend/packages/persistence" }
+dependencies = [
+    { name = "sqlalchemy" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "sqlalchemy", specifier = ">=2.0,<3" }]
 
 [[package]]
 name = "fisheye-worker"

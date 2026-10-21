@@ -41,6 +41,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/datasets/imports': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Import Synthetic Dataset
+     * @description Persist a validated synthetic CSV as an immutable dev-only dataset artifact.
+     */
+    post: operations['import_synthetic_dataset_api_v1_datasets_imports_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -49,6 +69,53 @@ export interface components {
     ApiErrorResponse: {
       /** Detail */
       detail: string;
+    };
+    /** CsvImportValidationDetail */
+    CsvImportValidationDetail: {
+      /** Code */
+      code: string;
+      /** Errors */
+      errors: string[];
+    };
+    /** CsvImportValidationError */
+    CsvImportValidationError: {
+      detail: components['schemas']['CsvImportValidationDetail'];
+    };
+    /** DatasetImportResponse */
+    DatasetImportResponse: {
+      /** Dataset Id */
+      dataset_id: string;
+      /** Status */
+      status: string;
+      /** Sha256 */
+      sha256: string;
+      /** Manifest Sha256 */
+      manifest_sha256: string;
+      /** Schema Version */
+      schema_version: string;
+      /** Row Count */
+      row_count: number;
+      /** Employee Day Count */
+      employee_day_count: number;
+      /** Created At */
+      created_at: string;
+      /** Created */
+      created: boolean;
+      /**
+       * Synthetic Only
+       * @default true
+       */
+      synthetic_only: boolean;
+      /**
+       * Run Created
+       * @default false
+       */
+      run_created: boolean;
+      /**
+       * Risk Calculated
+       * @default false
+       */
+      risk_calculated: boolean;
     };
     /** DatasetValidationResponse */
     DatasetValidationResponse: {
@@ -185,6 +252,86 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+    };
+  };
+  import_synthetic_dataset_api_v1_datasets_imports_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        'X-FishEye-Synthetic-Data-Confirmed'?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'text/csv': string;
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DatasetImportResponse'];
+        };
+      };
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DatasetImportResponse'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CsvImportValidationError'];
         };
       };
       /** @description Service Unavailable */

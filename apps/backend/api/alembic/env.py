@@ -1,7 +1,12 @@
+import os
+
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 config = context.config
+database_url = os.environ.get("DATABASE_URL")
+if database_url and not config.get_main_option("sqlalchemy.url"):
+    config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 
 def run_migrations_offline() -> None:
