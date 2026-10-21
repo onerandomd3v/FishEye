@@ -2,7 +2,7 @@
   "name": "@fisheye/console",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "next dev --hostname 127.0.0.1 --port 3000",
     "build": "next build",
     "start": "next start --port 3000",
     "typecheck": "tsc --noEmit",
@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@fisheye/ui": "workspace:*",
+    "jose": "^6.2.13",
     "next": "^16.4.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

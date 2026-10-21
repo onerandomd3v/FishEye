@@ -28,3 +28,5 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Run frontend quality gates
         run: pnpm check:web
+        env:
+          PUBLIC_CONSOLE_URL: https://console.fisheye.invalid/login

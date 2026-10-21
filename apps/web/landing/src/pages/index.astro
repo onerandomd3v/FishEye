@@ -1,7 +1,13 @@
 ---
 import { siteContent } from '../content/site';
 import fishEyeLogo from '../../../../../assets/fisheye-logo.svg';
-const consoleUrl = import.meta.env.PUBLIC_CONSOLE_URL || '/login';
+const consoleUrl = import.meta.env.PUBLIC_CONSOLE_URL;
+
+if (!consoleUrl) {
+  throw new Error(
+    'PUBLIC_CONSOLE_URL must be set before building the landing page.',
+  );
+}
 ---
 
 <!doctype html>
