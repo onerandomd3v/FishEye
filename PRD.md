@@ -261,7 +261,7 @@ Implementation must follow [ARCHITECTURE.md](./ARCHITECTURE.md):
 apps/
   web/
     landing/           Astro public site
-    console/           React/Vite analyst console
+    console/           Next.js App Router analyst console
   backend/
     api/               FastAPI HTTP service
     worker/  Python evaluation/scoring worker
