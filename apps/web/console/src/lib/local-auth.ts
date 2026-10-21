@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 import { jwtVerify, SignJWT } from 'jose';
 
 export const LOCAL_SESSION_COOKIE = 'fisheye_local_demo_session';
@@ -42,7 +42,19 @@ export async function verifyLocalSession(
 }
 
 export function secureStringEquals(actual: string, expected: string): boolean {
-  const actualHash = createHash('sha256').update(actual).digest();
-  const expectedHash = createHash('sha256').update(expected).digest();
-  return timingSafeEqual(actualHash, expectedHash);
+  const maxLength = 1024;
+  const actualBytes = Buffer.from(actual, 'utf8');
+  const expectedBytes = Buffer.from(expected, 'utf8');
+
+  if (actualBytes.length > maxLength || expectedBytes.length > maxLength) {
+    return false;
+  }
+
+  const paddedActual = Buffer.alloc(maxLength);
+  const paddedExpected = Buffer.alloc(maxLength);
+  actualBytes.copy(paddedActual);
+  expectedBytes.copy(paddedExpected);
+
+  const contentsMatch = timingSafeEqual(paddedActual, paddedExpected);
+  return contentsMatch && actualBytes.length === expectedBytes.length;
 }
