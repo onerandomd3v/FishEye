@@ -1,85 +1,383 @@
 ---
 import { siteContent } from '../content/site';
+import fishEyeLogo from '../../../../../assets/fisheye-logo.svg';
+const consoleUrl = import.meta.env.PUBLIC_CONSOLE_URL || '/login';
 ---
 
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={siteContent.description} />
+    <meta name="theme-color" content="#ffffff" />
     <title>{siteContent.title}</title>
-    <style>
-      :root {
-        font-family: Inter, system-ui, sans-serif;
-        color: #111;
-        background: #fff;
-      }
-      body {
-        margin: 0;
-      }
-      a {
-        color: inherit;
-      }
-      main {
-        max-width: 1100px;
-        margin: 0 auto;
-        padding: 3rem 1.25rem;
-      }
-      header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        border-bottom: 1px solid #d7d7d7;
-        padding-bottom: 1.25rem;
-      }
-      h1 {
-        font-size: clamp(2.8rem, 7vw, 5rem);
-        letter-spacing: -0.055em;
-        line-height: 1.08;
-        max-width: 900px;
-        margin: 8rem 0 1.4rem;
-      }
-      p {
-        color: #595959;
-        line-height: 1.7;
-        max-width: 650px;
-      }
-      .button {
-        display: inline-block;
-        background: #111;
-        color: #fff;
-        padding: 1rem 1.4rem;
-        text-decoration: none;
-        margin-top: 1.8rem;
-        border-radius: 8px;
-      }
-      footer {
-        margin-top: 11rem;
-        border-top: 1px solid #d7d7d7;
-        padding-top: 1.5rem;
-      }
-    </style>
+    <link rel="icon" type="image/svg+xml" href={fishEyeLogo.src} />
   </head>
   <body>
-    <main>
-      <header>
-        <strong>FishEye</strong><span>Context-aware risk triage</span>
+    <main class="site-shell">
+      <header class="site-header">
+        <a class="site-brand" href="#top" aria-label="FishEye home"
+          ><img
+            src={fishEyeLogo.src}
+            alt="FishEye"
+            width="205"
+            height="60"
+          /></a
+        >
+        <nav class="site-nav" aria-label="Main navigation">
+          <a href="#product">Product</a>
+          <a href="#how-it-works">How it works</a>
+          <a href="#research">Research</a>
+          <a class="site-cta" href={consoleUrl}
+            >Open demo <span aria-hidden="true">↗</span></a
+          >
+        </nav>
       </header>
-      <h1>Not every unusual action is a threat.</h1>
-      <p>
-        FishEye helps security analysts focus on meaningful signals by
-        evaluating employee access activity in context, rather than treating
-        every anomaly as malicious.
-      </p>
-      <a class="button" href="#about">How it works</a>
-      <section id="about" style="margin-top:10rem">
-        <h2>Less noise. Better signal.</h2>
-        <p>
-          Understand behaviour, prioritize findings and evaluate results against
-          clear baselines.
-        </p>
+
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <p class="eyebrow">LESS NOISE. BETTER SIGNAL.</p>
+        <h1 id="hero-title">
+          Not every unusual<br class="desktop-break" /> action is a threat.
+        </h1>
+        <div class="hero-bottom">
+          <div class="hero-copy">
+            <p>
+              FishEye brings context to insider-risk triage—helping security
+              teams focus on meaningful activity, not every anomaly.
+            </p>
+            <div class="hero-actions">
+              <a class="site-cta" href={consoleUrl}
+                >Explore the product <span aria-hidden="true">↗</span></a
+              >
+              <a class="site-cta site-cta-secondary" href="#research"
+                >View the research</a
+              >
+            </div>
+          </div>
+          <aside
+            class="research-chip"
+            aria-label="Research prototype. Synthetic data only."
+          >
+            <span>RESEARCH PROTOTYPE</span>
+            <strong>Synthetic data only</strong>
+          </aside>
+        </div>
       </section>
-      <footer><p>{siteContent.disclaimer}</p></footer>
+
+      <section
+        class="product-section"
+        id="product"
+        aria-labelledby="product-title"
+      >
+        <p class="eyebrow">ONE PROBLEM. ONE CLEAR GOAL.</p>
+        <h2 id="product-title">
+          Reduce false alarms<br class="desktop-break" /> without missing threats.
+        </h2>
+        <div class="feature-grid" id="how-it-works">
+          <article class="feature-card">
+            <span class="feature-number">01</span><h3>
+              Understand behaviour
+            </h3><p>Compare activity with employee and role patterns.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-number">02</span><h3>
+              Prioritize real risks
+            </h3><p>Combine signals before escalating a finding.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-number">03</span><h3>Prove the outcome</h3><p>
+              Measure performance against simple detection rules.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <footer class="site-footer" id="research">
+        <div class="footer-brand">
+          <img src={fishEyeLogo.src} alt="FishEye" width="150" height="44" /><p>
+            Context-aware insider-risk triage.
+          </p>
+        </div>
+        <div class="footer-research">
+          <p>Designed for research and evaluation.</p><p>
+            {siteContent.disclaimer}
+          </p>
+        </div>
+      </footer>
     </main>
   </body>
 </html>
+
+<style is:global>
+  @import '../../../../../packages/ui/src/tokens.css';
+  .site-shell {
+    width: min(100%, 1440px);
+    margin: 0 auto;
+    padding: 0 clamp(22px, 5.7vw, 82px);
+  }
+  .site-header {
+    min-height: 103px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    border-bottom: 1px solid var(--fe-border);
+  }
+  .site-brand {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+  }
+  .site-brand img {
+    display: block;
+    width: 205px;
+    height: auto;
+  }
+  .site-nav {
+    display: flex;
+    align-items: center;
+    gap: clamp(18px, 2.4vw, 36px);
+  }
+  .site-nav a:not(.site-cta) {
+    color: var(--fe-text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .site-nav a:not(.site-cta):hover {
+    color: var(--fe-ink);
+  }
+  .site-cta {
+    min-height: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 0 16px;
+    border: 1px solid var(--fe-ink);
+    border-radius: 9px;
+    color: white;
+    background: var(--fe-ink);
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 150ms ease;
+  }
+  .site-cta:hover {
+    background: #303030;
+  }
+  .site-cta-secondary {
+    color: var(--fe-ink);
+    border-color: var(--fe-border);
+    background: white;
+  }
+  .site-cta-secondary:hover {
+    background: var(--fe-surface-muted);
+  }
+  .hero {
+    padding: 132px 0 74px;
+    border-bottom: 1px solid var(--fe-border);
+  }
+  .eyebrow {
+    margin: 0;
+    color: var(--fe-text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.045em;
+  }
+  .hero h1 {
+    margin: 42px 0 0;
+    max-width: 1160px;
+    font-size: clamp(48px, 5.1vw, 68px);
+    font-weight: 680;
+    line-height: 1.08;
+    letter-spacing: -0.055em;
+  }
+  .hero-bottom {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 30px;
+    margin-top: 29px;
+  }
+  .hero-copy {
+    max-width: 650px;
+  }
+  .hero-copy > p {
+    margin: 0;
+    color: var(--fe-text-secondary);
+    font-size: 18px;
+    line-height: 1.5;
+  }
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 55px;
+  }
+  .research-chip {
+    min-width: 246px;
+    display: grid;
+    gap: 10px;
+    padding: 19px 20px;
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    background: var(--fe-surface-muted);
+  }
+  .research-chip span {
+    color: var(--fe-text-secondary);
+    font-size: 9px;
+    font-weight: 600;
+  }
+  .research-chip strong {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .product-section {
+    padding: 52px 0 0;
+  }
+  .product-section h2 {
+    margin: 23px 0 0;
+    font-size: clamp(30px, 3.2vw, 42px);
+    font-weight: 650;
+    line-height: 1.17;
+    letter-spacing: -0.04em;
+  }
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 40px;
+    margin-top: 97px;
+    scroll-margin-top: 24px;
+  }
+  .feature-card {
+    min-height: 211px;
+    padding: 21px;
+    border: 1px solid #e5e5e5;
+    border-radius: 11px;
+    background: var(--fe-surface-muted);
+  }
+  .feature-number {
+    color: var(--fe-text-secondary);
+    font-size: 10px;
+  }
+  .feature-card h3 {
+    margin: 30px 0 0;
+    font-size: 14px;
+    font-weight: 620;
+  }
+  .feature-card p {
+    margin: 15px 0 0;
+    color: var(--fe-text-secondary);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .site-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: 112px;
+    padding: 19px 0 42px;
+    border-top: 1px solid var(--fe-border);
+    scroll-margin-top: 24px;
+  }
+  .footer-brand img {
+    display: block;
+    width: 150px;
+    height: auto;
+  }
+  .site-footer p {
+    margin: 19px 0 0;
+    color: var(--fe-text-secondary);
+    font-size: 10px;
+    line-height: 1.5;
+  }
+  .footer-research {
+    max-width: 520px;
+    text-align: right;
+  }
+  .footer-research p + p {
+    margin-top: 5px;
+  }
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  @media (max-width: 760px) {
+    .site-header {
+      min-height: 78px;
+    }
+    .site-brand img {
+      width: 164px;
+    }
+    .site-nav {
+      gap: 14px;
+    }
+    .site-nav a:not(.site-cta) {
+      display: none;
+    }
+    .site-nav .site-cta {
+      min-height: 40px;
+      padding-inline: 12px;
+      font-size: 11px;
+    }
+    .hero {
+      padding: 90px 0 48px;
+    }
+    .hero h1 {
+      margin-top: 31px;
+      font-size: clamp(41px, 10vw, 58px);
+    }
+    .hero-bottom {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 26px;
+    }
+    .hero-copy > p {
+      font-size: 16px;
+    }
+    .hero-actions {
+      margin-top: 30px;
+    }
+    .research-chip {
+      width: 100%;
+    }
+    .product-section {
+      padding-top: 40px;
+    }
+    .feature-grid {
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 42px;
+    }
+    .feature-card {
+      min-height: 170px;
+    }
+    .feature-card h3 {
+      margin-top: 23px;
+    }
+    .site-footer {
+      flex-direction: column;
+      margin-top: 68px;
+    }
+    .footer-research {
+      text-align: left;
+    }
+    .footer-brand p {
+      margin-top: 13px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .site-cta {
+      transition: none;
+    }
+  }
+</style>

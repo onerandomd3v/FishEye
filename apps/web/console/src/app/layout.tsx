@@ -2,8 +2,9 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'FishEye Console',
-  description: 'Context-aware insider risk triage',
+  title: { default: 'FishEye | Research workspace', template: '%s | FishEye' },
+  description:
+    'A synthetic research workspace for context-aware insider-risk triage.',
 };
 
 export default function RootLayout({
