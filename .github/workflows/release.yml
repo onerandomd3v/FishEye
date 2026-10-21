@@ -1,0 +1,22 @@
+name: Release gate
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Intended release target (does not deploy)
+        required: true
+        type: choice
+        options: [staging, production]
+permissions:
+  contents: read
+jobs:
+  release-readiness:
+    name: release-readiness
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Explicit release guard
+        run: |
+          echo 'Release gate passed for ${{ inputs.target }} after environment approval if configured.'
+          echo 'No deployment action is wired yet: add target-specific deploy after infrastructure approval.'
