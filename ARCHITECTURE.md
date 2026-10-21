@@ -48,7 +48,7 @@ apps/web/landing  (Astro, static/CDN)
 Authorized analyst
     |
     v
-apps/web/console  (React + Vite)
+apps/web/console  (Next.js App Router)
     |
     | Typed HTTPS requests / OpenAPI client
     v
@@ -73,7 +73,7 @@ Shared importable Python domain/features/detector/evaluation libraries
 | Unit | Responsibility | Independently deploy? |
 | --- | --- | --- |
 | `apps/web/landing` | Public marketing site, product explanation, research disclaimer | Yes — static |
-| `apps/web/console` | Authenticated triage, findings, investigation and experiment UI | Yes — static client |
+| `apps/web/console` | Authenticated triage, findings, investigation and experiment UI | Yes — Next.js server runtime |
 | `apps/backend/api` | API, access control, transactional state and job submission | Yes — container |
 | `apps/backend/worker` | Synthetic generation, features, scoring and evaluation | Yes — separate container/process |
 
@@ -86,7 +86,7 @@ FishEye/
 ├── apps/
 │   ├── web/
 │   │   ├── landing/                 # Astro; static, SEO and accessibility
-│   │   └── console/                 # React, Vite, React Router
+│   │   └── console/                 # Next.js App Router, React, TypeScript
 │   └── backend/
 │       ├── api/                     # FastAPI application entrypoint
 │       ├── worker/        # Worker application entrypoint
@@ -128,7 +128,7 @@ The root should be one Git repository. `apps/web` and `apps/backend` are organiz
 | Layer | Initial decision | Why | Deliberately rejected for v1 |
 | --- | --- | --- | --- |
 | Landing | Astro + optional React islands | Mostly static content, minimal JS | Always-on SSR server |
-| Analyst console | React, TypeScript, Vite, React Router | API-driven, interaction-heavy SPA | SSR as a default requirement |
+| Analyst console | Next.js App Router, React, TypeScript | API-driven, interaction-heavy SPA | SSR as a default requirement |
 | UI | Tailwind CSS + shared tokens/components | Consistent system across web apps | Separate design systems |
 | API state | TanStack Query | Server-state caching, error/loading, invalidation | Generic global state store for server data |
 | Event tables | TanStack Table | Explicit pagination/sort/filter | Rendering all rows client-side |
@@ -303,7 +303,7 @@ Use the connected Figma FishEye MVP frames for implementation reference, followe
 - **Python:** use uv workspaces; pin interpreter compatibility and commit `uv.lock`.
 - **Containers:** Docker Compose for PostgreSQL, API and worker; deterministic local artifact volume.
 - **Migrations:** Alembic migrations run as an explicit deployment step, not implicitly in every application instance.
-- **Frontend:** static deployments for landing and console; independent domains/releases permitted.
+- **Frontend:** statically deploy the Astro landing; run the Next.js console with its request-time server runtime. Deploy landing and console independently.
 - **Backend:** separate API and worker container images; managed PostgreSQL and object storage for hosted environments.
 - **Configuration:** documented `.env.example`; no implicit unsafe production fallbacks.
 - **Health:** distinguish liveness from readiness (DB/required dependencies) and expose no sensitive diagnostics publicly.
@@ -374,6 +374,6 @@ For growth, consider database partitioning and higher-volume ingestion only afte
 
 ---
 
-**References for engineering implementation:** [FastAPI](https://fastapi.tiangolo.com/), [Pydantic](https://docs.pydantic.dev/), [SQLAlchemy](https://docs.sqlalchemy.org/), [PostgreSQL locking](https://www.postgresql.org/docs/current/sql-select.html), [Polars](https://docs.pola.rs/), [DuckDB Parquet](https://duckdb.org/docs/stable/data/parquet/overview), [scikit-learn](https://scikit-learn.org/stable/), [Astro](https://docs.astro.build/), [Vite](https://vite.dev/), [uv workspaces](https://docs.astral.sh/uv/concepts/projects/workspaces/), [pnpm workspaces](https://pnpm.io/workspaces), [Turborepo](https://turborepo.com/docs), [OpenAPI](https://spec.openapis.org/oas/latest.html).
+**References for engineering implementation:** [FastAPI](https://fastapi.tiangolo.com/), [Pydantic](https://docs.pydantic.dev/), [SQLAlchemy](https://docs.sqlalchemy.org/), [PostgreSQL locking](https://www.postgresql.org/docs/current/sql-select.html), [Polars](https://docs.pola.rs/), [DuckDB Parquet](https://duckdb.org/docs/stable/data/parquet/overview), [scikit-learn](https://scikit-learn.org/stable/), [Astro](https://docs.astro.build/), [Next.js](https://nextjs.org/docs/app), [uv workspaces](https://docs.astral.sh/uv/concepts/projects/workspaces/), [pnpm workspaces](https://pnpm.io/workspaces), [Turborepo](https://turborepo.com/docs), [OpenAPI](https://spec.openapis.org/oas/latest.html).
 
 This document specifies intended architecture; it is **not** a statement that application services or infrastructure have already been implemented.
