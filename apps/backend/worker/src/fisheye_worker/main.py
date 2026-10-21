@@ -21,9 +21,8 @@ def main(argv: Sequence[str] | None = None) -> None:
 
         result = prepare_dataset_from_environment(args.dataset_id)
         logging.info(
-            "Prepared synthetic dataset %s: %d events across %d employee-days. "
+            "Prepared synthetic dataset: %d events across %d employee-days. "
             "No run was created and no risk was calculated.",
-            result.dataset_id,
             result.row_count,
             result.employee_day_count,
         )
