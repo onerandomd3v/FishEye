@@ -56,7 +56,7 @@ apps/backend/api  (FastAPI / Pydantic)
     |                          |
     | transactional reads      | enqueue/inspect jobs
     v                          v
-PostgreSQL <------> apps/backend/detection-worker
+PostgreSQL <------> apps/backend/worker
     |                          |
     | experiment metadata      | read immutable data / write results
     |                          v
@@ -75,7 +75,7 @@ Shared importable Python domain/features/detector/evaluation libraries
 | `apps/web/landing` | Public marketing site, product explanation, research disclaimer | Yes — static |
 | `apps/web/console` | Authenticated triage, findings, investigation and experiment UI | Yes — static client |
 | `apps/backend/api` | API, access control, transactional state and job submission | Yes — container |
-| `apps/backend/detection-worker` | Synthetic generation, features, scoring and evaluation | Yes — separate container/process |
+| `apps/backend/worker` | Synthetic generation, features, scoring and evaluation | Yes — separate container/process |
 
 **Not separate microservices in v1:** detectors, feature engineering, simulation, evaluation and persistence are importable Python packages. Keeping them local avoids unnecessary distributed transactions, network dependencies and duplicated schema logic.
 
@@ -89,7 +89,7 @@ FishEye/
 │   │   └── console/                 # React, Vite, React Router
 │   └── backend/
 │       ├── api/                     # FastAPI application entrypoint
-│       ├── detection-worker/        # Worker application entrypoint
+│       ├── worker/        # Worker application entrypoint
 │       └── packages/                # uv workspace members
 │           ├── domain/              # Identities, events, findings, decisions
 │           ├── features/            # Time/device/role/volume feature extraction
