@@ -16,6 +16,7 @@ from .csv_schema import (
     GROUND_TRUTH_LABELS,
     MAX_CSV_ROWS,
     MAX_ERROR_ROW_NUMBERS,
+    MAX_RECORD_COUNT,
     MAX_REPORTED_ERRORS,
     PARTITIONS,
     REQUIRED_VALUES,
@@ -108,10 +109,18 @@ def validate_events_csv(content: bytes) -> CsvValidationResult:
             record_count = values["record_count"]
             if record_count:
                 try:
-                    if int(record_count) < 0 or str(int(record_count)) != record_count:
+                    parsed_record_count = int(record_count)
+                    if (
+                        parsed_record_count < 0
+                        or parsed_record_count > MAX_RECORD_COUNT
+                        or str(parsed_record_count) != record_count
+                    ):
                         raise ValueError
                 except ValueError:
-                    add_error(f"Row {line_number}: record_count must be a nonnegative integer.")
+                    add_error(
+                        f"Row {line_number}: record_count must be a nonnegative signed "
+                        "64-bit integer."
+                    )
 
             event_time = _parse_utc_timestamp(values["event_timestamp_utc"])
             if values["event_timestamp_utc"] and event_time is None:

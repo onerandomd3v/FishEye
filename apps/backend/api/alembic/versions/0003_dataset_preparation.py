@@ -25,6 +25,7 @@ def upgrade() -> None:
             nullable=False,
         ),
     )
+    op.add_column("datasets", sa.Column("prepared_at", sa.DateTime(timezone=True), nullable=True))
     op.add_column("datasets", sa.Column("analysis_artifact_uri", sa.Text(), nullable=True))
     op.add_column(
         "datasets", sa.Column("analysis_manifest_sha256", sa.String(length=64), nullable=True)
@@ -40,4 +41,5 @@ def downgrade() -> None:
     op.drop_constraint("ck_datasets_preparation_status", "datasets", type_="check")
     op.drop_column("datasets", "analysis_manifest_sha256")
     op.drop_column("datasets", "analysis_artifact_uri")
+    op.drop_column("datasets", "prepared_at")
     op.drop_column("datasets", "preparation_status")

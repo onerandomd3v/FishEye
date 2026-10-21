@@ -193,6 +193,8 @@ export interface components {
       created_at: string;
       /** Preparation Status */
       preparation_status: string;
+      /** Prepared At */
+      prepared_at?: string | null;
       /** Analysis Manifest Sha256 */
       analysis_manifest_sha256?: string | null;
       /**

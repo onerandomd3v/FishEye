@@ -85,6 +85,7 @@ class DatasetMetadataResponse(BaseModel):
     employee_day_count: int
     created_at: str
     preparation_status: str
+    prepared_at: str | None = None
     analysis_manifest_sha256: str | None = None
     synthetic_only: bool = True
     evaluation_status: str = "not_run"
@@ -336,6 +337,7 @@ def _dataset_metadata(record: DatasetRecord) -> DatasetMetadataResponse:
         employee_day_count=record.employee_day_count,
         created_at=created_at.isoformat(),
         preparation_status=record.preparation_status,
+        prepared_at=(record.prepared_at.isoformat() if record.prepared_at is not None else None),
         analysis_manifest_sha256=record.analysis_manifest_sha256,
     )
 

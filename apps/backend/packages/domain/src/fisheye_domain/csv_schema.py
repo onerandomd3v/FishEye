@@ -25,6 +25,7 @@ EVENT_TYPES = {
 PARTITIONS = {"baseline", "evaluation"}
 GROUND_TRUTH_LABELS = {"threat_scenario", "benign_scenario"}
 MAX_CSV_ROWS = 100_000
+MAX_RECORD_COUNT = 2**63 - 1
 MAX_REPORTED_ERRORS = 100
 MAX_ERROR_ROW_NUMBERS = 20
 REQUIRED_VALUES = (

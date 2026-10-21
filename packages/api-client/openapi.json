@@ -533,6 +533,17 @@
             "type": "string",
             "title": "Preparation Status"
           },
+          "prepared_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prepared At"
+          },
           "analysis_manifest_sha256": {
             "anyOf": [
               {

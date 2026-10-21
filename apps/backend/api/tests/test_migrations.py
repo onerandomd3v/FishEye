@@ -58,6 +58,7 @@ def test_initial_migration_and_rollback() -> None:
             }
             assert {
                 "preparation_status",
+                "prepared_at",
                 "analysis_artifact_uri",
                 "analysis_manifest_sha256",
             }.issubset(dataset_columns)

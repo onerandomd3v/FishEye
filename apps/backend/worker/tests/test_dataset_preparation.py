@@ -3,6 +3,7 @@ import hashlib
 import io
 import json
 import logging
+from datetime import UTC, datetime
 
 import polars as pl
 import pytest
@@ -10,6 +11,7 @@ from cryptography.fernet import Fernet
 from fisheye_domain.csv_schema import CSV_HEADERS
 from fisheye_domain.csv_validation import validate_events_csv
 from fisheye_persistence.datasets import Base, DatasetRecord, create_session_factory, import_dataset
+from fisheye_worker import dataset_preparation
 from fisheye_worker.dataset_preparation import prepare_dataset
 from fisheye_worker.main import main
 from sqlalchemy import create_engine
@@ -106,6 +108,15 @@ def test_prepare_dataset_writes_encrypted_label_isolated_parquet(imported_datase
         assert record.preparation_status == "prepared"
         assert record.analysis_manifest_sha256 == result.analysis_manifest_sha256
         assert record.analysis_artifact_uri is not None
+        assert record.prepared_at is not None
+        manifest = json.loads(
+            Fernet(encryption_key).decrypt(
+                (artifact_root / record.analysis_artifact_uri / "manifest.json.enc").read_bytes()
+            )
+        )
+        expected_prepared_at = datetime.fromisoformat(manifest["prepared_at"])
+        assert record.prepared_at.replace(tzinfo=UTC) == expected_prepared_at
+        assert record.prepared_at != record.created_at
         analysis_dir = artifact_root / record.analysis_artifact_uri
 
     cipher = Fernet(encryption_key)
@@ -160,6 +171,35 @@ def test_prepare_dataset_is_idempotent_and_keeps_artifacts_immutable(imported_da
     }
     assert second == first
     assert second_bytes == first_bytes
+
+
+def test_retry_verifies_artifacts_without_reconverting_after_worker_upgrade(
+    imported_dataset, monkeypatch
+) -> None:
+    database_url, artifact_root, encryption_key, dataset_id, _ = imported_dataset
+    factory = create_session_factory(database_url)
+    with factory() as session:
+        first = prepare_dataset(session, dataset_id, artifact_root, encryption_key)
+        record = session.get(DatasetRecord, dataset_id)
+        assert record is not None
+        first_prepared_at = record.prepared_at
+        artifact_dir = artifact_root / record.analysis_artifact_uri
+    before = {path.name: path.read_bytes() for path in artifact_dir.iterdir()}
+
+    def fail_conversion(_content: bytes):
+        raise AssertionError("a retry must not reconvert existing immutable artifacts")
+
+    monkeypatch.setattr(dataset_preparation, "_convert_csv_to_parquet", fail_conversion)
+    monkeypatch.setattr(dataset_preparation.pl, "__version__", "999.0.0")
+    with factory() as session:
+        second = prepare_dataset(session, dataset_id, artifact_root, encryption_key)
+        record = session.get(DatasetRecord, dataset_id)
+        assert record is not None
+        assert record.prepared_at == first_prepared_at
+
+    after = {path.name: path.read_bytes() for path in artifact_dir.iterdir()}
+    assert second == first
+    assert after == before
 
 
 def test_prepare_dataset_rejects_unknown_dataset(imported_dataset) -> None:

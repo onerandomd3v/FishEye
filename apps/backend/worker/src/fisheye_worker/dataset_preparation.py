@@ -53,6 +53,14 @@ class PreparationResult:
     employee_day_count: int
 
 
+@dataclass(frozen=True)
+class StoredAnalysisArtifacts:
+    manifest_sha256: str
+    row_count: int
+    employee_day_count: int
+    prepared_at: datetime
+
+
 def prepare_dataset(
     session: Session,
     dataset_id: str,
@@ -69,19 +77,58 @@ def prepare_dataset(
     session.commit()
 
     source = read_dataset_source(record, artifact_root, encryption_key)
-    validation = validate_events_csv(source)
-    if not validation.valid or validation.schema_version != record.schema_version:
-        raise ValueError("The stored source CSV failed its schema integrity check.")
-
     cipher = _make_cipher(encryption_key)
+    artifact_rel = Path(record.artifact_uri).parent / "analysis"
+    destination = _safe_path(artifact_root, artifact_rel)
+    if destination.exists():
+        prepared = _verify_existing_artifacts(
+            destination, record, record.analysis_manifest_sha256, cipher
+        )
+    else:
+        if record.preparation_status == "prepared":
+            raise RuntimeError("Prepared dataset analysis artifacts are missing.")
+        validation = validate_events_csv(source)
+        if not validation.valid or validation.schema_version != record.schema_version:
+            raise ValueError("The stored source CSV failed its schema integrity check.")
+        prepared = _create_and_publish_artifacts(record, source, destination, cipher)
+
+    relative_uri = artifact_rel.as_posix()
+    persisted_record = get_dataset(session, record.id)
+    if persisted_record is None or persisted_record.sha256 != record.sha256:
+        raise RuntimeError("Dataset metadata changed during preparation.")
+    if persisted_record.preparation_status == "prepared":
+        if (
+            persisted_record.analysis_artifact_uri != relative_uri
+            or persisted_record.analysis_manifest_sha256 != prepared.manifest_sha256
+            or _normalize_utc(persisted_record.prepared_at) != prepared.prepared_at
+        ):
+            raise RuntimeError("Prepared dataset metadata does not match its immutable artifacts.")
+    else:
+        persisted_record.preparation_status = "prepared"
+        persisted_record.prepared_at = prepared.prepared_at
+        persisted_record.analysis_artifact_uri = relative_uri
+        persisted_record.analysis_manifest_sha256 = prepared.manifest_sha256
+        session.commit()
+
+    return PreparationResult(
+        dataset_id=record.id,
+        preparation_status=persisted_record.preparation_status,
+        analysis_manifest_sha256=prepared.manifest_sha256,
+        row_count=prepared.row_count,
+        employee_day_count=prepared.employee_day_count,
+    )
+
+
+def _create_and_publish_artifacts(
+    record: DatasetRecord,
+    source: bytes,
+    destination: Path,
+    cipher: Fernet,
+) -> StoredAnalysisArtifacts:
     event_bytes, partition_bytes, label_bytes, row_count, employee_day_count = (
         _convert_csv_to_parquet(source)
     )
-    artifact_rel = Path(record.artifact_uri).parent / "analysis"
-    destination = _safe_path(artifact_root, artifact_rel)
-    created_at = record.created_at
-    if created_at.tzinfo is None:
-        created_at = created_at.replace(tzinfo=UTC)
+    prepared_at = datetime.now(UTC)
     artifacts = {
         "events.parquet.enc": event_bytes,
         "partitions.parquet.enc": partition_bytes,
@@ -93,6 +140,7 @@ def prepare_dataset(
         "source_sha256": record.sha256,
         "event_schema_version": record.schema_version,
         "converter_version": "fisheye.dataset-preparation.v1",
+        "worker_build_revision": _worker_build_revision(),
         "polars_version": pl.__version__,
         "row_count": row_count,
         "employee_day_count": employee_day_count,
@@ -104,41 +152,12 @@ def prepare_dataset(
         "label_artifact_sha256": hashlib.sha256(label_bytes).hexdigest(),
         "detector_inputs_exclude": ["dataset_partition", "ground_truth_label"],
         "ground_truth_usage": "evaluation_only; stored in a separate artifact",
-        "prepared_at": created_at.isoformat(),
+        "prepared_at": prepared_at.isoformat(),
     }
     manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
     manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
-
-    if destination.exists():
-        _verify_existing_artifacts(
-            destination, record, manifest_sha256, artifacts, manifest_bytes, cipher
-        )
-    else:
-        _publish_artifacts(destination, artifacts, manifest_bytes, cipher)
-
-    relative_uri = artifact_rel.as_posix()
-    persisted_record = get_dataset(session, record.id)
-    if persisted_record is None or persisted_record.sha256 != record.sha256:
-        raise RuntimeError("Dataset metadata changed during preparation.")
-    if persisted_record.preparation_status == "prepared":
-        if (
-            persisted_record.analysis_artifact_uri != relative_uri
-            or persisted_record.analysis_manifest_sha256 != manifest_sha256
-        ):
-            raise RuntimeError("Prepared dataset metadata does not match its immutable artifacts.")
-    else:
-        persisted_record.preparation_status = "prepared"
-        persisted_record.analysis_artifact_uri = relative_uri
-        persisted_record.analysis_manifest_sha256 = manifest_sha256
-        session.commit()
-
-    return PreparationResult(
-        dataset_id=record.id,
-        preparation_status=persisted_record.preparation_status,
-        analysis_manifest_sha256=manifest_sha256,
-        row_count=row_count,
-        employee_day_count=employee_day_count,
-    )
+    _publish_artifacts(destination, artifacts, manifest_bytes, cipher, record)
+    return StoredAnalysisArtifacts(manifest_sha256, row_count, employee_day_count, prepared_at)
 
 
 def _convert_csv_to_parquet(content: bytes) -> tuple[bytes, bytes, bytes, int, int]:
@@ -249,6 +268,7 @@ def _publish_artifacts(
     artifacts: dict[str, bytes],
     manifest_bytes: bytes,
     cipher: Fernet,
+    record: DatasetRecord,
 ) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = Path(tempfile.mkdtemp(prefix=".analysis-prepare-", dir=destination.parent))
@@ -263,11 +283,10 @@ def _publish_artifacts(
                 raise
             _verify_existing_artifacts(
                 destination,
-                None,
+                record,
                 hashlib.sha256(manifest_bytes).hexdigest(),
-                artifacts,
-                manifest_bytes,
                 cipher,
+                expected_manifest_bytes=manifest_bytes,
             )
     finally:
         if temporary.exists():
@@ -276,29 +295,87 @@ def _publish_artifacts(
 
 def _verify_existing_artifacts(
     directory: Path,
-    record: DatasetRecord | None,
-    expected_manifest_sha256: str,
-    artifacts: dict[str, bytes],
-    expected_manifest: bytes,
+    record: DatasetRecord,
+    expected_manifest_sha256: str | None,
     cipher: Fernet,
-) -> None:
+    *,
+    expected_manifest_bytes: bytes | None = None,
+) -> StoredAnalysisArtifacts:
     try:
         manifest_bytes = cipher.decrypt((directory / "manifest.json.enc").read_bytes())
-        if hashlib.sha256(manifest_bytes).hexdigest() != expected_manifest_sha256:
-            raise RuntimeError("Existing analysis manifest does not match regenerated content.")
-        if manifest_bytes != expected_manifest:
-            raise RuntimeError("Existing analysis manifest content has changed.")
+        manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
+        if expected_manifest_sha256 and manifest_sha256 != expected_manifest_sha256:
+            raise RuntimeError(
+                "Existing analysis manifest checksum does not match dataset metadata."
+            )
+        if expected_manifest_bytes is not None and manifest_bytes != expected_manifest_bytes:
+            raise RuntimeError("Concurrent analysis preparation produced different artifacts.")
         manifest = json.loads(manifest_bytes)
-        if record is not None and manifest.get("source_sha256") != record.sha256:
+        if (
+            manifest.get("manifest_schema_version") != "fisheye.dataset-analysis-manifest.v1"
+            or manifest.get("dataset_id") != record.id
+            or manifest.get("source_sha256") != record.sha256
+            or manifest.get("event_schema_version") != record.schema_version
+            or not isinstance(manifest.get("worker_build_revision"), str)
+            or not manifest["worker_build_revision"].strip()
+        ):
             raise RuntimeError("Existing analysis artifacts refer to a different source dataset.")
-        for name, expected_content in artifacts.items():
+        artifacts = {
+            "events.parquet.enc": manifest.get("event_artifact_sha256"),
+            "partitions.parquet.enc": manifest.get("partition_artifact_sha256"),
+            "labels.parquet.enc": manifest.get("label_artifact_sha256"),
+        }
+        expected_names = {
+            "event_artifact": "events.parquet.enc",
+            "partition_artifact": "partitions.parquet.enc",
+            "label_artifact": "labels.parquet.enc",
+        }
+        for field, expected_name in expected_names.items():
+            if manifest.get(field) != expected_name:
+                raise RuntimeError("Existing analysis manifest references an unsupported artifact.")
+        for name, expected_sha256 in artifacts.items():
+            if not isinstance(expected_sha256, str) or len(expected_sha256) != 64:
+                raise RuntimeError("Existing analysis manifest has an invalid artifact checksum.")
             content = cipher.decrypt((directory / name).read_bytes())
-            if content != expected_content:
-                raise RuntimeError("Existing analysis artifact content has changed.")
+            if hashlib.sha256(content).hexdigest() != expected_sha256:
+                raise RuntimeError(
+                    "Existing analysis artifact checksum does not match its manifest."
+                )
+        row_count = manifest.get("row_count")
+        employee_day_count = manifest.get("employee_day_count")
+        if (
+            not isinstance(row_count, int)
+            or row_count < 0
+            or not isinstance(employee_day_count, int)
+            or employee_day_count < 0
+        ):
+            raise RuntimeError("Existing analysis manifest has invalid row counts.")
+        prepared_at = datetime.fromisoformat(manifest["prepared_at"])
+        if prepared_at.tzinfo is None:
+            raise RuntimeError("Existing analysis manifest has an invalid preparation timestamp.")
+        prepared_at = prepared_at.astimezone(UTC)
+        return StoredAnalysisArtifacts(manifest_sha256, row_count, employee_day_count, prepared_at)
     except (OSError, InvalidToken, json.JSONDecodeError) as error:
         raise RuntimeError(
             "Existing analysis artifacts are missing or failed integrity checks."
         ) from error
+    except (KeyError, TypeError, ValueError) as error:
+        raise RuntimeError("Existing analysis manifest is malformed.") from error
+
+
+def _worker_build_revision() -> str:
+    configured = os.getenv("FISHEYE_CODE_REVISION", "").strip()
+    if configured:
+        return configured
+    return f"module-sha256:{hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}"
+
+
+def _normalize_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 def prepare_dataset_from_environment(dataset_id: str) -> PreparationResult:

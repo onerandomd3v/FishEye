@@ -221,6 +221,7 @@ def test_dataset_list_is_paginated_and_returns_only_provenance_metadata(
     assert metadata["synthetic_only"] is True
     assert metadata["evaluation_status"] == "not_run"
     assert metadata["preparation_status"] == "source_only"
+    assert metadata["prepared_at"] is None
     assert metadata["analysis_manifest_sha256"] is None
     assert metadata["ground_truth_usage"] == "evaluation_only"
     assert metadata["run_created"] is False

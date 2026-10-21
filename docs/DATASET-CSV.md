@@ -30,7 +30,7 @@ event_id,employee_id,role_id,department_id,event_timestamp_utc,event_type,system
 | `system`              | Required synthetic target-system name.                                                           |
 | `device_id`           | Optional; blank means missing or unreported.                                                     |
 | `location_label`      | Optional; blank means missing or unreported.                                                     |
-| `record_count`        | Optional nonnegative integer count; blank means unknown or not applicable.                       |
+| `record_count`        | Optional nonnegative signed 64-bit integer; blank means unknown or not applicable.                |
 | `dataset_partition`   | Required enum: `baseline` or `evaluation`.                                                       |
 | `ground_truth_label`  | Blank on baseline rows. Evaluation rows require `threat_scenario` or `benign_scenario`.          |
 
