@@ -34,12 +34,16 @@ If Figma conflicts with product truth, choose correctness and request design rec
 ## 3. Architecture and ownership
 
 - `apps/web/landing`: Astro, primarily static; use React islands only for genuine interaction.
-- `apps/web/console`: React + Vite + React Router; all protected data via the typed FastAPI client.
-- `packages/ui`: FishEye tokens, primitives and shared components; avoid excessive coupling to Astro/React Router.
+- `apps/web/console`: Next.js App Router + React + TypeScript; all protected data and business decisions originate in FastAPI through the typed API contract. Use the Next.js server runtime for request-time authentication and rendering.
+- `packages/ui`: FishEye tokens, primitives and shared components; avoid excessive coupling to Astro/Next.js routing or server-runtime details.
 - `packages/api-client`: generated from OpenAPI; do not copy API response types into individual screens.
 - Use Tailwind CSS with a single shared token configuration; no repeated hardcoded colors and spacing for the same patterns.
 - Use TanStack Query for server state, TanStack Table for investigation lists, Recharts where comparisons genuinely help.
 - **Never calculate authoritative detector scores, severity or research metrics in UI**. Format server results; never replace unavailable data with visually believable invented numbers.
+
+### Next.js console boundary
+
+Use Next.js App Router server components for request-time page assembly and protected initial reads; client components for filtering, charts, local interactions and polling. Prefer explicit server-to-FastAPI requests and server-validated sessions. TanStack Query is appropriate where client-side refetching/polling is required, but do not duplicate fetched server state without a reason. Avoid routing protected FastAPI domain logic into Next.js Route Handlers or Server Actions. Do not choose `output: "export"` for the authenticated console.
 
 ## 4. Foundation tokens
 
