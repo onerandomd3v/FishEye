@@ -529,6 +529,21 @@
             "type": "string",
             "title": "Created At"
           },
+          "preparation_status": {
+            "type": "string",
+            "title": "Preparation Status"
+          },
+          "analysis_manifest_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Manifest Sha256"
+          },
           "synthetic_only": {
             "type": "boolean",
             "title": "Synthetic Only",
@@ -563,7 +578,8 @@
           "schema_version",
           "row_count",
           "employee_day_count",
-          "created_at"
+          "created_at",
+          "preparation_status"
         ],
         "title": "DatasetMetadataResponse"
       },

@@ -162,7 +162,7 @@ Requests and responses require stable IDs, explicit timestamps/timezones, pagina
 
 ### Application responsibilities
 - **API:** Authorize actors, validate schemas, manage uploaded dataset references, persist experiment/job state, expose findings and immutable result links.
-- **Worker:** Claim runs; load versioned synthetic artifacts; extract features; execute all comparators on identical splits; atomically publish outcome; record runtime and failure metadata.
+- **Worker:** Prepare imported CSVs as encrypted, immutable Parquet artifacts with ground truth stored separately from detector event inputs. Future run processing will claim jobs, load versioned artifacts, execute reviewed comparators on identical splits, atomically publish outcomes, and record runtime/failure metadata.
 - **UI:** Render honest simulation provenance and investigation evidence; distinguish observed event, anomaly reason and inferred severity.
 
 ## 7. Data contracts and provenance

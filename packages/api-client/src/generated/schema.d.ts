@@ -191,6 +191,10 @@ export interface components {
       employee_day_count: number;
       /** Created At */
       created_at: string;
+      /** Preparation Status */
+      preparation_status: string;
+      /** Analysis Manifest Sha256 */
+      analysis_manifest_sha256?: string | null;
       /**
        * Synthetic Only
        * @default true

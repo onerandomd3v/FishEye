@@ -73,8 +73,19 @@ status metadata, but never return the artifact path, source rows or labels.
 Enable these reads only with `FISHEYE_ENV=development` and
 `FISHEYE_ENABLE_DEV_DATASET_READS=1`. These endpoints do not authenticate
 callers and must remain disabled outside local development. Production
-authentication/authorization, worker-side parsing into analytical artifacts
-and any evaluation run are separate future steps.
+authentication/authorization and any evaluation run remain future steps.
+
+After running migrations, a local developer can prepare an imported dataset
+using `uv run --package fisheye-worker fisheye-worker prepare-dataset
+--dataset-id <dataset-id>`. The worker verifies/decrypts the source and writes
+encrypted Parquet files for event features, employee-day split membership and
+evaluation labels under the dataset's immutable analysis artifact directory.
+Event feature rows contain neither split membership nor ground-truth labels;
+labels are stored separately and remain evaluation-only. The dataset metadata
+changes from `preparation_status=source_only` to `prepared` only after the
+artifacts are published and checksummed. Repeating preparation verifies and
+reuses the existing artifacts. This command creates no evaluation run and
+calculates no risk scores.
 
 For local validation, set `FISHEYE_ENV=development` and
 `FISHEYE_ENABLE_DEV_CSV_VALIDATION=1` in the API process environment. For local
