@@ -264,7 +264,7 @@ apps/
     console/           React/Vite analyst console
   backend/
     api/               FastAPI HTTP service
-    detection-worker/  Python evaluation/scoring worker
+    worker/  Python evaluation/scoring worker
     packages/          shared importable Python domain/features/detectors/etc.
 packages/
   ui/                  shared frontend components
