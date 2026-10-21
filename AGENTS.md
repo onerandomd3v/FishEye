@@ -10,10 +10,10 @@ FishEye is a production-minded, synthetic-data-only MVP for **context-aware insi
 
 Read these files **before** changing behavior, infrastructure or app boundaries:
 
-1. [PRD.md](./PRD.md) — product outcomes, MVP requirements and acceptance criteria (**what**).
-2. [ARCHITECTURE.md](./ARCHITECTURE.md) — architecture, boundaries, data flows and constraints (**how**).
-3. [BRAND.md](./BRAND.md) — identity, logo assets, brand voice and allowed visual identity.
-4. [DESIGN.md](./DESIGN.md) — implementation-grade frontend tokens, layouts, component states, accessibility and Figma-to-code process.
+1. [PRD](./docs/PRD.md) — product outcomes, MVP requirements and acceptance criteria (**what**).
+2. [Architecture](./docs/ARCHITECTURE.md) — architecture, boundaries, data flows and constraints (**how**).
+3. [Brand](./docs/BRAND.md) — identity, logo assets, brand voice and allowed visual identity.
+4. [Design](./docs/DESIGN.md) — implementation-grade frontend tokens, layouts, component states, accessibility and Figma-to-code process.
 5. Applicable nested `AGENTS.md` — if present, narrower directory guidance.
 6. Relevant code, tests, schemas and ADRs — the implementation's current verified behavior.
 
@@ -74,7 +74,7 @@ Do not add Kafka, Redis, Temporal, Kubernetes, a vector database, an LLM provide
 ## Product and design invariants
 
 - **FishEye**, never Sentinel or another former working name, is the current product.
-- Always use the committed brand assets under `assets/`. Implement the approved Figma design according to BRAND.md and DESIGN.md, then check responsive layouts and accessibility.
+- Always use the committed brand assets under `assets/`. Implement the approved Figma design according to [BRAND](./docs/BRAND.md) and [DESIGN](./docs/DESIGN.md), then check responsive layouts and accessibility.
 - **Inter** everywhere; **light mode only**; white surfaces with black and neutral-gray text/borders. **No purple, decorative color themes or dark-mode switch.**
 - Use the canonical aligned combined SVG in assets/fisheye-logo.svg and shared tokens/components; do not duplicate unrelated landing and console component implementations where shared patterns suffice.
 - The console's principal activities are **prioritize**, **investigate** and **evaluate**; scenario execution exists to support evaluation.
@@ -142,7 +142,7 @@ Do not turn stylistic preferences into high-severity review findings if a config
 
 ## Architecture changes, decisions and completion
 
-- `PRD.md` is authoritative for **requirements**; `ARCHITECTURE.md` for **system design**. Code and tests establish what actually exists, but not permission to silently change either document.
+- [PRD](./docs/PRD.md) is authoritative for **requirements**; [Architecture](./docs/ARCHITECTURE.md) for **system design**. Code and tests establish what actually exists, but not permission to silently change either document.
 - Material architecture changes need a concise ADR under `docs/adr/` describing context, alternatives, tradeoffs, rollout and reversibility.
 - Reject unrequested feature expansion. Keep the initial MVP deliberate and maintainable; "future bank pilot" is an architectural possibility, not authorization to handle personal banking data.
 - If a request cannot be completed safely with available data/tools, implement the supported portion, explain the blocker and leave no fabricated completion state.

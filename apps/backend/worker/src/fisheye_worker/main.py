@@ -1,4 +1,5 @@
 """Worker entrypoint. Job transport and scoring are not implemented yet."""
+
 import logging
 
 

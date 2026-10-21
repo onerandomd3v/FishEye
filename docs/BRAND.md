@@ -32,9 +32,9 @@ FishEye has three distinct official treatments:
 
 | Asset | File | Usage |
 | --- | --- | --- |
-| Brand **mark** | [assets/fisheye-mark.svg](./assets/fisheye-mark.svg) | Favicon, avatar, compact navigation, app icon |
-| **Wordmark** | [assets/fisheye-wordmark.svg](./assets/fisheye-wordmark.svg) | Text-first headers, document cover, where brand symbol is separately present |
-| **Combined logo** | [assets/fisheye-logo.svg](./assets/fisheye-logo.svg) | Preferred header, landing-page hero/footer, sign-in and external communications |
+| Brand **mark** | [assets/fisheye-mark.svg](../assets/fisheye-mark.svg) | Favicon, avatar, compact navigation, app icon |
+| **Wordmark** | [assets/fisheye-wordmark.svg](../assets/fisheye-wordmark.svg) | Text-first headers, document cover, where brand symbol is separately present |
+| **Combined logo** | [assets/fisheye-logo.svg](../assets/fisheye-logo.svg) | Preferred header, landing-page hero/footer, sign-in and external communications |
 
 **Composition:** The mark references a deep-sea anglerfish, whose illuminated lure symbolizes noticing valuable signals in darkness. The large eye conveys careful observation. The logo **does not depict literal surveillance capability**.
 
@@ -128,7 +128,7 @@ Every brand change must satisfy:
 - [ ] Text and controls pass applicable accessibility testing.
 - [ ] Landing, sidebar, sign-in and exports remain visually consistent.
 
-**Decision boundary:** This document is for brand identity. [DESIGN.md](./DESIGN.md) defines operational frontend behavior, components and layouts; [AGENTS.md](./AGENTS.md) tells coding agents how to implement and verify both.
+**Decision boundary:** This document is for brand identity. [DESIGN.md](./DESIGN.md) defines operational frontend behavior, components and layouts; [AGENTS.md](../AGENTS.md) tells coding agents how to implement and verify both.
 
 ## 9. Reference foundations (not FishEye ownership claims)
 

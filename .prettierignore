@@ -1,0 +1,9 @@
+node_modules/
+.git/
+.next/
+.turbo/
+coverage/
+dist/
+apps/web/console/next-env.d.ts
+pnpm-lock.yaml
+uv.lock

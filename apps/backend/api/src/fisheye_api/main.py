@@ -1,4 +1,5 @@
 """FishEye API entrypoint; no live banking integrations in the MVP."""
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 

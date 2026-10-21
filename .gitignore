@@ -13,5 +13,6 @@ __pycache__/
 .ruff_cache/
 *.py[cod]
 *.egg-info/
+*.tsbuildinfo
 .research-data/
 .DS_Store
