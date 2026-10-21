@@ -1,0 +1,17 @@
+{
+  "name": "fisheye",
+  "private": true,
+  "packageManager": "pnpm@10.15.1",
+  "scripts": {
+    "dev:landing": "pnpm --filter @fisheye/landing dev",
+    "dev:console": "pnpm --filter @fisheye/console dev",
+    "dev:web": "turbo run dev --filter=@fisheye/landing --filter=@fisheye/console",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.9.0"
+  }
+}
