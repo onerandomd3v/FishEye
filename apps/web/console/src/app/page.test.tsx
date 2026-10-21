@@ -1,18 +1,14 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import HomePage from './page';
 
-describe('console scaffold', () => {
-  it('shows the product name and accurately describes the unimplemented shell', () => {
-    render(<HomePage />);
+const redirect = vi.fn();
+vi.mock('next/navigation', () => ({
+  redirect: (path: string) => redirect(path),
+}));
 
-    expect(
-      screen.getByRole('heading', { name: 'Detection with context.' }),
-    ).toBeTruthy();
-    expect(
-      screen.getByText(
-        /Authentication, evaluation runs and analyst findings are not implemented yet\./,
-      ),
-    ).toBeTruthy();
+describe('console entry route', () => {
+  it('sends visitors to the sign-in preview', () => {
+    HomePage();
+    expect(redirect).toHaveBeenCalledWith('/login');
   });
 });
