@@ -109,7 +109,7 @@ FishEye/
 ├── infra/
 │   ├── compose.yaml                 # Local integration stack
 │   └── docker/                      # API/worker images
-├── docs/                            # ADRs, threat model and data contracts
+├── docs/                            # Product, architecture, brand, design and development documents
 ├── assets/                          # Brand SVGs (already in repository)
 ├── .github/workflows/
 ├── pnpm-workspace.yaml
@@ -118,7 +118,6 @@ FishEye/
 ├── uv.lock                          # Committed once generated
 ├── .env.example
 ├── README.md
-└── ARCHITECTURE.md
 ```
 
 The root should be one Git repository. `apps/web` and `apps/backend` are organizational divisions, **not Git submodules or nested repos**. Each deployable has its own build/runtime configuration and release target.

@@ -1,6 +1,6 @@
 # Web Agent Instructions — FishEye
 
-Applies to all files under `apps/web/`. **Also follow the repository root [AGENTS.md](../../AGENTS.md)** and read [PRD.md](../../PRD.md), [BRAND.md](../../BRAND.md), and [DESIGN.md](../../DESIGN.md) before significant frontend work.
+Applies to all files under `apps/web/`. **Also follow the repository root [AGENTS.md](../../AGENTS.md)** and read [PRD](../../docs/PRD.md), [BRAND](../../docs/BRAND.md), and [DESIGN](../../docs/DESIGN.md) before significant frontend work.
 
 ## Application boundaries
 
@@ -24,7 +24,7 @@ Applies to all files under `apps/web/`. **Also follow the repository root [AGENT
 
 - **Inter only; white/light mode only; black/white and neutral grays only.** No purple, no dark mode, no colorful severity backgrounds.
 - Use canonical SVG assets from root `assets/`; do not recreate the logo as independent shapes or paste an outdated lockup.
-- Use semantic shared design tokens and UI components, not per-page arbitrary gray palettes. Follow `DESIGN.md` for responsive breakpoints, type scale, contrast and component state definitions.
+- Use semantic shared design tokens and UI components, not per-page arbitrary gray palettes. Follow [DESIGN](../../docs/DESIGN.md) for responsive breakpoints, type scale, contrast and component state definitions.
 - Preserve all information needed for investigations. Explicitly label `High`, `Medium` and `Low` instead of relying on color.
 - Keep landing-page copy concise, verifiable and honest about the synthetic dataset and product maturity.
 - Use semantic HTML, labeled controls, keyboard support, focus management, meaningful empty/loading/error/retry states and WCAG 2.2 AA targets.
@@ -40,7 +40,7 @@ Applies to all files under `apps/web/`. **Also follow the repository root [AGENT
 
 ## Before marking a web task complete
 
-1. Verify affected routes and components against the FishEye Figma reference and `DESIGN.md`.
+1. Verify affected routes and components against the FishEye Figma reference and [DESIGN](../../docs/DESIGN.md).
 2. Exercise keyboard and accessible states, narrow viewport and meaningful empty/error behavior.
 3. Run existing lint, TypeScript checks, tests and production builds for affected workspaces; do not invent scripts.
 4. Confirm logos, Inter, grayscale tokens and request-time session behavior.

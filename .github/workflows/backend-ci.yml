@@ -1,10 +1,9 @@
 name: Backend CI
 on:
   pull_request:
+    branches: [main]
   push:
     branches: [main]
-  merge_group:
-    types: [checks_requested]
 permissions:
   contents: read
 jobs:
@@ -13,18 +12,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
+          version: 0.13.4
           python-version: '3.12'
           enable-cache: true
+          cache-dependency-glob: '**/uv.lock'
       - name: Install Python workspace
-        run: uv sync
+        run: uv sync --locked --all-packages --all-groups
       - name: Ruff lint
-        run: uvx --from ruff==0.13.2 ruff check apps/backend
+        run: uv run --locked ruff check apps/backend
       - name: Ruff format verification
-        run: uvx --from ruff==0.13.2 ruff format --check apps/backend
-      - name: API tests
-        run: uv run --package fisheye-api --with pytest --with httpx pytest -q apps/backend/api/tests
-      - name: Compile Python packages
-        run: uv run python -m compileall -q apps/backend
+        run: uv run --locked ruff format --check apps/backend
+      - name: Static type checks
+        run: uv run --locked mypy apps/backend/api/src apps/backend/worker/src
+      - name: Backend tests
+        run: uv run --locked pytest -q apps/backend/api/tests apps/backend/worker/tests -m 'not integration'
+      - name: Worker import and startup checks
+        run: |
+          uv run --locked python -c 'import fisheye_api.main, fisheye_worker.main'
+          uv run --locked --package fisheye-worker fisheye-worker

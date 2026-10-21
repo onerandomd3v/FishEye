@@ -1,30 +1,28 @@
 # FishEye
 
-FishEye is a context-aware insider-risk triage product. **MVP v1 uses synthetic data only** and evaluates whether contextual analysis reduces unnecessary alerts without unacceptable detection-recall loss.
-
-## Repository
-
-- `apps/web/landing` — public Astro website
-- `apps/web/console` — Next.js analyst console
-- `apps/backend/api` — FastAPI service
-- `apps/backend/worker` — Python worker (entrypoint scaffold only)
-- `assets/` — official logo SVGs
-- `infra/compose.yaml` — local PostgreSQL
+FishEye is a context-aware insider-risk triage research MVP. Version 1 uses synthetic data only. The repository contains the Astro landing site, Next.js console shell, FastAPI API, Python worker scaffold, and local PostgreSQL configuration.
 
 ## Quick start
 
-Requires Node 22, pnpm 10, Python 3.12+, uv, and Docker if running PostgreSQL.
+Install Node.js 22, pnpm 11.25.0, Python 3.12, uv, and Docker Compose. Then run:
 
 ```sh
-pnpm install
-pnpm dev:landing   # http://localhost:4321
-pnpm dev:console   # http://localhost:3000
-uv sync
-uv run --package fisheye-api uvicorn fisheye_api.main:app --host 127.0.0.1 --port 8000
-# in another terminal, if needed:
-docker compose -f infra/compose.yaml up -d
+pnpm install --frozen-lockfile
+uv sync --locked --all-packages --all-groups
+pnpm db:start
+pnpm dev:landing
 ```
 
-**Foundation only:** UI shells and API health exist; account security, detector, experiments, database schemas, jobs and data workflows are not implemented. Do not represent it as a functional insider-risk engine.
+In separate terminals, start the console and API with `pnpm dev:console` and `pnpm dev:api`. `pnpm dev:worker` starts the worker scaffold; it logs that no jobs are configured and exits.
 
-Read [PRD.md](./PRD.md), [ARCHITECTURE.md](./ARCHITECTURE.md), [BRAND.md](./BRAND.md), [DESIGN.md](./DESIGN.md) and [AGENTS.md](./AGENTS.md) before implementation.
+For database checks, start a disposable PostgreSQL test database and set `FISHEYE_TEST_DATABASE_URL` as described in [Development](docs/DEVELOPMENT.md). Run all checks with `pnpm check`.
+
+## Repository guide
+
+- [Development and contribution workflow](docs/DEVELOPMENT.md)
+- [Product requirements](docs/PRD.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Brand](docs/BRAND.md)
+- [Design](docs/DESIGN.md)
+
+The UI shells and API health endpoint are foundations only. Authentication, detection, evaluation, persistence models, and product workflows are not implemented.

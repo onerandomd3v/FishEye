@@ -7,11 +7,11 @@ services:
       POSTGRES_USER: fisheye
       POSTGRES_PASSWORD: fisheye_dev_only
     ports:
-      - "127.0.0.1:5432:5432"
+      - '127.0.0.1:5432:5432'
     volumes:
       - fisheye_pg:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fisheye -d fisheye"]
+      test: ['CMD-SHELL', 'pg_isready -U fisheye -d fisheye']
       interval: 5s
       timeout: 5s
       retries: 10

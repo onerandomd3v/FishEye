@@ -13,10 +13,10 @@ jobs:
   release-readiness:
     name: release-readiness
     runs-on: ubuntu-latest
-    environment: ${{ inputs.target }}
     steps:
       - uses: actions/checkout@v4
-      - name: Explicit release guard
+      - name: Report release state
         run: |
-          echo 'Release gate passed for ${{ inputs.target }} after environment approval if configured.'
-          echo 'No deployment action is wired yet: add target-specific deploy after infrastructure approval.'
+          echo 'Builds and required checks are validated separately by pull request CI.'
+          echo 'No release approval or deployment was performed for ${{ inputs.target }}.'
+          echo 'Hosting and protected deployment environments have not been selected or configured.'

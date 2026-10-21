@@ -1,6 +1,6 @@
 # Backend Agent Instructions — FishEye
 
-Applies to all files under `apps/backend/`. **Also follow the repository root [AGENTS.md](../../AGENTS.md)** and read [ARCHITECTURE.md](../../ARCHITECTURE.md), [PRD.md](../../PRD.md) before changing domain behavior.
+Applies to all files under `apps/backend/`. **Also follow the repository root [AGENTS.md](../../AGENTS.md)** and read [ARCHITECTURE](../../docs/ARCHITECTURE.md), [PRD](../../docs/PRD.md) before changing domain behavior.
 
 ## Ownership and boundaries
 
