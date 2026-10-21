@@ -156,7 +156,7 @@ The root should be one Git repository. `apps/web` and `apps/backend` are organiz
 - `GET /events` (server-paginated, authorized)
 - `GET /scenarios`, `POST /runs`, `GET /runs/{id}`
 - `GET /runs/{id}/metrics`, `GET /runs/{id}/findings`
-- `GET /datasets`, `POST /datasets/imports` (synthetic CSV/Parquet validation only)
+- `GET /datasets`, `POST /datasets/imports/validate` (development-only schema validation; see [DATASET-CSV.md](./DATASET-CSV.md)); durable import remains out of scope until its persistence and artifact contract is implemented
 
 Requests and responses require stable IDs, explicit timestamps/timezones, pagination contracts, error codes and a `schema_version` where appropriate. Document authorization rules per endpoint. Never let the browser trigger an arbitrary shell/script execution.
 
