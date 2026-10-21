@@ -12,8 +12,10 @@ Read these files **before** changing behavior, infrastructure or app boundaries:
 
 1. [PRD.md](./PRD.md) — product outcomes, MVP requirements and acceptance criteria (**what**).
 2. [ARCHITECTURE.md](./ARCHITECTURE.md) — architecture, boundaries, data flows and constraints (**how**).
-3. Applicable nested `AGENTS.md` — if present, narrower directory guidance.
-4. Relevant code, tests, schemas and ADRs — the implementation's current verified behavior.
+3. [BRAND.md](./BRAND.md) — identity, logo assets, brand voice and allowed visual identity.
+4. [DESIGN.md](./DESIGN.md) — implementation-grade frontend tokens, layouts, component states, accessibility and Figma-to-code process.
+5. Applicable nested `AGENTS.md` — if present, narrower directory guidance.
+6. Relevant code, tests, schemas and ADRs — the implementation's current verified behavior.
 
 If documents conflict or a requirement is ambiguous, identify the conflict and choose the least risky reversible step; **ask for a decision before making an irreversible, security-sensitive or methodologically material change**. Never silently change the product hypothesis to match an implementation.
 
@@ -72,9 +74,9 @@ Do not add Kafka, Redis, Temporal, Kubernetes, a vector database, an LLM provide
 ## Product and design invariants
 
 - **FishEye**, never Sentinel or another former working name, is the current product.
-- Always use the committed brand assets under `assets/`. Implement the approved Figma design, then check responsive layouts and accessibility.
+- Always use the committed brand assets under `assets/`. Implement the approved Figma design according to BRAND.md and DESIGN.md, then check responsive layouts and accessibility.
 - **Inter** everywhere; **light mode only**; white surfaces with black and neutral-gray text/borders. **No purple, decorative color themes or dark-mode switch.**
-- Use shared tokens/components; do not duplicate unrelated landing and console component implementations where shared patterns suffice.
+- Use the canonical aligned combined SVG in assets/fisheye-logo.svg and shared tokens/components; do not duplicate unrelated landing and console component implementations where shared patterns suffice.
 - The console's principal activities are **prioritize**, **investigate** and **evaluate**; scenario execution exists to support evaluation.
 - Always label synthetic/demo results. Severity must be explicit text, not conveyed only by color.
 - Loading, empty, failed, unauthorized, disabled and retry states are real product requirements; do not simulate successful results in production UI.
