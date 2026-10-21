@@ -12,10 +12,24 @@ const hostAllowed = ['localhost', '127.0.0.1', 'postgres'].includes(
   parsed.hostname,
 );
 const databaseName = decodeURIComponent(parsed.pathname.slice(1));
+const connectionTargetParameters = new Set([
+  'host',
+  'hostaddr',
+  'dbname',
+  'service',
+  'servicefile',
+]);
+const overridesConnectionTarget = [...parsed.searchParams.keys()].some((key) =>
+  connectionTargetParameters.has(key.toLowerCase()),
+);
 
-if (!hostAllowed || databaseName !== 'fisheye_test') {
+if (
+  !hostAllowed ||
+  databaseName !== 'fisheye_test' ||
+  overridesConnectionTarget
+) {
   console.error(
-    'Database checks only allow the fisheye_test database on a local or CI service host.',
+    'Database checks only allow the fisheye_test database on a local or CI service host, without connection target overrides.',
   );
   process.exit(1);
 }

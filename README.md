@@ -4,7 +4,7 @@ FishEye is a context-aware insider-risk triage research MVP. Version 1 uses synt
 
 ## Quick start
 
-Install Node.js 22, pnpm 11.25.0, Python 3.12, uv, and Docker Compose. Then run:
+Install Node.js 22.22.0 or newer, pnpm 11.25.0, Python 3.12, uv, and Docker Compose. Then run:
 
 ```sh
 pnpm install --frozen-lockfile

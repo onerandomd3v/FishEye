@@ -4,7 +4,7 @@ This document covers local setup, checks, pull requests, CI, and GitHub reposito
 
 ## Requirements
 
-- Node.js 22 LTS
+- Node.js 22.22.0 or newer
 - pnpm 11.25.0 (the version recorded in the root `package.json`)
 - Python 3.12
 - uv 0.13.4 or newer
@@ -50,12 +50,26 @@ docker run --rm --detach --name fisheye-pg-test `
   --env POSTGRES_USER=fisheye `
   --env POSTGRES_PASSWORD=fisheye_ci_only `
   --publish 127.0.0.1:55432:5432 postgres:17-alpine
+$postgresReady = $false
+foreach ($attempt in 1..30) {
+  docker exec fisheye-pg-test pg_isready -U fisheye -d fisheye_test *> $null
+  if ($LASTEXITCODE -eq 0) {
+    $postgresReady = $true
+    break
+  }
+  Start-Sleep -Seconds 1
+}
+if (-not $postgresReady) {
+  docker logs fisheye-pg-test
+  docker stop fisheye-pg-test
+  throw 'PostgreSQL did not become ready within 30 seconds.'
+}
 $env:FISHEYE_TEST_DATABASE_URL = 'postgresql+psycopg://fisheye:fisheye_ci_only@127.0.0.1:55432/fisheye_test'
 pnpm check:database
 docker stop fisheye-pg-test
 ```
 
-The database test rejects hostnames other than localhost/127.0.0.1 or the GitHub Actions service host `postgres`, and rejects database names other than `fisheye_test`. This keeps migration tests away from developer or production databases. `pnpm db:stop` stops Compose but preserves its local development volume.
+The database checks reject hostnames other than localhost/127.0.0.1 or the GitHub Actions service host `postgres`, database names other than `fisheye_test`, and connection-string parameters that override the target host or database. This keeps migration tests away from developer or production databases.
 
 ## Pull requests
 
