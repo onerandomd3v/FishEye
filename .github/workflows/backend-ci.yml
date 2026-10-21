@@ -1,0 +1,30 @@
+name: Backend CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+permissions:
+  contents: read
+jobs:
+  backend-checks:
+    name: backend-checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.12'
+          enable-cache: true
+      - name: Install Python workspace
+        run: uv sync
+      - name: Ruff lint
+        run: uvx --from ruff==0.13.2 ruff check apps/backend
+      - name: Ruff format verification
+        run: uvx --from ruff==0.13.2 ruff format --check apps/backend
+      - name: API tests
+        run: uv run --package fisheye-api --with pytest --with httpx pytest -q apps/backend/api/tests
+      - name: Compile Python packages
+        run: uv run python -m compileall -q apps/backend
