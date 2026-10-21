@@ -1,5 +1,6 @@
 import { FixtureNotice, PageHeading } from '../shared';
 import { ScenarioPicker } from './scenario-picker';
+import { DatasetImport } from './dataset-import';
 
 export default function ScenariosPage() {
   return (
@@ -10,6 +11,7 @@ export default function ScenariosPage() {
       />
       <FixtureNotice />
       <ScenarioPicker />
+      <DatasetImport />
     </>
   );
 }

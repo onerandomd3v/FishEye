@@ -30,9 +30,9 @@ export function FixtureNotice() {
       title="Development preview — not detector output"
       className="fixture-notice"
     >
-      This preview has no sign-in or access control yet. Its synthetic examples
-      are for layout and interaction testing only; no bank data, API results,
-      risk scores or completed runs are connected.
+      Scenario examples are development fixtures for layout testing. CSV schema
+      validation is available in development, but no dataset is saved, no risk
+      scores are calculated and no completed runs are connected.
     </Notice>
   );
 }

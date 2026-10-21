@@ -576,6 +576,105 @@
   margin: auto 0;
   padding: 28px 0;
 }
+.dataset-import {
+  margin-top: 16px;
+}
+.dataset-import-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.dataset-import-heading .metric-label {
+  margin: 0 0 8px;
+}
+.dataset-import-heading .card-intro {
+  max-width: 690px;
+}
+.template-link {
+  flex: 0 0 auto;
+  color: var(--fe-ink);
+  font-size: 12px;
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+.dataset-import-form {
+  display: grid;
+  gap: 15px;
+  max-width: 760px;
+  margin-top: 20px;
+}
+.dataset-import-form .field input[type='file'] {
+  min-height: 46px;
+  padding: 7px;
+}
+.field-help {
+  margin: 0;
+  color: var(--fe-text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.synthetic-confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.synthetic-confirmation input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin: 0;
+  accent-color: var(--fe-ink);
+}
+.synthetic-caveat {
+  margin-top: -10px;
+  padding-left: 28px;
+}
+.dataset-import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.selected-file {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: var(--fe-text-secondary);
+  font-size: 11px;
+}
+.import-state {
+  margin-top: 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--fe-border);
+  border-radius: 8px;
+  background: var(--fe-surface-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.import-state strong {
+  display: block;
+  font-size: 13px;
+}
+.import-state p {
+  margin: 6px 0 0;
+  color: var(--fe-text-secondary);
+}
+.import-state-error {
+  border-color: var(--fe-border-strong);
+}
+.import-errors {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+.import-result-caveat {
+  padding-top: 10px;
+  border-top: 1px solid var(--fe-border);
+}
 .empty-state {
   display: grid;
   min-height: 230px;
@@ -814,6 +913,9 @@
   }
   .scenario-grid {
     grid-template-columns: 1fr;
+  }
+  .dataset-import-heading {
+    display: grid;
   }
   .login-page {
     grid-template-columns: 1fr;

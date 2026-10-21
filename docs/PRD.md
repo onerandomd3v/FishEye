@@ -93,11 +93,12 @@ Numeric latency, throughput, availability and retention targets should be set **
 | FE-008 | Evaluation | Side-by-side simple rules, tuned rules and contextual model with metrics/denominators |
 | FE-009 | Export/provenance | Downloadable/retrievable evaluation manifest, dataset/config/version identifiers |
 | FE-010 | Responsive states | Empty, loading, error, confirmation and insufficient-evidence patterns |
+| FE-011 | Synthetic CSV validation | Check user-supplied event CSVs against the versioned employee-day schema before import |
 
 ### P1 — After P0 is proven
 
 - Additional scenario types and more thorough sensitivity/stress testing.
-- Import validation for user-supplied **synthetic** CSV/Parquet datasets.
+- Parquet import and durable processing of user-supplied **synthetic** CSV datasets after the CSV contract is proven.
 - Extended filter/search functionality and review history.
 - Optional visualizations of score distribution and delay by scenario.
 
