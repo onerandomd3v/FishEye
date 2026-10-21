@@ -29,6 +29,10 @@ pnpm dev:api      # FastAPI at http://127.0.0.1:8000
 pnpm dev:worker   # Logs scaffold status, then exits
 ```
 
+For the local landing page and console, copy each app's `.env.example` to `.env.local`. The landing app's `PUBLIC_CONSOLE_URL` points its buttons to the separate console origin (`http://localhost:3000/login`). In the console `.env.local`, set `FISHEYE_DEMO_EMAIL` and `FISHEYE_DEMO_PASSWORD` to local-only demo credentials and `FISHEYE_SESSION_SECRET` to a random secret of at least 32 characters. Restart both dev servers after changing environment files.
+
+The console's demo login and signed session are enabled only by the Next.js development server. They provide a local UI gate for synthetic fixtures; they are not an identity provider, do not authorize FastAPI requests, and must not be used in a shared or production deployment. Keep `.env.local` files untracked.
+
 The API reads `DATABASE_URL` when database-backed behavior is added. Copy `.env.example` to `.env` for local configuration. The worker currently has no job transport or evaluation jobs.
 
 ## Checks

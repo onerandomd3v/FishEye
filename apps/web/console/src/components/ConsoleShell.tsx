@@ -2,8 +2,9 @@
 
 import { BrandLogo } from '@fisheye/ui';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { Button } from '@fisheye/ui';
 
 const links = [
   { href: '/overview', label: 'Overview' },
@@ -14,10 +15,16 @@ const links = [
 
 export function ConsoleShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
   const current = links.find((link) => pathname.startsWith(link.href));
+
+  async function signOut() {
+    await fetch('/api/local-logout', { method: 'POST' });
+    router.replace('/login');
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -101,7 +108,12 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
           <div className="breadcrumbs">
             FishEye&nbsp; / &nbsp;{current?.label ?? 'Research workspace'}
           </div>
-          <span className="fixture-chip">Development fixture</span>
+          <div className="flex items-center gap-3">
+            <span className="fixture-chip">Development fixture</span>
+            <Button type="button" variant="secondary" onClick={signOut}>
+              Sign out
+            </Button>
+          </div>
         </header>
         <main className="page-content">{children}</main>
       </div>

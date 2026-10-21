@@ -12,7 +12,7 @@ export function BrandLogo({
 }: BrandLogoProps) {
   return (
     <img
-      src={fishEyeLogo}
+      src={fishEyeLogo.src}
       alt={alt}
       width={compact ? 150 : 205}
       height={compact ? 44 : 60}
