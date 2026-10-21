@@ -180,10 +180,11 @@ async def import_synthetic_dataset(
 
     database_url = os.getenv("DATABASE_URL")
     artifact_root = os.getenv("FISHEYE_ARTIFACT_DIR")
-    if not database_url or not artifact_root:
+    artifact_encryption_key = os.getenv("FISHEYE_ARTIFACT_ENCRYPTION_KEY")
+    if not database_url or not artifact_root or not artifact_encryption_key:
         raise HTTPException(
             status_code=503,
-            detail="Dataset storage is not configured for this development API.",
+            detail="Encrypted dataset storage is not configured for this development API.",
         )
 
     try:
@@ -193,6 +194,7 @@ async def import_synthetic_dataset(
             Path(artifact_root),
             content,
             validation,
+            artifact_encryption_key.encode("utf-8"),
         )
     except (OSError, RuntimeError, SQLAlchemyError):
         raise HTTPException(
@@ -240,6 +242,7 @@ def _persist_dataset(
     artifact_root: Path,
     content: bytes,
     validation: CsvValidationResult,
+    artifact_encryption_key: bytes,
 ) -> tuple[DatasetRecord, bool]:
     factory = _session_factory(database_url)
     with factory() as session:
@@ -250,4 +253,5 @@ def _persist_dataset(
             validation.row_count,
             validation.employee_day_count,
             artifact_root,
+            artifact_encryption_key,
         )

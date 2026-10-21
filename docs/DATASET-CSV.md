@@ -55,23 +55,28 @@ employee, customer, bank, credential, or production-log data.
 
 The import endpoint is `POST /api/v1/datasets/imports` with the same content
 type and confirmation header. It is disabled unless `FISHEYE_ENV=development`
-and `FISHEYE_ENABLE_DEV_CSV_IMPORT=1`. It also requires `DATABASE_URL` and
-`FISHEYE_ARTIFACT_DIR` to be configured and the Alembic migrations to have been
-run with `pnpm db:migrate`. Exact duplicate uploads are idempotent: they return the same dataset ID
+and `FISHEYE_ENABLE_DEV_CSV_IMPORT=1`. It also requires `DATABASE_URL`,
+`FISHEYE_ARTIFACT_DIR`, and `FISHEYE_ARTIFACT_ENCRYPTION_KEY` to be configured,
+and the Alembic migrations to have been run with `pnpm db:migrate`. Exact
+duplicate uploads are idempotent: they return the same dataset ID
 and do not create a second database record. Dataset IDs are stable for the
 same uploaded bytes. The response states `run_created: false` and
 `risk_calculated: false`.
 
-The manifest records the source checksum, schema version, counts, and the
-absence of an uploaded random seed. It explicitly reserves ground-truth labels
-for evaluation. The original CSV is retained as the source artifact for
-provenance; worker-side parsing into analytical artifacts and any evaluation
-run are separate future steps.
+The source CSV and manifest are encrypted at rest using Fernet. The manifest
+records the source checksum, schema version, counts, and the absence of an
+uploaded random seed. It explicitly reserves ground-truth labels for evaluation.
+The original CSV is retained as the encrypted source artifact for provenance;
+worker-side parsing into analytical artifacts and any evaluation run are
+separate future steps.
 
 For local validation, set `FISHEYE_ENV=development` and
 `FISHEYE_ENABLE_DEV_CSV_VALIDATION=1` in the API process environment. For local
 import, also set `FISHEYE_ENABLE_DEV_CSV_IMPORT=1`, configure the database and
-artifact directory, and run `pnpm db:migrate`. Start the API with
+artifact directory, and provide an encryption key. Generate a local Fernet key
+with `uv run --package fisheye-persistence python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
+Keep it in your local environment, never commit it, and keep using the same key
+for existing artifacts. Then run `pnpm db:migrate`. Start the API with
 `pnpm dev:api`. Set `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000` in
 `apps/web/console/.env.local` and start the console with `pnpm dev:console`.
 Keep both development flags off outside local development.

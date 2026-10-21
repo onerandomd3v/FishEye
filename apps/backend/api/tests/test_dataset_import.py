@@ -4,6 +4,7 @@ import io
 import json
 
 import pytest
+from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 from fisheye_api.csv_validation import CSV_HEADERS
 from fisheye_api.main import app
@@ -60,11 +61,13 @@ def configured_import(tmp_path, monkeypatch):
     engine.dispose()
 
     artifact_root = tmp_path / "artifacts"
+    encryption_key = Fernet.generate_key()
     monkeypatch.setenv("FISHEYE_ENV", "development")
     monkeypatch.setenv("FISHEYE_ENABLE_DEV_CSV_IMPORT", "1")
     monkeypatch.setenv("DATABASE_URL", database_url)
     monkeypatch.setenv("FISHEYE_ARTIFACT_DIR", str(artifact_root))
-    return database_url, artifact_root
+    monkeypatch.setenv("FISHEYE_ARTIFACT_ENCRYPTION_KEY", encryption_key.decode("ascii"))
+    return database_url, artifact_root, encryption_key
 
 
 def post_import(content: bytes, **headers):
@@ -79,7 +82,7 @@ def post_import(content: bytes, **headers):
 
 
 def test_import_persists_content_addressed_artifacts_and_metadata(configured_import) -> None:
-    database_url, artifact_root = configured_import
+    database_url, artifact_root, encryption_key = configured_import
     content = make_valid_csv()
 
     response = post_import(content)
@@ -96,15 +99,18 @@ def test_import_persists_content_addressed_artifacts_and_metadata(configured_imp
     assert result["risk_calculated"] is False
 
     source_path = (
-        artifact_root / "datasets" / result["sha256"][:2] / result["sha256"] / "source.csv"
+        artifact_root / "datasets" / result["sha256"][:2] / result["sha256"] / "source.csv.enc"
     )
-    manifest_path = source_path.parent / "manifest.json"
-    assert source_path.read_bytes() == content
-    assert hashlib.sha256(manifest_path.read_bytes()).hexdigest() == result["manifest_sha256"]
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest_path = source_path.parent / "manifest.json.enc"
+    cipher = Fernet(encryption_key)
+    assert cipher.decrypt(source_path.read_bytes()) == content
+    manifest_bytes = cipher.decrypt(manifest_path.read_bytes())
+    assert hashlib.sha256(manifest_bytes).hexdigest() == result["manifest_sha256"]
+    manifest = json.loads(manifest_bytes.decode("utf-8"))
     assert manifest["dataset_id"] == result["dataset_id"]
     assert manifest["evaluation_status"] == "not_run"
     assert manifest["seed"] is None
+    assert manifest["artifact_encryption"] == "fernet"
     assert "evaluation_only" in manifest["ground_truth_usage"]
 
     with Session(create_engine(database_url)) as session:
@@ -115,7 +121,7 @@ def test_import_persists_content_addressed_artifacts_and_metadata(configured_imp
 
 
 def test_identical_upload_is_idempotent(configured_import) -> None:
-    database_url, _ = configured_import
+    database_url, _, _ = configured_import
     content = make_valid_csv()
 
     first = post_import(content)
@@ -131,7 +137,7 @@ def test_identical_upload_is_idempotent(configured_import) -> None:
 
 
 def test_invalid_csv_is_not_persisted(configured_import) -> None:
-    database_url, artifact_root = configured_import
+    database_url, artifact_root, _ = configured_import
 
     response = post_import(b"wrong,header\nvalue,value\n")
 
@@ -156,3 +162,12 @@ def test_import_requires_confirmation_and_is_disabled_outside_development(
     monkeypatch.setenv("FISHEYE_ENV", "production")
     disabled = post_import(make_valid_csv())
     assert disabled.status_code == 503
+
+
+def test_import_requires_artifact_encryption_key(configured_import, monkeypatch) -> None:
+    monkeypatch.delenv("FISHEYE_ARTIFACT_ENCRYPTION_KEY")
+
+    response = post_import(make_valid_csv())
+
+    assert response.status_code == 503
+    assert "Encrypted dataset storage" in response.json()["detail"]

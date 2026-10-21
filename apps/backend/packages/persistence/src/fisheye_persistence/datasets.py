@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
+from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy import DateTime, Integer, String, Text, UniqueConstraint, create_engine, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
@@ -48,26 +49,33 @@ def import_dataset(
     row_count: int,
     employee_day_count: int,
     artifact_root: Path,
+    encryption_key: bytes,
 ) -> tuple[DatasetRecord, bool]:
     """Persist a validated upload once, keyed by its exact source-byte hash."""
+    try:
+        cipher = Fernet(encryption_key)
+    except (TypeError, ValueError):
+        raise RuntimeError("Dataset artifact encryption is not configured correctly.") from None
+
     source_sha256 = hashlib.sha256(content).hexdigest()
     existing = session.scalar(select(DatasetRecord).where(DatasetRecord.sha256 == source_sha256))
     if existing is not None:
-        _verify_artifact(artifact_root, existing.artifact_uri, source_sha256)
-        _verify_artifact(artifact_root, existing.manifest_uri, existing.manifest_sha256)
+        _verify_artifact(artifact_root, existing.artifact_uri, source_sha256, cipher)
+        _verify_artifact(artifact_root, existing.manifest_uri, existing.manifest_sha256, cipher)
         return existing, False
 
     dataset_id = str(uuid5(NAMESPACE_URL, f"fisheye:dataset:{source_sha256}"))
     created_at = datetime.now(UTC)
     relative_dir = Path("datasets") / source_sha256[:2] / source_sha256
-    artifact_uri = (relative_dir / "source.csv").as_posix()
-    manifest_uri = (relative_dir / "manifest.json").as_posix()
+    artifact_uri = (relative_dir / "source.csv.enc").as_posix()
+    manifest_uri = (relative_dir / "manifest.json.enc").as_posix()
     manifest = {
         "manifest_schema_version": "fisheye.dataset-manifest.v1",
         "dataset_id": dataset_id,
         "source_sha256": source_sha256,
         "source_format": "text/csv",
         "source_artifact_uri": artifact_uri,
+        "artifact_encryption": "fernet",
         "event_schema_version": schema_version,
         "row_count": row_count,
         "employee_day_count": employee_day_count,
@@ -79,7 +87,15 @@ def import_dataset(
     manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
     manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
 
-    _publish_artifacts(artifact_root, relative_dir, content, manifest_bytes)
+    _publish_artifacts(
+        artifact_root,
+        relative_dir,
+        cipher.encrypt(content),
+        cipher.encrypt(manifest_bytes),
+        source_sha256,
+        manifest_sha256,
+        cipher,
+    )
     record = DatasetRecord(
         id=dataset_id,
         sha256=source_sha256,
@@ -101,8 +117,8 @@ def import_dataset(
         )
         if existing is None:
             raise
-        _verify_artifact(artifact_root, existing.artifact_uri, source_sha256)
-        _verify_artifact(artifact_root, existing.manifest_uri, existing.manifest_sha256)
+        _verify_artifact(artifact_root, existing.artifact_uri, source_sha256, cipher)
+        _verify_artifact(artifact_root, existing.manifest_uri, existing.manifest_sha256, cipher)
         return existing, False
     return record, True
 
@@ -110,8 +126,11 @@ def import_dataset(
 def _publish_artifacts(
     root: Path,
     relative_dir: Path,
-    source_bytes: bytes,
-    manifest_bytes: bytes,
+    encrypted_source: bytes,
+    encrypted_manifest: bytes,
+    source_sha256: str,
+    manifest_sha256: str,
+    cipher: Fernet,
 ) -> None:
     """Publish source and manifest together into a content-addressed directory."""
     destination = root / relative_dir
@@ -119,20 +138,22 @@ def _publish_artifacts(
     if destination.exists():
         _verify_artifact(
             root,
-            (relative_dir / "source.csv").as_posix(),
-            hashlib.sha256(source_bytes).hexdigest(),
+            (relative_dir / "source.csv.enc").as_posix(),
+            source_sha256,
+            cipher,
         )
         _verify_artifact(
             root,
-            (relative_dir / "manifest.json").as_posix(),
-            hashlib.sha256(manifest_bytes).hexdigest(),
+            (relative_dir / "manifest.json.enc").as_posix(),
+            manifest_sha256,
+            cipher,
         )
         return
 
     temporary = Path(tempfile.mkdtemp(prefix=".dataset-import-", dir=destination.parent))
     try:
-        (temporary / "source.csv").write_bytes(source_bytes)
-        (temporary / "manifest.json").write_bytes(manifest_bytes)
+        (temporary / "source.csv.enc").write_bytes(encrypted_source)
+        (temporary / "manifest.json.enc").write_bytes(encrypted_manifest)
         try:
             os.rename(temporary, destination)
         except OSError:
@@ -140,26 +161,34 @@ def _publish_artifacts(
                 raise
             _verify_artifact(
                 root,
-                (relative_dir / "source.csv").as_posix(),
-                hashlib.sha256(source_bytes).hexdigest(),
+                (relative_dir / "source.csv.enc").as_posix(),
+                source_sha256,
+                cipher,
             )
             _verify_artifact(
                 root,
-                (relative_dir / "manifest.json").as_posix(),
-                hashlib.sha256(manifest_bytes).hexdigest(),
+                (relative_dir / "manifest.json.enc").as_posix(),
+                manifest_sha256,
+                cipher,
             )
     finally:
         if temporary.exists():
             shutil.rmtree(temporary)
 
 
-def _verify_artifact(root: Path, relative_uri: str, expected_sha256: str) -> None:
+def _verify_artifact(
+    root: Path,
+    relative_uri: str,
+    expected_sha256: str,
+    cipher: Fernet,
+) -> None:
     path = root / relative_uri
     try:
-        actual_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
-    except OSError as error:
+        plaintext = cipher.decrypt(path.read_bytes())
+    except (OSError, InvalidToken) as error:
         raise RuntimeError(
-            "A previously imported dataset artifact is missing or unreadable."
+            "A previously imported dataset artifact is missing or failed decryption."
         ) from error
+    actual_sha256 = hashlib.sha256(plaintext).hexdigest()
     if actual_sha256 != expected_sha256:
         raise RuntimeError("A previously imported dataset artifact failed its integrity check.")
