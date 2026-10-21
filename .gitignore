@@ -1,0 +1,17 @@
+node_modules/
+.next/
+dist/
+.astro/
+.turbo/
+coverage/
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+*.egg-info/
+.research-data/
+.DS_Store
