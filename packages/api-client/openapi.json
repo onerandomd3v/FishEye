@@ -228,6 +228,131 @@
           }
         }
       }
+    },
+    "/api/v1/datasets": {
+      "get": {
+        "summary": "Get Datasets",
+        "description": "Development-only, paginated listing of imported dataset metadata.",
+        "operationId": "get_datasets_api_v1_datasets_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetListResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}": {
+      "get": {
+        "summary": "Get Dataset Metadata",
+        "description": "Development-only read of one dataset's provenance metadata.",
+        "operationId": "get_dataset_metadata_api_v1_datasets__dataset_id__get",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetMetadataResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -338,6 +463,109 @@
           "created"
         ],
         "title": "DatasetImportResponse"
+      },
+      "DatasetListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DatasetMetadataResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": ["items", "limit", "offset", "total", "has_more"],
+        "title": "DatasetListResponse"
+      },
+      "DatasetMetadataResponse": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "imported"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          },
+          "manifest_sha256": {
+            "type": "string",
+            "title": "Manifest Sha256"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version"
+          },
+          "row_count": {
+            "type": "integer",
+            "title": "Row Count"
+          },
+          "employee_day_count": {
+            "type": "integer",
+            "title": "Employee Day Count"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "synthetic_only": {
+            "type": "boolean",
+            "title": "Synthetic Only",
+            "default": true
+          },
+          "evaluation_status": {
+            "type": "string",
+            "title": "Evaluation Status",
+            "default": "not_run"
+          },
+          "ground_truth_usage": {
+            "type": "string",
+            "title": "Ground Truth Usage",
+            "default": "evaluation_only"
+          },
+          "run_created": {
+            "type": "boolean",
+            "title": "Run Created",
+            "default": false
+          },
+          "risk_calculated": {
+            "type": "boolean",
+            "title": "Risk Calculated",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "sha256",
+          "manifest_sha256",
+          "schema_version",
+          "row_count",
+          "employee_day_count",
+          "created_at"
+        ],
+        "title": "DatasetMetadataResponse"
       },
       "DatasetValidationResponse": {
         "properties": {

@@ -66,14 +66,21 @@ same uploaded bytes. The response states `run_created: false` and
 The source CSV and manifest are encrypted at rest using Fernet. The manifest
 records the source checksum, schema version, counts, and the absence of an
 uploaded random seed. It explicitly reserves ground-truth labels for evaluation.
-The original CSV is retained as the encrypted source artifact for provenance;
-worker-side parsing into analytical artifacts and any evaluation run are
-separate future steps.
+The original CSV is retained as the encrypted source artifact for provenance.
+Development-only `GET /api/v1/datasets` and
+`GET /api/v1/datasets/{dataset_id}` expose paginated dataset provenance and
+status metadata, but never return the artifact path, source rows or labels.
+Enable these reads only with `FISHEYE_ENV=development` and
+`FISHEYE_ENABLE_DEV_DATASET_READS=1`. These endpoints do not authenticate
+callers and must remain disabled outside local development. Production
+authentication/authorization, worker-side parsing into analytical artifacts
+and any evaluation run are separate future steps.
 
 For local validation, set `FISHEYE_ENV=development` and
 `FISHEYE_ENABLE_DEV_CSV_VALIDATION=1` in the API process environment. For local
 import, also set `FISHEYE_ENABLE_DEV_CSV_IMPORT=1`, configure the database and
-artifact directory, and provide an encryption key. Generate a local Fernet key
+artifact directory, and provide an encryption key. To list imported datasets,
+also set `FISHEYE_ENABLE_DEV_DATASET_READS=1`. Generate a local Fernet key
 with `uv run --package fisheye-persistence python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
 Keep it in your local environment, never commit it, and keep using the same key
 for existing artifacts. Then run `pnpm db:migrate`. Start the API with

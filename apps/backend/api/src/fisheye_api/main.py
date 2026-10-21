@@ -6,9 +6,15 @@ from datetime import UTC
 from functools import lru_cache
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException, Request, Response
+from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fisheye_persistence.datasets import DatasetRecord, create_session_factory, import_dataset
+from fisheye_persistence.datasets import (
+    DatasetRecord,
+    create_session_factory,
+    get_dataset,
+    import_dataset,
+    list_datasets,
+)
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
@@ -67,6 +73,30 @@ class DatasetImportResponse(BaseModel):
     synthetic_only: bool = True
     run_created: bool = False
     risk_calculated: bool = False
+
+
+class DatasetMetadataResponse(BaseModel):
+    dataset_id: str
+    status: str = "imported"
+    sha256: str
+    manifest_sha256: str
+    schema_version: str
+    row_count: int
+    employee_day_count: int
+    created_at: str
+    synthetic_only: bool = True
+    evaluation_status: str = "not_run"
+    ground_truth_usage: str = "evaluation_only"
+    run_created: bool = False
+    risk_calculated: bool = False
+
+
+class DatasetListResponse(BaseModel):
+    items: list[DatasetMetadataResponse]
+    limit: int
+    offset: int
+    total: int
+    has_more: bool
 
 
 @lru_cache(maxsize=4)
@@ -217,6 +247,92 @@ async def import_synthetic_dataset(
         employee_day_count=record.employee_day_count,
         created_at=created_at.isoformat(),
         created=created,
+    )
+
+
+@app.get(
+    "/api/v1/datasets",
+    response_model=DatasetListResponse,
+    responses={status_code: {"model": ApiErrorResponse} for status_code in (503,)},
+)
+def get_datasets(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=1_000_000),
+) -> DatasetListResponse:
+    """Development-only, paginated listing of imported dataset metadata."""
+    database_url = _require_dev_dataset_reads()
+    try:
+        factory = _session_factory(database_url)
+        with factory() as session:
+            records, total = list_datasets(session, limit=limit, offset=offset)
+    except SQLAlchemyError:
+        raise HTTPException(
+            status_code=503,
+            detail="Dataset metadata could not be read from development storage.",
+        ) from None
+
+    items = [_dataset_metadata(record) for record in records]
+    return DatasetListResponse(
+        items=items,
+        limit=limit,
+        offset=offset,
+        total=total,
+        has_more=offset + len(items) < total,
+    )
+
+
+@app.get(
+    "/api/v1/datasets/{dataset_id}",
+    response_model=DatasetMetadataResponse,
+    responses={status_code: {"model": ApiErrorResponse} for status_code in (404, 503)},
+)
+def get_dataset_metadata(dataset_id: str) -> DatasetMetadataResponse:
+    """Development-only read of one dataset's provenance metadata."""
+    database_url = _require_dev_dataset_reads()
+    try:
+        factory = _session_factory(database_url)
+        with factory() as session:
+            record = get_dataset(session, dataset_id)
+    except SQLAlchemyError:
+        raise HTTPException(
+            status_code=503,
+            detail="Dataset metadata could not be read from development storage.",
+        ) from None
+    if record is None:
+        raise HTTPException(status_code=404, detail="Dataset was not found.")
+    return _dataset_metadata(record)
+
+
+def _require_dev_dataset_reads() -> str:
+    if (
+        os.getenv("FISHEYE_ENV") != "development"
+        or os.getenv("FISHEYE_ENABLE_DEV_DATASET_READS") != "1"
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail="Dataset reads are not enabled on this development API.",
+        )
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        raise HTTPException(
+            status_code=503,
+            detail="Dataset metadata storage is not configured for this development API.",
+        )
+    return database_url
+
+
+def _dataset_metadata(record: DatasetRecord) -> DatasetMetadataResponse:
+    created_at = record.created_at
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=UTC)
+    return DatasetMetadataResponse(
+        dataset_id=record.id,
+        sha256=record.sha256,
+        manifest_sha256=record.manifest_sha256,
+        schema_version=record.schema_version,
+        row_count=record.row_count,
+        employee_day_count=record.employee_day_count,
+        created_at=created_at.isoformat(),
     )
 
 

@@ -12,7 +12,16 @@ from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
 from cryptography.fernet import Fernet, InvalidToken
-from sqlalchemy import DateTime, Integer, String, Text, UniqueConstraint, create_engine, select
+from sqlalchemy import (
+    DateTime,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    create_engine,
+    func,
+    select,
+)
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
@@ -121,6 +130,25 @@ def import_dataset(
         _verify_artifact(artifact_root, existing.manifest_uri, existing.manifest_sha256, cipher)
         return existing, False
     return record, True
+
+
+def list_datasets(session: Session, *, limit: int, offset: int) -> tuple[list[DatasetRecord], int]:
+    """Return bounded dataset metadata, newest first, with a total count."""
+    total = session.scalar(select(func.count()).select_from(DatasetRecord)) or 0
+    records = list(
+        session.scalars(
+            select(DatasetRecord)
+            .order_by(DatasetRecord.created_at.desc(), DatasetRecord.id.asc())
+            .offset(offset)
+            .limit(limit)
+        )
+    )
+    return records, total
+
+
+def get_dataset(session: Session, dataset_id: str) -> DatasetRecord | None:
+    """Return one dataset's persisted provenance metadata."""
+    return session.get(DatasetRecord, dataset_id)
 
 
 def _publish_artifacts(
