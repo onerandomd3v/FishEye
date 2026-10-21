@@ -16,14 +16,15 @@
     "format": "prettier --write \"**/*.{js,mjs,cjs,ts,tsx,astro,css,yml,yaml,json}\"",
     "format:check": "prettier --check \"**/*.{js,mjs,cjs,ts,tsx,astro,css,yml,yaml,json}\"",
     "check:web": "pnpm format:check && turbo run lint typecheck && turbo run test && turbo run build",
-    "check:backend": "uv run ruff check apps/backend && uv run ruff format --check apps/backend && uv run mypy apps/backend/api/src apps/backend/worker/src && uv run pytest -q apps/backend/api/tests apps/backend/worker/tests && uv run python scripts/check-backend-imports.py && uv run --package fisheye-worker fisheye-worker",
+    "check:backend": "uv run ruff check apps/backend && uv run ruff format --check apps/backend && uv run mypy apps/backend/api/src apps/backend/worker/src apps/backend/packages/persistence/src && uv run pytest -q apps/backend/api/tests apps/backend/worker/tests && uv run python scripts/check-backend-imports.py && uv run --package fisheye-worker fisheye-worker",
     "check:database": "node scripts/require-test-database.mjs && uv run pytest -q -m integration apps/backend/api/tests",
     "check": "pnpm check:web && pnpm check:backend && pnpm check:database",
     "dev:api": "uv run --package fisheye-api uvicorn fisheye_api.main:app --host 127.0.0.1 --port 8000",
-    "api-client:generate": "uv run --package fisheye-api python scripts/export-openapi.py && pnpm exec prettier --write packages/api-client/openapi.json && pnpm --filter @fisheye/api-client generate",
+    "api-client:generate": "uv run --package fisheye-api python scripts/export-openapi.py && pnpm exec prettier --write packages/api-client/openapi.json && pnpm --filter @fisheye/api-client generate && pnpm exec prettier --write packages/api-client/src/generated/schema.d.ts",
     "dev:worker": "uv run --package fisheye-worker fisheye-worker",
     "db:start": "docker compose -f infra/compose.yaml up -d --wait",
-    "db:stop": "docker compose -f infra/compose.yaml down"
+    "db:stop": "docker compose -f infra/compose.yaml down",
+    "db:migrate": "uv run --package fisheye-api alembic -c apps/backend/api/alembic.ini upgrade head"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",

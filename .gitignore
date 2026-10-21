@@ -15,4 +15,5 @@ __pycache__/
 *.egg-info/
 *.tsbuildinfo
 .research-data/
+var/fisheye-artifacts/
 .DS_Store

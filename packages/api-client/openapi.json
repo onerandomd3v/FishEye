@@ -120,6 +120,114 @@
           }
         }
       }
+    },
+    "/api/v1/datasets/imports": {
+      "post": {
+        "summary": "Import Synthetic Dataset",
+        "description": "Persist a validated synthetic CSV as an immutable dev-only dataset artifact.",
+        "operationId": "import_synthetic_dataset_api_v1_datasets_imports_post",
+        "parameters": [
+          {
+            "name": "X-FishEye-Synthetic-Data-Confirmed",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Fisheye-Synthetic-Data-Confirmed"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetImportResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetImportResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsvImportValidationError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "text/csv": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -134,6 +242,102 @@
         "type": "object",
         "required": ["detail"],
         "title": "ApiErrorResponse"
+      },
+      "CsvImportValidationDetail": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors"
+          }
+        },
+        "type": "object",
+        "required": ["code", "errors"],
+        "title": "CsvImportValidationDetail"
+      },
+      "CsvImportValidationError": {
+        "properties": {
+          "detail": {
+            "$ref": "#/components/schemas/CsvImportValidationDetail"
+          }
+        },
+        "type": "object",
+        "required": ["detail"],
+        "title": "CsvImportValidationError"
+      },
+      "DatasetImportResponse": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          },
+          "manifest_sha256": {
+            "type": "string",
+            "title": "Manifest Sha256"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version"
+          },
+          "row_count": {
+            "type": "integer",
+            "title": "Row Count"
+          },
+          "employee_day_count": {
+            "type": "integer",
+            "title": "Employee Day Count"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "created": {
+            "type": "boolean",
+            "title": "Created"
+          },
+          "synthetic_only": {
+            "type": "boolean",
+            "title": "Synthetic Only",
+            "default": true
+          },
+          "run_created": {
+            "type": "boolean",
+            "title": "Run Created",
+            "default": false
+          },
+          "risk_calculated": {
+            "type": "boolean",
+            "title": "Risk Calculated",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "status",
+          "sha256",
+          "manifest_sha256",
+          "schema_version",
+          "row_count",
+          "employee_day_count",
+          "created_at",
+          "created"
+        ],
+        "title": "DatasetImportResponse"
       },
       "DatasetValidationResponse": {
         "properties": {
