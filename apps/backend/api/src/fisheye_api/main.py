@@ -34,6 +34,10 @@ class DatasetValidationResponse(BaseModel):
     run_created: bool = False
 
 
+class ApiErrorResponse(BaseModel):
+    detail: str
+
+
 @app.get("/health/live", response_model=HealthResponse)
 def liveness() -> HealthResponse:
     return HealthResponse(status="ok", synthetic_only=True)
@@ -42,6 +46,17 @@ def liveness() -> HealthResponse:
 @app.post(
     "/api/v1/datasets/imports/validate",
     response_model=DatasetValidationResponse,
+    responses={status_code: {"model": ApiErrorResponse} for status_code in (400, 413, 415, 503)},
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "text/csv": {
+                    "schema": {"type": "string", "format": "binary"},
+                }
+            },
+        }
+    },
 )
 async def validate_dataset_import(
     request: Request,

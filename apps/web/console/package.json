@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fisheye/api-client": "workspace:*",
     "@fisheye/ui": "workspace:*",
     "jose": "^6.2.13",
     "next": "^16.4.2",

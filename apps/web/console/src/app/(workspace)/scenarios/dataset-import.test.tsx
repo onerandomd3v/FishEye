@@ -8,6 +8,12 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DatasetImport } from './dataset-import';
 
+function syntheticFile(name = 'synthetic.csv') {
+  const file = new File(['csv'], name, { type: 'text/csv' });
+  Object.defineProperty(file, 'text', { value: async () => 'csv' });
+  return file;
+}
+
 afterEach(() => {
   cleanup();
   vi.unstubAllEnvs();
@@ -29,6 +35,7 @@ describe('synthetic CSV validation', () => {
     vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://127.0.0.1:8000');
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
+      headers: new Headers({ 'Content-Length': '1' }),
       json: async () => ({
         valid: true,
         schema_version: 'fisheye.events.v1',
@@ -44,7 +51,7 @@ describe('synthetic CSV validation', () => {
 
     fireEvent.change(screen.getByLabelText('CSV file'), {
       target: {
-        files: [new File(['csv'], 'synthetic.csv', { type: 'text/csv' })],
+        files: [syntheticFile()],
       },
     });
     fireEvent.click(
@@ -57,10 +64,16 @@ describe('synthetic CSV validation', () => {
     );
     expect(screen.getByText(/14 event rows · 3 employee-days/)).toBeTruthy();
     expect(screen.getByText(/No dataset was saved/)).toBeTruthy();
-    expect(fetchMock).toHaveBeenCalledWith(
+    const request = fetchMock.mock.calls[0]?.[0] as Request;
+    expect(request.url).toBe(
       'http://127.0.0.1:8000/api/v1/datasets/imports/validate',
-      expect.objectContaining({ method: 'POST', headers: expect.any(Object) }),
     );
+    expect(request.method).toBe('POST');
+    expect(request.headers.get('Content-Type')).toBe('text/csv');
+    expect(request.headers.get('X-FishEye-Synthetic-Data-Confirmed')).toBe(
+      'true',
+    );
+    expect(await request.text()).toBe('csv');
   });
 
   it('shows API failures as a recoverable error', async () => {
@@ -70,15 +83,17 @@ describe('synthetic CSV validation', () => {
       vi.fn().mockResolvedValue({
         ok: false,
         status: 503,
-        json: async () => ({
-          detail: 'CSV validation is not enabled on this API.',
-        }),
+        headers: new Headers(),
+        text: async () =>
+          JSON.stringify({
+            detail: 'CSV validation is not enabled on this API.',
+          }),
       }),
     );
     render(<DatasetImport />);
     fireEvent.change(screen.getByLabelText('CSV file'), {
       target: {
-        files: [new File(['csv'], 'synthetic.csv', { type: 'text/csv' })],
+        files: [syntheticFile()],
       },
     });
     fireEvent.click(
@@ -90,5 +105,76 @@ describe('synthetic CSV validation', () => {
     expect(
       screen.getByText('CSV validation is not enabled on this API.'),
     ).toBeTruthy();
+  });
+
+  it('uses the HTTP status when an error response is not JSON', async () => {
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://127.0.0.1:8000');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 502,
+        headers: new Headers(),
+        text: async () => '<html>Gateway error</html>',
+      }),
+    );
+    render(<DatasetImport />);
+    fireEvent.change(screen.getByLabelText('CSV file'), {
+      target: { files: [syntheticFile()] },
+    });
+    fireEvent.click(
+      screen.getByLabelText(/I confirm this file contains synthetic/i),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Validate CSV' }));
+
+    expect(
+      await screen.findByText('Validation request failed (502).'),
+    ).toBeTruthy();
+  });
+
+  it('reports malformed successful responses without exposing parser errors', async () => {
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://127.0.0.1:8000');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        headers: new Headers({ 'Content-Length': '4' }),
+        json: async () => {
+          throw new SyntaxError('Unexpected token');
+        },
+      }),
+    );
+    render(<DatasetImport />);
+    fireEvent.change(screen.getByLabelText('CSV file'), {
+      target: { files: [syntheticFile()] },
+    });
+    fireEvent.click(
+      screen.getByLabelText(/I confirm this file contains synthetic/i),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Validate CSV' }));
+
+    expect(
+      await screen.findByText(
+        'Validation API returned an unexpected response.',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('requires a fresh synthetic-data confirmation when the file changes', () => {
+    render(<DatasetImport />);
+    const fileInput = screen.getByLabelText('CSV file');
+    const confirmation = screen.getByLabelText(
+      /I confirm this file contains synthetic/i,
+    ) as HTMLInputElement;
+
+    fireEvent.change(fileInput, { target: { files: [syntheticFile()] } });
+    fireEvent.click(confirmation);
+    expect(confirmation.checked).toBe(true);
+
+    fireEvent.change(fileInput, {
+      target: { files: [syntheticFile('replacement.csv')] },
+    });
+
+    expect(confirmation.checked).toBe(false);
   });
 });

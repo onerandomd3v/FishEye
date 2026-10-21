@@ -57,6 +57,30 @@ def test_accepts_valid_baseline_and_employee_day_evaluation_rows() -> None:
     assert result.errors == ()
 
 
+def test_rejects_timestamp_without_time_component() -> None:
+    result = validate_events_csv(
+        make_csv(
+            baseline_row("evt-test-1", "2026-01-01Z"),
+            evaluation_row("evt-test-2", "2026-01-02T00:00:00Z", "benign_scenario"),
+        )
+    )
+
+    assert result.valid is False
+    assert any("valid UTC timestamp" in error for error in result.errors)
+
+
+def test_rejects_employee_day_split_across_partitions() -> None:
+    result = validate_events_csv(
+        make_csv(
+            baseline_row("evt-test-1", "2026-01-02T09:00:00Z"),
+            evaluation_row("evt-test-2", "2026-01-02T10:00:00Z", "benign_scenario"),
+        )
+    )
+
+    assert result.valid is False
+    assert any("cannot be split" in error for error in result.errors)
+
+
 def test_rejects_conflicting_truth_labels_within_employee_day() -> None:
     result = validate_events_csv(
         make_csv(
@@ -67,6 +91,19 @@ def test_rejects_conflicting_truth_labels_within_employee_day() -> None:
 
     assert result.valid is False
     assert any("one consistent ground_truth_label" in error for error in result.errors)
+
+
+def test_caps_validation_errors_and_reports_omitted_count() -> None:
+    malformed = list(evaluation_row("evt-test-1", "2026-01-02T10:00:00Z", "threat_scenario"))
+    malformed[5] = "unknown_event"
+    malformed[9] = "-1"
+    rows = [tuple([f"evt-{index}", *malformed[1:]]) for index in range(250)]
+
+    result = validate_events_csv(make_csv(*rows))
+
+    assert result.valid is False
+    assert len(result.errors) == 100
+    assert "additional validation errors omitted." in result.errors[-1]
 
 
 def test_rejects_baseline_after_evaluation_and_malformed_values() -> None:
@@ -162,3 +199,31 @@ def test_validation_endpoint_stays_disabled_outside_development(monkeypatch) -> 
     )
 
     assert response.status_code == 503
+
+
+def test_validation_endpoint_rejects_oversized_csv(monkeypatch) -> None:
+    monkeypatch.setenv("FISHEYE_ENV", "development")
+    monkeypatch.setenv("FISHEYE_ENABLE_DEV_CSV_VALIDATION", "1")
+    monkeypatch.setattr("fisheye_api.main.MAX_CSV_BYTES", 1)
+    response = TestClient(app).post(
+        "/api/v1/datasets/imports/validate",
+        content=b"{}",
+        headers={"Content-Type": "text/csv", "X-FishEye-Synthetic-Data-Confirmed": "true"},
+    )
+
+    assert response.status_code == 413
+
+
+def test_validation_endpoint_rejects_unsupported_content_type(monkeypatch) -> None:
+    monkeypatch.setenv("FISHEYE_ENV", "development")
+    monkeypatch.setenv("FISHEYE_ENABLE_DEV_CSV_VALIDATION", "1")
+    response = TestClient(app).post(
+        "/api/v1/datasets/imports/validate",
+        content=b"{}",
+        headers={
+            "Content-Type": "application/json",
+            "X-FishEye-Synthetic-Data-Confirmed": "true",
+        },
+    )
+
+    assert response.status_code == 415

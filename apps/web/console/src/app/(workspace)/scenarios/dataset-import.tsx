@@ -2,16 +2,9 @@
 
 import { useState, type FormEvent } from 'react';
 import { Button } from '@fisheye/ui';
+import { createFishEyeApiClient, type components } from '@fisheye/api-client';
 
-type ValidationResponse = {
-  valid: boolean;
-  schema_version: string;
-  row_count: number;
-  employee_day_count: number;
-  errors: string[];
-  persisted: false;
-  run_created: false;
-};
+type ValidationResponse = components['schemas']['DatasetValidationResponse'];
 
 type ImportState =
   | { status: 'idle' }
@@ -21,6 +14,40 @@ type ImportState =
   | { status: 'error'; message: string };
 
 const maximumBytes = 10 * 1024 * 1024;
+
+function isValidationResponse(value: unknown): value is ValidationResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  const result = value as Record<string, unknown>;
+  return (
+    typeof result.valid === 'boolean' &&
+    typeof result.schema_version === 'string' &&
+    typeof result.row_count === 'number' &&
+    typeof result.employee_day_count === 'number' &&
+    Array.isArray(result.errors) &&
+    result.errors.every((error) => typeof error === 'string') &&
+    typeof result.persisted === 'boolean' &&
+    typeof result.run_created === 'boolean'
+  );
+}
+
+function getApiErrorMessage(error: unknown, status: number): string {
+  if (typeof error === 'object' && error !== null && 'detail' in error) {
+    const { detail } = error;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) {
+      const messages = detail.flatMap((item) =>
+        typeof item === 'object' &&
+        item !== null &&
+        'msg' in item &&
+        typeof item.msg === 'string'
+          ? [item.msg]
+          : [],
+      );
+      if (messages.length > 0) return messages.join(' ');
+    }
+  }
+  return `Validation request failed (${status}).`;
+}
 
 export function DatasetImport() {
   const [file, setFile] = useState<File | null>(null);
@@ -50,29 +77,26 @@ export function DatasetImport() {
 
     setState({ status: 'submitting' });
     try {
-      const response = await fetch(
-        `${apiUrl}/api/v1/datasets/imports/validate`,
+      const client = createFishEyeApiClient(apiUrl);
+      const { data, error, response } = await client.POST(
+        '/api/v1/datasets/imports/validate',
         {
-          method: 'POST',
           headers: {
             'Content-Type': 'text/csv',
             'X-FishEye-Synthetic-Data-Confirmed': 'true',
           },
-          body: file,
+          body: await file.text(),
         },
       );
-      const body = (await response.json()) as
-        ValidationResponse | { detail?: string };
 
       if (!response.ok) {
-        throw new Error(
-          'detail' in body && body.detail
-            ? body.detail
-            : `Validation request failed (${response.status}).`,
-        );
+        throw new Error(getApiErrorMessage(error, response.status));
+      }
+      if (!isValidationResponse(data)) {
+        throw new Error('Validation API returned an unexpected response.');
       }
 
-      const result = body as ValidationResponse;
+      const result = data;
       setState({
         status: result.valid ? 'success' : 'invalid',
         result,
@@ -81,9 +105,13 @@ export function DatasetImport() {
       setState({
         status: 'error',
         message:
-          error instanceof Error
-            ? error.message
-            : 'Could not reach the validation API. Check the connection and try again.',
+          error instanceof TypeError
+            ? 'Could not reach the validation API. Check the connection and try again.'
+            : error instanceof SyntaxError
+              ? 'Validation API returned an unexpected response.'
+              : error instanceof Error
+                ? error.message
+                : 'Could not reach the validation API. Check the connection and try again.',
       });
     }
   }
@@ -119,8 +147,10 @@ export function DatasetImport() {
             type="file"
             accept=".csv,text/csv"
             aria-describedby="csv-file-help"
+            disabled={state.status === 'submitting'}
             onChange={(event) => {
               setFile(event.target.files?.[0] ?? null);
+              setConfirmedSynthetic(false);
               setState({ status: 'idle' });
             }}
           />

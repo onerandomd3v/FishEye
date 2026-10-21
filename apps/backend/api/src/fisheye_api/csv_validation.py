@@ -35,6 +35,8 @@ EVENT_TYPES = {
 PARTITIONS = {"baseline", "evaluation"}
 GROUND_TRUTH_LABELS = {"threat_scenario", "benign_scenario"}
 MAX_CSV_ROWS = 100_000
+MAX_REPORTED_ERRORS = 100
+MAX_ERROR_ROW_NUMBERS = 20
 REQUIRED_VALUES = (
     "event_id",
     "employee_id",
@@ -78,6 +80,16 @@ def validate_events_csv(content: bytes) -> CsvValidationResult:
             )
 
         errors: list[str] = []
+        omitted_error_count = 0
+
+        def add_error(message: str) -> None:
+            """Keep validation feedback bounded while counting every issue."""
+            nonlocal omitted_error_count
+            if len(errors) < MAX_REPORTED_ERRORS - 1:
+                errors.append(message)
+            else:
+                omitted_error_count += 1
+
         seen_event_ids: set[str] = set()
         employee_days: dict[tuple[str, date], list[tuple[int, dict[str, str]]]] = defaultdict(list)
         baseline_latest: datetime | None = None
@@ -87,43 +99,37 @@ def validate_events_csv(content: bytes) -> CsvValidationResult:
         for line_number, row in enumerate(reader, start=2):
             row_count += 1
             if row_count > MAX_CSV_ROWS:
-                errors.append(f"CSV exceeds the {MAX_CSV_ROWS:,}-row development limit.")
+                add_error(f"CSV exceeds the {MAX_CSV_ROWS:,}-row development limit.")
                 break
             if None in row:
-                errors.append(f"Row {line_number}: has more columns than the schema.")
+                add_error(f"Row {line_number}: has more columns than the schema.")
                 continue
             values = {key: (value or "").strip() for key, value in row.items()}
             missing = [name for name in REQUIRED_VALUES if not values[name]]
             if missing:
-                errors.append(f"Row {line_number}: missing required values: {', '.join(missing)}.")
+                add_error(f"Row {line_number}: missing required values: {', '.join(missing)}.")
 
             event_id = values["event_id"]
             if event_id:
                 if event_id in seen_event_ids:
-                    errors.append(f"Row {line_number}: event_id must be unique.")
+                    add_error(f"Row {line_number}: event_id must be unique.")
                 seen_event_ids.add(event_id)
 
             if values["event_type"] and values["event_type"] not in EVENT_TYPES:
-                errors.append(f"Row {line_number}: event_type is not supported.")
+                add_error(f"Row {line_number}: event_type is not supported.")
 
             partition = values["dataset_partition"]
             if partition and partition not in PARTITIONS:
-                errors.append(
-                    f"Row {line_number}: dataset_partition must be baseline or evaluation."
-                )
+                add_error(f"Row {line_number}: dataset_partition must be baseline or evaluation.")
             label = values["ground_truth_label"]
             if partition == "baseline" and label:
-                errors.append(
-                    f"Row {line_number}: baseline rows must not have a ground_truth_label."
-                )
+                add_error(f"Row {line_number}: baseline rows must not have a ground_truth_label.")
             elif partition == "evaluation" and label not in GROUND_TRUTH_LABELS:
-                errors.append(
+                add_error(
                     f"Row {line_number}: evaluation rows need a supported ground_truth_label."
                 )
             elif partition not in PARTITIONS and label:
-                errors.append(
-                    f"Row {line_number}: label cannot be checked for an invalid partition."
-                )
+                add_error(f"Row {line_number}: label cannot be checked for an invalid partition.")
 
             record_count = values["record_count"]
             if record_count:
@@ -131,11 +137,11 @@ def validate_events_csv(content: bytes) -> CsvValidationResult:
                     if int(record_count) < 0 or str(int(record_count)) != record_count:
                         raise ValueError
                 except ValueError:
-                    errors.append(f"Row {line_number}: record_count must be a nonnegative integer.")
+                    add_error(f"Row {line_number}: record_count must be a nonnegative integer.")
 
             event_time = _parse_utc_timestamp(values["event_timestamp_utc"])
             if values["event_timestamp_utc"] and event_time is None:
-                errors.append(
+                add_error(
                     f"Row {line_number}: event_timestamp_utc must be a valid UTC timestamp "
                     "ending in Z."
                 )
@@ -154,23 +160,34 @@ def validate_events_csv(content: bytes) -> CsvValidationResult:
                     )
 
         if row_count == 0:
-            errors.append("CSV must contain at least one event row.")
+            add_error("CSV must contain at least one event row.")
         if baseline_latest and evaluation_earliest and baseline_latest >= evaluation_earliest:
-            errors.append("All baseline events must predate evaluation events.")
+            add_error("All baseline events must predate evaluation events.")
 
         for day_rows in employee_days.values():
+            partitions = {row["dataset_partition"] for _, row in day_rows}
+            if len(partitions) > 1:
+                add_error(
+                    "An employee-day cannot be split across baseline and evaluation partitions."
+                )
             labels = {
                 row["ground_truth_label"]
                 for _, row in day_rows
                 if row["dataset_partition"] == "evaluation" and row["ground_truth_label"]
             }
             if len(labels) > 1:
-                lines = ", ".join(str(line) for line, _ in day_rows)
-                errors.append(
+                listed_lines = [str(line) for line, _ in day_rows[:MAX_ERROR_ROW_NUMBERS]]
+                remaining = len(day_rows) - len(listed_lines)
+                lines = ", ".join(listed_lines)
+                if remaining:
+                    lines += f", and {remaining:,} more"
+                add_error(
                     "Employee-day evaluation rows must use one consistent ground_truth_label "
                     f"(rows {lines})."
                 )
 
+        if omitted_error_count:
+            errors.append(f"{omitted_error_count:,} additional validation errors omitted.")
         return CsvValidationResult(
             valid=not errors,
             schema_version=SCHEMA_VERSION,
@@ -183,12 +200,16 @@ def validate_events_csv(content: bytes) -> CsvValidationResult:
 
 
 def _parse_utc_timestamp(value: str) -> datetime | None:
-    if not value.endswith("Z"):
+    if "T" not in value or not value.endswith("Z"):
         return None
     try:
-        return datetime.fromisoformat(value[:-1] + "+00:00")
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
     except ValueError:
         return None
+    offset = parsed.utcoffset()
+    if parsed.tzinfo is None or offset is None or offset.total_seconds() != 0:
+        return None
+    return parsed
 
 
 def _result(errors: tuple[str, ...]) -> CsvValidationResult:

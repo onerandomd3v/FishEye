@@ -37,8 +37,11 @@ event_id,employee_id,role_id,department_id,event_timestamp_utc,event_type,system
 The evaluation unit is an employee-day: rows are grouped by `employee_id` and
 the UTC calendar date of `event_timestamp_utc`. The evaluation label applies to
 the whole employee-day and must be consistent across its evaluation rows. All
-baseline events must precede evaluation events. Ground-truth labels are reserved
-for evaluation and must never become detector features.
+events for an employee-day must belong to one partition; an employee-day cannot
+be split between baseline and evaluation. All baseline events must precede
+evaluation events. Ground-truth labels are reserved for evaluation and must
+never become detector features. Validation returns at most 99 row-level errors
+plus an omitted-error count to keep responses bounded.
 
 The development endpoint is `POST /api/v1/datasets/imports/validate` with
 `Content-Type: text/csv` and
