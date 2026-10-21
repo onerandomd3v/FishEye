@@ -38,7 +38,7 @@ When suitable, work on a focused branch and submit a reviewable PR; do not claim
 apps/
   web/
     landing/       # Astro; static public site
-    console/       # React + Vite; protected analyst SPA
+    console/       # Next.js App Router; protected analyst console
   backend/
     api/           # FastAPI service
     worker/        # Background detection and evaluation service
@@ -59,7 +59,7 @@ When scaffolding, honor the path `apps/backend/worker` exactly. **Do not recreat
 
 ## Approved technology boundaries
 
-- Web: TypeScript, Astro for landing, React + Vite + React Router for console; Tailwind and shared UI components.
+- Web: TypeScript, Astro for landing, Next.js App Router + React + TypeScript for console; Tailwind and shared UI components.
 - Web state: TanStack Query for remote state; TanStack Table for investigative tables; Recharts for evaluation visualizations where needed.
 - Backend: Python, FastAPI, Pydantic, SQLAlchemy 2, Alembic.
 - Detection/analytics: NumPy, Polars; scikit-learn for explicitly benchmarked candidate methods; DuckDB and immutable Parquet for experiment artifacts.
