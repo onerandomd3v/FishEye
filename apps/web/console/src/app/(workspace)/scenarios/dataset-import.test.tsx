@@ -87,6 +87,11 @@ describe('synthetic CSV validation', () => {
 
   it('imports a validated file and reports the backend dataset record without implying a run', async () => {
     vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://127.0.0.1:8000');
+    const csvFile = new File(
+      [new Uint8Array([0xef, 0xbb, 0xbf, 0x63, 0x73, 0x76])],
+      'synthetic-with-bom.csv',
+      { type: 'text/csv' },
+    );
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -120,7 +125,7 @@ describe('synthetic CSV validation', () => {
     render(<DatasetImport />);
 
     fireEvent.change(screen.getByLabelText('CSV file'), {
-      target: { files: [syntheticFile()] },
+      target: { files: [csvFile] },
     });
     fireEvent.click(
       screen.getByLabelText(/I confirm this file contains synthetic/i),
@@ -153,7 +158,13 @@ describe('synthetic CSV validation', () => {
     expect(
       importRequest.headers.get('X-FishEye-Synthetic-Data-Confirmed'),
     ).toBe('true');
-    expect(await importRequest.text()).toBe('csv');
+    const originalBytes = [0xef, 0xbb, 0xbf, 0x63, 0x73, 0x76];
+    expect(
+      Array.from(new Uint8Array(await validationRequest.arrayBuffer())),
+    ).toEqual(originalBytes);
+    expect(
+      Array.from(new Uint8Array(await importRequest.arrayBuffer())),
+    ).toEqual(originalBytes);
   });
 
   it('keeps the validated preview available and allows retry after an import error', async () => {

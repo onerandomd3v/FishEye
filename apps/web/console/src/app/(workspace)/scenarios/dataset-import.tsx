@@ -2,7 +2,11 @@
 
 import { useState, type FormEvent } from 'react';
 import { Button } from '@fisheye/ui';
-import { createFishEyeApiClient, type components } from '@fisheye/api-client';
+import {
+  createFishEyeApiClient,
+  postCsv,
+  type components,
+} from '@fisheye/api-client';
 
 type ValidationResponse = components['schemas']['DatasetValidationResponse'];
 type DatasetImportResponse = components['schemas']['DatasetImportResponse'];
@@ -152,15 +156,10 @@ export function DatasetImport() {
     setState({ status: 'validating' });
     try {
       const client = createFishEyeApiClient(apiUrl);
-      const { data, error, response } = await client.POST(
+      const { data, error, response } = await postCsv(
+        client,
         '/api/v1/datasets/imports/validate',
-        {
-          headers: {
-            'Content-Type': 'text/csv',
-            'X-FishEye-Synthetic-Data-Confirmed': 'true',
-          },
-          body: await file.text(),
-        },
+        file,
       );
 
       if (!response.ok) {
@@ -203,15 +202,10 @@ export function DatasetImport() {
     setState({ status: 'importing', validation: confirmedValidation });
     try {
       const client = createFishEyeApiClient(apiUrl);
-      const { data, error, response } = await client.POST(
+      const { data, error, response } = await postCsv(
+        client,
         '/api/v1/datasets/imports',
-        {
-          headers: {
-            'Content-Type': 'text/csv',
-            'X-FishEye-Synthetic-Data-Confirmed': 'true',
-          },
-          body: await file.text(),
-        },
+        file,
       );
 
       if (!response.ok) {
