@@ -1,0 +1,44 @@
+name: Database CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+permissions:
+  contents: read
+jobs:
+  database-checks:
+    name: database-checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: fisheye
+          POSTGRES_USER: fisheye
+          POSTGRES_PASSWORD: fisheye_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fisheye -d fisheye"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.12'
+          enable-cache: true
+      - name: PostgreSQL connectivity smoke test
+        env:
+          PG_CONN: postgresql://fisheye:fisheye_ci_only@localhost:5432/fisheye
+        run: |
+          uv run --with psycopg[binary] python -c 'import os, psycopg; c=psycopg.connect(os.environ["PG_CONN"]); assert c.execute("select 1").fetchone()[0] == 1; c.close()'
+      - name: Report migration gate status
+        run: |
+          if [ -d apps/backend/api/alembic/versions ]; then
+            echo 'Migration revision directory exists; migration test integration is required before production migrations.'
+          else
+            echo 'No Alembic migrations implemented yet; connectivity smoke test only.'
+          fi
