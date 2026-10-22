@@ -46,7 +46,7 @@ test('a bundled synthetic dataset runs through API, worker, storage, and console
         const panel = document.querySelector('.dataset-import');
         return Boolean(
           panel?.querySelector('.import-state-error') ||
-          panel?.textContent?.includes('Evaluation run completed'),
+          panel?.textContent?.includes('Evaluation complete'),
         );
       },
       undefined,
@@ -59,33 +59,28 @@ test('a bundled synthetic dataset runs through API, worker, storage, and console
   }
   const importState = await page.locator('.dataset-import').innerText();
   console.log(`[e2e] Dataset import state:\n${importState}`);
-  expect(importState).toContain('Evaluation run completed');
-  await expect(
-    page.getByText(/Synthetic development result only/),
-  ).toBeVisible();
+  expect(importState).toContain('Evaluation complete');
+  await expect(page.getByText('Results on the evaluation data')).toBeVisible();
 
   await page.goto('/overview');
-  await expect(page.getByText('Synthetic development results')).toBeVisible();
-  await expect(page.getByText('Employee-days evaluated')).toBeVisible();
+  await expect(page.getByText('Latest findings')).toBeVisible();
+  await expect(page.getByText('Person-days evaluated')).toBeVisible();
 
   await page.goto('/evaluation');
+  await expect(page.getByRole('heading', { name: 'Evaluation' })).toBeVisible();
+  await page
+    .getByRole('link', { name: /View run/ })
+    .first()
+    .click();
   await expect(
-    page.getByRole('heading', { name: 'Model evaluation' }),
+    page.getByRole('heading', { name: 'Compare methods' }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'View run' }).first().click();
-  await expect(
-    page.getByRole('heading', { name: 'Confusion counts' }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'Per-scenario metrics' }),
-  ).toBeVisible();
-  await expect(
-    page.getByText('Development experiment on synthetic data only.'),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Findings' })).toBeVisible();
+  await expect(page.getByText('Results on the evaluation data')).toBeVisible();
 
   await page.goto('/investigations');
   await expect(
-    page.getByRole('heading', { name: 'Findings from evaluation runs' }),
+    page.getByRole('heading', { name: 'Investigations' }),
   ).toBeVisible();
   await expect(
     page.getByRole('row').filter({ hasText: 'emp-access-demo' }).first(),
