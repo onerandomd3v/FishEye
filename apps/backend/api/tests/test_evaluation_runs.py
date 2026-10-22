@@ -170,3 +170,12 @@ def test_run_creation_requires_v2_dataset_and_idempotency_key(tmp_path, monkeypa
         json={"dataset_id": "missing", "synthetic_context": make_context()},
     )
     assert response.status_code == 400
+
+
+def test_run_detail_openapi_declares_not_found_and_storage_errors() -> None:
+    responses = app.openapi()["paths"]["/api/v1/runs/{run_id}"]["get"]["responses"]
+
+    for status_code in ("404", "503"):
+        assert responses[status_code]["content"]["application/json"]["schema"] == {
+            "$ref": "#/components/schemas/ApiErrorResponse"
+        }

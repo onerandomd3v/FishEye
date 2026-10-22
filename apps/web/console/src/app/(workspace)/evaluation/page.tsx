@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Notice } from '@fisheye/ui';
 import { createFishEyeApiClient, type components } from '@fisheye/api-client';
 import { PageHeading } from '../shared';
@@ -24,6 +24,7 @@ export default function EvaluationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [findingsLoading, setFindingsLoading] = useState(false);
+  const findingsRequestIdRef = useRef(0);
 
   const loadRuns = useCallback(async () => {
     if (!baseUrl) {
@@ -68,6 +69,7 @@ export default function EvaluationPage() {
 
   async function loadFindings(run: Run, selectedDetector: Detector) {
     if (!baseUrl || run.status !== 'completed') return;
+    const requestId = ++findingsRequestIdRef.current;
     setSelectedRun(run);
     setFindings([]);
     setFindingsLoading(true);
@@ -84,22 +86,29 @@ export default function EvaluationPage() {
         throw new Error(
           `Findings could not be loaded (${result.response.status}).`,
         );
+      if (requestId !== findingsRequestIdRef.current) return;
       setFindings(result.data.items);
     } catch (cause) {
+      if (requestId !== findingsRequestIdRef.current) return;
       setError(
         cause instanceof Error
           ? cause.message
           : 'Findings could not be loaded.',
       );
     } finally {
-      setFindingsLoading(false);
+      if (requestId === findingsRequestIdRef.current) setFindingsLoading(false);
     }
   }
 
   function selectRun(run: Run) {
     setSelectedRun(run);
     setFindings([]);
-    if (run.status === 'completed') void loadFindings(run, detector);
+    if (run.status === 'completed') {
+      void loadFindings(run, detector);
+    } else {
+      findingsRequestIdRef.current += 1;
+      setFindingsLoading(false);
+    }
   }
 
   const comparisons = selectedRun?.metrics?.comparisons;

@@ -132,6 +132,92 @@ describe('development evaluation run flow', () => {
     expect(createRequest.headers.get('Idempotency-Key')).toBeTruthy();
   });
 
+  it('reuses the run idempotency key when retrying the same submission after an uncertain response', async () => {
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://127.0.0.1:8000');
+    const terminalRun = {
+      run_id: 'run-retried',
+      dataset_id: 'dataset-1',
+      status: 'completed',
+      methodology_version: 'fisheye.employee-day-experimental.v1',
+      claim_status: 'provisional_experiment; not_benchmarked',
+      created_at: '2026-01-01T00:00:00Z',
+      synthetic_only: true,
+      metrics: null,
+    };
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() =>
+        response(200, {
+          valid: true,
+          schema_version: 'fisheye.events.v2',
+          row_count: 6,
+          employee_day_count: 6,
+          errors: [],
+        }),
+      )
+      .mockImplementationOnce(() =>
+        response(201, {
+          dataset_id: 'dataset-1',
+          status: 'imported',
+          sha256: 'abc',
+          manifest_sha256: 'def',
+          schema_version: 'fisheye.events.v2',
+          row_count: 6,
+          employee_day_count: 6,
+          created_at: '2026-01-01T00:00:00Z',
+          created: true,
+        }),
+      )
+      .mockImplementationOnce(() => response(503, { detail: 'Try again.' }))
+      .mockImplementationOnce(() =>
+        response(200, {
+          valid: true,
+          schema_version: 'fisheye.events.v2',
+          row_count: 6,
+          employee_day_count: 6,
+          errors: [],
+        }),
+      )
+      .mockImplementationOnce(() =>
+        response(200, {
+          dataset_id: 'dataset-1',
+          status: 'imported',
+          sha256: 'abc',
+          manifest_sha256: 'def',
+          schema_version: 'fisheye.events.v2',
+          row_count: 6,
+          employee_day_count: 6,
+          created_at: '2026-01-01T00:00:00Z',
+          created: false,
+        }),
+      )
+      .mockImplementationOnce(() => response(202, terminalRun));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<DatasetImport />);
+    fireEvent.change(screen.getByLabelText('Synthetic events CSV'), {
+      target: { files: [file('events.csv', 'csv', 'text/csv')] },
+    });
+    fireEvent.change(screen.getByLabelText('Synthetic employee context JSON'), {
+      target: { files: [file('context.json', context, 'application/json')] },
+    });
+    fireEvent.click(screen.getByLabelText(/I confirm both files/i));
+
+    const submit = screen.getByRole('button', {
+      name: 'Import and run evaluation',
+    });
+    fireEvent.click(submit);
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    fireEvent.click(submit);
+    expect(await screen.findByText('Evaluation run completed')).toBeTruthy();
+
+    const firstRunRequest = fetchMock.mock.calls[2]?.[0] as Request;
+    const retryRunRequest = fetchMock.mock.calls[5]?.[0] as Request;
+    expect(firstRunRequest.headers.get('Idempotency-Key')).toBeTruthy();
+    expect(retryRunRequest.headers.get('Idempotency-Key')).toBe(
+      firstRunRequest.headers.get('Idempotency-Key'),
+    );
+  });
+
   it('surfaces a clear API configuration error', async () => {
     render(<DatasetImport />);
     fireEvent.change(screen.getByLabelText('Synthetic events CSV'), {
