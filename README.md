@@ -2,202 +2,123 @@
 
 **See the signal. Ignore the noise.**
 
-**FishEye is a cybersecurity platform that helps banks detect suspicious employee activity while reducing false security alerts.**
+FishEye is a cybersecurity platform that helps banks detect suspicious employee activity while reducing unnecessary security alerts.
 
-FishEye learns how employees normally work based on their behaviour and job roles. When something unusual happens, it examines the context to determine whether the activity deserves investigation.
+It examines activity in context—including normal behaviour, job roles and access history—to help security teams understand which alerts deserve investigation.
 
-It helps security teams distinguish genuine threats from harmless unusual behaviour, so they can focus on the alerts that actually matter.
+**Our goal:** Help analysts distinguish genuine threats from harmless unusual activity, so they can focus on the alerts that matter.
 
-**For our first version**, we'll use synthetic banking activity data to build and test the system, measuring whether it reduces false alarms without missing more genuine threats.
-
-> **Research demo:** FishEye does not use real bank or customer data and has not been deployed at a bank. Its results are based on simulated activity, not proven performance in a real banking environment.
+> **Current scope:** FishEye is a research MVP using synthetic banking activity, not real customer or employee data. We are testing whether contextual detection reduces false alarms without missing more genuine threats. It has not been validated in a live bank.
 
 ## The problem
 
-Banks protect sensitive systems, customer information and other important assets. When an employee account performs unusual activity involving those assets, security systems may generate an alert.
+Banks monitor access to sensitive systems and customer data. An unusual action can trigger an alert, but an alert is not proof of a threat: it could also be legitimate work or a mistake.
 
-But unusual activity isn't always a threat. It could be legitimate work, a mistake or unauthorized access. Security teams must investigate to establish the facts, and that takes time.
-
-**The challenge is knowing which alerts deserve attention first without overlooking genuine threats.**
-
-Existing tools such as Microsoft Purview, Splunk and Exabeam already help security teams detect and investigate suspicious activity. **FishEye focuses on making alerts easier to understand and prioritize—and testing whether that reduces false alarms without missing more real threats.**
+Investigating every alert takes time. FishEye aims to make alerts easier to understand and prioritize while preserving human investigation and judgment.
 
 ## What FishEye does
 
-1. **Load sample activity:** Use a built-in example or upload simulated bank activity data.
-2. **Check the context:** Look at what is normal for the account and what its job role allows.
-3. **Prioritize alerts:** Show which activities need attention and explain why.
-4. **Help analysts investigate:** Let the security team review the evidence and record their findings.
-5. **Test the results:** Compare FishEye with rule-based detection to see how many harmless activities are flagged and how many genuine threats are missed.
+- **Detects unusual activity** using role permissions and normal activity patterns.
+- **Explains findings** with evidence and reasons behind each priority.
+- **Supports investigations** by letting analysts review findings.
+- **Tests effectiveness** by comparing contextual detection with rule-based approaches on the same synthetic data, including false alarms and missed threats.
 
-**An alert is a reason to investigate, not proof that an employee has done something wrong.**
+## Explore the application
 
-## For hackathon judges — where to start
+| Area | Purpose |
+| --- | --- |
+| [Landing](apps/web/landing) | Introduction to FishEye |
+| [Sign in](apps/web/console/src/app/login) | Access the demo workspace with configured credentials |
+| [Scenario lab](apps/web/console/src/app/%28workspace%29/scenarios) | Run bundled or uploaded synthetic scenarios locally |
+| [Risk overview](apps/web/console/src/app/%28workspace%29/overview) | View findings from completed runs |
+| [Investigations](apps/web/console/src/app/%28workspace%29/investigations) | Examine findings and supporting evidence |
+| [Evaluation](apps/web/console/src/app/%28workspace%29/evaluation) | Compare rule-based and contextual results |
 
-Follow these pages in order to explore the demo:
+The evaluation reports metrics such as false-positive rate and recall. **Detection delay is not available in this version.**
 
-| Step | Page | What to look for |
-| --- | --- | --- |
-| 1 | **Landing** (`/` on Astro) | Why unusual activity needs context |
-| 2 | **Sign in** (`/login` on Next.js) | Research/demo analyst access with environment-configured credentials |
-| 3 | **Scenario lab** (`/scenarios`) | Select one of two bundled synthetic samples, confirm synthetic-only input, and submit a development evaluation run |
-| 4 | **Risk overview** (`/overview`) | Findings from stored, completed runs—rather than illustrative hardcoded scores |
-| 5 | **Investigations** (`/investigations`) | Open a finding, follow event evidence and explanation, and see the review flow |
-| 6 | **Evaluation** (`/evaluation`) | Compare simple rules, tuned rules and contextual scoring, including mistakes and misses |
+## Run locally
 
-### Suggested live demonstration
-
-**Compare a harmless but unusual activity with one showing multiple warning signs.** Visit Scenario lab → Risk overview → Investigations → Evaluation to show how FishEye prioritizes the findings and explains the evidence.
-
-All examples use **simulated activity**, not real bank records. To see results, the backend API and worker must be running. If there is no hosted demo, follow the local setup below.
-
-**Demo links:** No public landing or console URL is established in this README. Add verified deployed links here once they exist. Login credentials must be provided securely by the team; they are **not stored in this repository**.
-
-## Run FishEye locally
-
-### Prerequisites
-
-- Node.js **22.22.0+**
-- **pnpm 11.25.0**
-- Python **3.12**, **uv 0.13.4+**
-- Docker and Docker Compose
-
-### Option A — Full local synthetic demo (recommended for judges)
+**Requirements:** Node.js 22.22+, pnpm 11.25.0, Python 3.12, uv 0.13.4+, and Docker Compose.
 
 From the repository root:
 
-1. Install locked dependencies:
+```bash
+pnpm install --frozen-lockfile
+uv sync --locked --all-packages --all-groups
+cp .env.example .env
+```
 
-   ```bash
-   pnpm install --frozen-lockfile
-   uv sync --locked --all-packages --all-groups
-   ```
+Configure the demo login, session secret, artifact encryption key and development-only synthetic-data flags in `.env` as described in the [development guide](docs/DEVELOPMENT.md#local-compose-stack).
 
-2. Create local environment configuration:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   Set a unique `FISHEYE_DEMO_EMAIL`, a `FISHEYE_DEMO_PASSWORD` of at least 12 bytes, and `FISHEYE_SESSION_SECRET` (generate a strong random value, e.g. `openssl rand -base64 32`). For synthetic artifact encryption, generate a local Fernet key:
-
-   ```bash
-   uv run --package fisheye-persistence python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
-   ```
-
-   Set the printed key as `FISHEYE_ARTIFACT_ENCRYPTION_KEY` in `.env`. **Never commit local secrets.**
-
-3. Enable the **development-only** synthetic CSV validation, import, dataset reads and evaluation-run flags in `.env`:
-
-   ```dotenv
-   FISHEYE_ENABLE_DEV_CSV_VALIDATION=1
-   FISHEYE_ENABLE_DEV_CSV_IMPORT=1
-   FISHEYE_ENABLE_DEV_DATASET_READS=1
-   FISHEYE_ENABLE_DEV_EVALUATION_RUNS=1
-   ```
-
-4. Start the application and web profiles:
-
-   ```bash
-   docker compose -f infra/compose.yaml --profile application --profile web up --build -d
-   ```
-
-5. Open the **landing page** at [http://127.0.0.1:4321](http://127.0.0.1:4321) and the **console** at [http://127.0.0.1:3000/login](http://127.0.0.1:3000/login). Use the demo email/password from your local configuration.
-
-6. Navigate to **Scenario lab**, choose a bundled sample and run the evaluation. Then inspect the results in **Risk overview**, **Investigations** and **Evaluation**.
-
-Stop the local stack:
+Then start the local demo:
 
 ```bash
-docker compose -f infra/compose.yaml --profile application --profile web down
+docker compose -f infra/compose.yaml --profile application --profile web up --build -d
 ```
 
-**Important:** The Compose demo is for loopback/local development only. Do **not** publicly expose it or upload real employee or banking data. For complete startup options, troubleshooting and manual per-service commands, see [Development guide](docs/DEVELOPMENT.md#local-compose-stack).
+- Landing: http://127.0.0.1:4321
+- Console: http://127.0.0.1:3000/login
 
-### Option B — Run individual services
+Sign in using your locally configured demo credentials, then open **Scenario lab** to run a synthetic example. This Compose setup is for **local development only** and must not be exposed publicly.
 
-The repository also supports running the applications separately:
+For detailed environment setup, troubleshooting and tests, see [Development](docs/DEVELOPMENT.md).
 
-```bash
-pnpm db:start
-pnpm dev:landing        # Astro: http://localhost:4321
-pnpm dev:console        # Next.js: http://127.0.0.1:3000
-pnpm dev:api            # FastAPI: http://127.0.0.1:8000
-uv run --package fisheye-worker fisheye-worker work
+## How the system works
+
+```mermaid
+flowchart TD
+    Visitor[Public visitor] --> Landing[Astro landing]
+    Analyst[Analyst] --> Console[Next.js console]
+    Console -->|Authenticated requests| API[FastAPI API]
+    API <--> DB[(PostgreSQL)]
+    Worker[Python evaluation worker] <--> DB
+    API -->|Dataset and run metadata| Artifacts[(Encrypted synthetic artifacts)]
+    Worker <--> Artifacts
+    Worker -->|Findings and metrics| DB
+    DB -->|Stored results| API
 ```
 
-For this approach, first configure app-specific `.env.local` files, shared session secret, database migrations, artifact encryption, and local-only feature flags exactly as described in the [Development guide](docs/DEVELOPMENT.md). The commands above **are not sufficient by themselves** for a functioning demo.
+The **API** validates inputs, manages access and records evaluation jobs. The separate **worker** processes synthetic datasets, scores activity and stores findings and evaluation results. The **console** displays that evidence and lets analysts review findings. The frontend does not calculate risk scores.
 
-## Architecture at a glance
+### Detection and evaluation
 
-```text
-Astro landing site          Next.js analyst console
-                                     |
-                              authenticated requests
-                                     v
-                               FastAPI API
-                                     |
-                          PostgreSQL / durable jobs
-                                     |
-                               Python worker
-                                     |
-                      synthetic evidence and metrics
+```mermaid
+flowchart LR
+    Data[Synthetic access events] --> Context[Role, schedule and historical context]
+    Context --> Rules[Simple and tuned rules]
+    Context --> Scorer[Contextual scorer]
+    Rules --> Compare[Compare results on the same test data]
+    Scorer --> Compare
+    Compare --> Output[False alarms, missed threats and recall]
 ```
 
-| Area | Technology | Location |
+FishEye currently uses **explainable, deterministic rules and statistical baselines**, not a trained AI model. It considers signals such as out-of-role access, unfamiliar devices, unusual access volume and activity outside declared working hours. Results show the reasons and events behind findings.
+
+We compare FishEye's contextual scoring with simple and tuned rule-based approaches on the same labelled synthetic data. **Reducing alerts only counts as improvement if genuine threats are still detected.** The current evaluation does not report detection delay.
+
+## Technology and why we chose it
+
+| Technology | Purpose | Why it fits |
 | --- | --- | --- |
-| Public website | Astro, TypeScript | [`apps/web/landing`](apps/web/landing) |
-| Analyst workspace | Next.js App Router, React, TypeScript | [`apps/web/console`](apps/web/console) |
-| Backend and access control | FastAPI, Pydantic, SQLAlchemy/Alembic | [`apps/backend/api`](apps/backend/api) |
-| Evaluation processing | Python worker | [`apps/backend/worker`](apps/backend/worker) |
-| Shared packages | UI, API client and Python domain/evaluation/persistence libraries | [`packages`](packages), [`apps/backend/packages`](apps/backend/packages) |
-| Storage and local setup | PostgreSQL, versioned synthetic artifacts, Docker Compose | [`infra`](infra) |
+| **Astro** | Public landing site | Lightweight pages without an unnecessary app runtime |
+| **Next.js + React + TypeScript** | Analyst console | Interactive investigation views and typed frontend code |
+| **FastAPI + Pydantic** | Backend API | Typed validation and API contracts alongside the Python analysis code |
+| **Python + Polars** | Detection and evaluation worker | Efficient processing of synthetic event data and reproducible scoring |
+| **PostgreSQL + SQLAlchemy/Alembic** | Run, job and review records | Transactional data, durable job state and versioned migrations |
+| **Encrypted Parquet artifacts** | Synthetic datasets and results | Keeps larger analytical data separate from transactional records |
+| **Docker Compose** | Local integration | Runs connected services consistently for development and testing |
+| **pnpm + Turborepo / uv** | Monorepo tooling | Manages web and Python dependencies in their own ecosystems |
 
-The API and worker own scoring and metrics; the console displays the results. This is one monorepo with independently runnable applications. For the detailed design, see [Architecture](docs/ARCHITECTURE.md).
+The API and worker are separate processes so longer-running evaluations do not have to execute inside web requests. They share Python libraries rather than introducing separate services for every detector or feature.
 
-## How we evaluate FishEye
+For component boundaries, security decisions and implementation details, see [System architecture](docs/ARCHITECTURE.md).
 
-We test three ways of detecting suspicious activity using the **same simulated bank data**:
+## Documentation
 
-- **Simple rules:** Flag activity based on fixed conditions.
-- **Improved rules:** Use adjusted conditions to make the comparison fairer.
-- **FishEye's contextual approach:** Consider employee behaviour and job roles before deciding which activities need attention.
+- [Product requirements](docs/PRD.md)
+- [Development and testing](docs/DEVELOPMENT.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Design](docs/DESIGN.md)
+- [Brand](docs/BRAND.md)
 
-The Evaluation screen reports **precision, recall, false-positive rate, alerts per 100 employee-days and missed threats**. Detection delay is **not available** in the current version. **Success means fewer unnecessary alerts without missing more genuine threats.** These results come from synthetic data; they do not prove how FishEye would perform inside a real bank.
-
-## Project status and limitations
-
-The repository includes a working research-oriented frontend and development API/worker evaluation flow. **Do not assume every feature is deployed or that every route is available in shared environments.**
-
-- The research workflow uses **synthetic inputs only**.
-- CSV import, dataset reads and evaluation-run endpoints are **development-only** and must not be enabled in public production environments.
-- The demo login uses **one environment-configured account**, not enterprise SSO or individually attributable analyst accounts.
-- There is no integration with a live bank, its SIEM or its customer data.
-- Synthetic benchmarks do not validate detection accuracy in real financial institutions.
-
-These boundaries are intentional; they allow the team to test the idea without making unsupported operational claims.
-
-## Repository navigation
-
-| Document | Purpose |
-| --- | --- |
-| [Product requirements](docs/PRD.md) | What FishEye is intended to solve and the MVP acceptance criteria |
-| [Architecture](docs/ARCHITECTURE.md) | System boundaries and engineering decisions |
-| [Development](docs/DEVELOPMENT.md) | Full setup, environment variables, tests, CI and troubleshooting |
-| [Brand](docs/BRAND.md) | Logo, voice, typography and monochrome visual identity |
-| [Design](docs/DESIGN.md) | Frontend components, layout, interaction and accessibility rules |
-| [Root agent instructions](AGENTS.md) | Coding conventions and product integrity safeguards |
-
-### Tests and CI
-
-```bash
-pnpm check:web
-pnpm check:backend
-pnpm check:database  # requires a disposable fisheye_test database
-```
-
-Pull requests are validated by web, backend, database and security workflows. See [Development](docs/DEVELOPMENT.md) for details. Do not run migration tests against production data.
-
----
-
-**FishEye — See the signal. Ignore the noise.**
+**FishEye is a synthetic-data research project, not a production banking security system.**
