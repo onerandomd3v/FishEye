@@ -256,5 +256,5 @@ def test_worker_command_prepares_a_dataset(imported_dataset, monkeypatch, caplog
     with caplog.at_level(logging.INFO):
         main(["prepare-dataset", "--dataset-id", dataset_id])
 
-    assert "Prepared synthetic dataset" in caplog.text
+    assert "Synthetic dataset preparation completed" in caplog.text
     assert "No run was created and no risk was calculated" in caplog.text
