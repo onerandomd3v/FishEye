@@ -35,10 +35,10 @@ test('a bundled synthetic dataset runs through API, worker, storage, and console
   await sample.getByRole('button', { name: 'Use sample' }).click();
   await page
     .getByRole('checkbox', {
-      name: 'I confirm both files contain synthetic employee and event data only.',
+      name: 'I confirm both files contain fictional people and activity only.',
     })
     .check();
-  await page.getByRole('button', { name: 'Import and run evaluation' }).click();
+  await page.getByRole('button', { name: 'Run evaluation' }).click();
 
   await page.waitForFunction(
     () => {
