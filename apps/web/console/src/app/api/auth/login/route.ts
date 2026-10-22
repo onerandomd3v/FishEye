@@ -1,5 +1,6 @@
 import * as oidc from 'openid-client';
 import { NextResponse } from 'next/server';
+import { oidcAuthorizationParameters } from '../../../../lib/oidc-authorization-parameters';
 import {
   oidcClient,
   oidcEnabled,
@@ -28,8 +29,7 @@ export async function GET() {
       code_challenge: await oidc.calculatePKCECodeChallenge(verifier),
       code_challenge_method: 'S256',
     };
-    const resource = process.env.FISHEYE_OIDC_RESOURCE?.trim();
-    if (resource) parameters.resource = resource;
+    Object.assign(parameters, oidcAuthorizationParameters());
     const response = NextResponse.redirect(
       oidc.buildAuthorizationUrl(config, parameters),
     );

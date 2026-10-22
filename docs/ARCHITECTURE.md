@@ -366,7 +366,7 @@ For growth, consider database partitioning and higher-volume ingestion only afte
 | No LLM required for the core score or evaluation | **Accepted** |
 | Synthetic data only for MVP v1 | **Accepted** |
 | Exact scoring formula, thresholds and calibration protocol | **Open — define before experiment freeze** |
-| Provider-neutral OIDC protocol and analyst/admin API roles | **Accepted; concrete provider and hosting remain open** |
+| Provider-neutral OIDC protocol and analyst/admin API roles | **Accepted; Auth0 selected for the first shared demo; hosting remains open** |
 | Object storage vendor and hosting provider | **Open — choose by constraints, not brand** |
 | Final API schemas and PostgreSQL tables | **Open — establish with implementation PRs** |
 | Whether a bank will sponsor a future pilot | **Unverified — never assume** |
