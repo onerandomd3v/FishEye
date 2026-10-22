@@ -1,4 +1,6 @@
-type OidcAuthorizationEnvironment = Readonly<Record<string, string | undefined>>;
+type OidcAuthorizationEnvironment = Readonly<
+  Record<string, string | undefined>
+>;
 
 export function oidcAuthorizationParameters(
   environment: OidcAuthorizationEnvironment = process.env,
