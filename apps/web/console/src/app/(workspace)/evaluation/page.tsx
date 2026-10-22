@@ -409,41 +409,167 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function Comparison({ metrics }: { metrics: Record<string, unknown> }) {
+  const reports = detectors.map((name) => ({
+    name,
+    report: asRecord(asRecord(metrics[name])?.report),
+  }));
+  const scenarioRows = reports.flatMap(({ name, report }) => {
+    const rows = report?.by_scenario;
+    if (!Array.isArray(rows)) return [];
+    return rows.flatMap((value) => {
+      const scenario = asRecord(value);
+      const scenarioMetrics = asRecord(scenario?.metrics);
+      if (typeof scenario?.scenario_id !== 'string' || !scenarioMetrics) {
+        return [];
+      }
+      return [
+        {
+          detector: name,
+          scenarioId: scenario.scenario_id,
+          metrics: scenarioMetrics,
+        },
+      ];
+    });
+  });
+
   return (
-    <div className="table-wrap">
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th scope="col">Method</th>
-            <th scope="col">Precision</th>
-            <th scope="col">Recall</th>
-            <th scope="col">False-positive rate</th>
-            <th scope="col">Alerts / 100 employee-days</th>
-          </tr>
-        </thead>
-        <tbody>
-          {detectors.map((name) => {
-            const item = asRecord(metrics[name]);
-            const report = asRecord(item?.report);
-            const scores = asRecord(report?.metrics);
-            return (
-              <tr key={name}>
-                <td>{name.replaceAll('_', ' ')}</td>
-                <td>{formatMetricRatio(scores?.precision)}</td>
-                <td>{formatMetricRatio(scores?.recall)}</td>
-                <td>{formatMetricRatio(scores?.false_positive_rate)}</td>
-                <td>
-                  {formatAlertsPer100EmployeeDays(
-                    scores?.alerts_per_100_employee_days,
-                  )}
-                </td>
+    <div className="evaluation-report-tables">
+      <div className="table-wrap">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Method</th>
+              <th scope="col">Alert threshold</th>
+              <th scope="col">Precision</th>
+              <th scope="col">Recall</th>
+              <th scope="col">False-positive rate</th>
+              <th scope="col">Alerts / 100 employee-days</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reports.map(({ name, report }) => {
+              const detectorResult = asRecord(metrics[name]);
+              const scores = asRecord(report?.metrics);
+              return (
+                <tr key={name}>
+                  <td>{name.replaceAll('_', ' ')}</td>
+                  <td>{formatNumber(detectorResult?.threshold)}</td>
+                  <td>{formatRatioWithCount(scores?.precision)}</td>
+                  <td>{formatRatioWithCount(scores?.recall)}</td>
+                  <td>{formatRatioWithCount(scores?.false_positive_rate)}</td>
+                  <td>
+                    {formatRateWithCount(scores?.alerts_per_100_employee_days)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <section aria-labelledby="confusion-title">
+        <h3 id="confusion-title">Confusion counts</h3>
+        <p className="field-help">
+          Employee-days counted as true or false positives and negatives at each
+          detector’s frozen threshold.
+        </p>
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Method</th>
+                <th scope="col">True positives</th>
+                <th scope="col">False positives</th>
+                <th scope="col">True negatives</th>
+                <th scope="col">False negatives</th>
+                <th scope="col">Employee-days</th>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {reports.map(({ name, report }) => {
+                const scores = asRecord(report?.metrics);
+                const confusion = asRecord(scores?.confusion);
+                return (
+                  <tr key={name}>
+                    <td>{name.replaceAll('_', ' ')}</td>
+                    <td>{formatCount(confusion?.true_positive)}</td>
+                    <td>{formatCount(confusion?.false_positive)}</td>
+                    <td>{formatCount(confusion?.true_negative)}</td>
+                    <td>{formatCount(confusion?.false_negative)}</td>
+                    <td>{formatCount(scores?.unit_count)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="scenario-metrics-title">
+        <h3 id="scenario-metrics-title">Per-scenario metrics</h3>
+        <p className="field-help">
+          Scenario-specific held-out results use the same employee-day unit as
+          the aggregate comparison.
+        </p>
+        {scenarioRows.length === 0 ? (
+          <p className="empty-state">
+            Scenario-level results are unavailable for this run.
+          </p>
+        ) : (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">Method</th>
+                  <th scope="col">Scenario</th>
+                  <th scope="col">Employee-days</th>
+                  <th scope="col">Precision</th>
+                  <th scope="col">Recall</th>
+                  <th scope="col">False-positive rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scenarioRows.map(({ detector, scenarioId, metrics }) => (
+                  <tr key={`${detector}:${scenarioId}`}>
+                    <td>{detector.replaceAll('_', ' ')}</td>
+                    <td>{scenarioId.replaceAll('_', ' ')}</td>
+                    <td>{formatCount(metrics.unit_count)}</td>
+                    <td>{formatRatioWithCount(metrics.precision)}</td>
+                    <td>{formatRatioWithCount(metrics.recall)}</td>
+                    <td>{formatRatioWithCount(metrics.false_positive_rate)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
+}
+
+function formatCount(value: unknown): string {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0
+    ? String(value)
+    : 'Unavailable';
+}
+
+function formatNumber(value: unknown): string {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? String(value)
+    : 'Unavailable';
+}
+
+function formatRatioWithCount(value: unknown): string {
+  const ratio = asRecord(value);
+  if (!ratio) return 'Unavailable';
+  return `${formatMetricRatio(ratio)} (${formatCount(ratio.numerator)}/${formatCount(ratio.denominator)})`;
+}
+
+function formatRateWithCount(value: unknown): string {
+  const ratio = asRecord(value);
+  if (!ratio) return 'Unavailable';
+  return `${formatAlertsPer100EmployeeDays(ratio)} (${formatCount(ratio.numerator)}/${formatCount(ratio.denominator)})`;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

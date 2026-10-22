@@ -106,6 +106,12 @@ and artifact checksums. It returns `409` while a run is incomplete and `503` if
 the encrypted manifest cannot be verified. These unauthenticated endpoints
 must remain disabled outside development.
 
+The evaluation screen displays the worker's detector thresholds, aggregate
+metrics with their numerators and denominators, and confusion counts. The
+current CSV contract records benign/threat labels but no scenario identifier,
+so it cannot produce scenario-family breakdowns; the console labels those
+results unavailable instead of inferring them from the sample name.
+
 For local validation, set `FISHEYE_ENV=development` and
 `FISHEYE_ENABLE_DEV_CSV_VALIDATION=1` in the API process environment. For local
 import, also set `FISHEYE_ENABLE_DEV_CSV_IMPORT=1`, configure the database and

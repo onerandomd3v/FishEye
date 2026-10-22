@@ -7,6 +7,14 @@ function metricValue(value: unknown): number | null {
 }
 
 export function formatMetricRatio(value: unknown): string {
+  const record = asRecord(value);
+  if (
+    record?.value === null &&
+    typeof record.undefined_reason === 'string' &&
+    record.undefined_reason.trim().length > 0
+  ) {
+    return `Not defined — ${record.undefined_reason}`;
+  }
   const number = metricValue(value);
   return number === null ? 'Unavailable' : `${(number * 100).toFixed(1)}%`;
 }
@@ -14,4 +22,10 @@ export function formatMetricRatio(value: unknown): string {
 export function formatAlertsPer100EmployeeDays(value: unknown): string {
   const number = metricValue(value);
   return number === null ? 'Unavailable' : number.toFixed(1);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null
+    ? (value as Record<string, unknown>)
+    : null;
 }
