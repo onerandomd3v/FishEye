@@ -67,11 +67,12 @@ def require_analyst(
         if value.strip()
     ]
     try:
+        require_https = os.getenv("FISHEYE_ENV") != "development"
+        if require_https and not issuer.startswith("https://"):
+            raise ValueError("OIDC issuer must use HTTPS")
         jwks_url = jwks_url or _discover_jwks_url(issuer)
-        if os.getenv("FISHEYE_ENV") != "development" and (
-            not issuer.startswith("https://") or not jwks_url.startswith("https://")
-        ):
-            raise ValueError("OIDC issuer and signing keys must use HTTPS")
+        if require_https and not jwks_url.startswith("https://"):
+            raise ValueError("OIDC signing keys must use HTTPS")
         signing_key = _jwks_client(jwks_url).get_signing_key_from_jwt(credentials.credentials)
         claims = jwt.decode(
             credentials.credentials,

@@ -72,7 +72,14 @@ async function proxy(request: Request, context: RouteContext) {
     path.length < 2 ||
     path[0] !== 'api' ||
     path[1] !== 'v1' ||
-    path.some((part) => part === '.' || part === '..')
+    path.some(
+      (part) =>
+        !part ||
+        part === '.' ||
+        part === '..' ||
+        part.includes('/') ||
+        part.includes('\\'),
+    )
   ) {
     return NextResponse.json(
       { detail: 'The FishEye API path is invalid.' },
@@ -80,7 +87,10 @@ async function proxy(request: Request, context: RouteContext) {
     );
   }
   const prefix = base.pathname.replace(/\/$/, '');
-  const target = new URL(`${prefix}/${path.join('/')}`, base.origin);
+  const target = new URL(
+    `${prefix}/${path.map((part) => encodeURIComponent(part)).join('/')}`,
+    base.origin,
+  );
   target.search = requestUrl.search;
   const headers = new Headers();
   for (const name of forwardedHeaders) {

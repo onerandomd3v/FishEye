@@ -475,12 +475,6 @@ export interface components {
       events: components['schemas']['FindingEvidenceEventResponse'][];
       /** Reviews */
       reviews: components['schemas']['FindingReviewResponse'][];
-      /**
-       * Review Mode
-       * @default local_development_unauthenticated
-       * @constant
-       */
-      review_mode: 'local_development_unauthenticated';
     };
     /** FindingEvidenceEventResponse */
     FindingEvidenceEventResponse: {

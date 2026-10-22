@@ -1495,12 +1495,6 @@
             },
             "type": "array",
             "title": "Reviews"
-          },
-          "review_mode": {
-            "type": "string",
-            "const": "local_development_unauthenticated",
-            "title": "Review Mode",
-            "default": "local_development_unauthenticated"
           }
         },
         "type": "object",

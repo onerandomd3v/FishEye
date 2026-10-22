@@ -231,7 +231,6 @@ class FindingDetailResponse(BaseModel):
     finding: RunFindingResponse
     events: list[FindingEvidenceEventResponse]
     reviews: list[FindingReviewResponse]
-    review_mode: Literal["local_development_unauthenticated"] = "local_development_unauthenticated"
 
 
 class FindingReviewCreateRequest(BaseModel):

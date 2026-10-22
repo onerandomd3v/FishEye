@@ -91,6 +91,26 @@ def test_missing_oidc_configuration_returns_service_unavailable(monkeypatch) -> 
     assert raised.value.status_code == 503
 
 
+def test_non_https_issuer_is_rejected_before_discovery(monkeypatch) -> None:
+    monkeypatch.setenv("FISHEYE_ENV", "staging")
+    monkeypatch.setenv("FISHEYE_OIDC_ISSUER", "http://identity.example.test/")
+    monkeypatch.setenv("FISHEYE_OIDC_AUDIENCE", "fisheye-api")
+    monkeypatch.delenv("FISHEYE_OIDC_JWKS_URL", raising=False)
+    discovery_called = False
+
+    def discover(_issuer: str) -> str:
+        nonlocal discovery_called
+        discovery_called = True
+        return "http://identity.example.test/jwks"
+
+    monkeypatch.setattr(auth, "_discover_jwks_url", discover)
+    with pytest.raises(HTTPException) as raised:
+        auth.require_analyst(credentials("token"))
+
+    assert raised.value.status_code == 503
+    assert not discovery_called
+
+
 def test_local_development_has_explicit_unauthenticated_identity(monkeypatch) -> None:
     monkeypatch.setenv("FISHEYE_ENV", "development")
     identity = auth.require_analyst(None)
