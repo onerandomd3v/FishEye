@@ -5,15 +5,29 @@ import { Button } from '@fisheye/ui';
 import { createFishEyeApiClient, type components } from '@fisheye/api-client';
 
 type ValidationResponse = components['schemas']['DatasetValidationResponse'];
-
-type ImportState =
+type RunResponse = components['schemas']['EvaluationRunResponse'];
+type FlowState =
   | { status: 'idle' }
-  | { status: 'submitting' }
-  | { status: 'success'; result: ValidationResponse }
+  | { status: 'working'; step: string }
+  | { status: 'error'; message: string }
   | { status: 'invalid'; result: ValidationResponse }
-  | { status: 'error'; message: string };
+  | { status: 'completed'; datasetId: string; run: RunResponse };
 
 const maximumBytes = 10 * 1024 * 1024;
+const pause = (milliseconds: number) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+function apiMessage(error: unknown, status: number): string {
+  if (typeof error === 'object' && error !== null && 'detail' in error) {
+    const detail = (error as { detail?: unknown }).detail;
+    if (typeof detail === 'string') return detail;
+    if (typeof detail === 'object' && detail !== null && 'errors' in detail) {
+      const errors = (detail as { errors?: unknown }).errors;
+      if (Array.isArray(errors)) return errors.join(' ');
+    }
+  }
+  return `The development API request failed (${status}).`;
+}
 
 function isValidationResponse(value: unknown): value is ValidationResponse {
   if (typeof value !== 'object' || value === null) return false;
@@ -23,95 +37,148 @@ function isValidationResponse(value: unknown): value is ValidationResponse {
     typeof result.schema_version === 'string' &&
     typeof result.row_count === 'number' &&
     typeof result.employee_day_count === 'number' &&
-    Array.isArray(result.errors) &&
-    result.errors.every((error) => typeof error === 'string') &&
-    typeof result.persisted === 'boolean' &&
-    typeof result.run_created === 'boolean'
+    Array.isArray(result.errors)
   );
 }
 
-function getApiErrorMessage(error: unknown, status: number): string {
-  if (typeof error === 'object' && error !== null && 'detail' in error) {
-    const { detail } = error;
-    if (typeof detail === 'string') return detail;
-    if (Array.isArray(detail)) {
-      const messages = detail.flatMap((item) =>
-        typeof item === 'object' &&
-        item !== null &&
-        'msg' in item &&
-        typeof item.msg === 'string'
-          ? [item.msg]
-          : [],
-      );
-      if (messages.length > 0) return messages.join(' ');
-    }
-  }
-  return `Validation request failed (${status}).`;
-}
-
 export function DatasetImport() {
-  const [file, setFile] = useState<File | null>(null);
+  const [csv, setCsv] = useState<File | null>(null);
+  const [contextFile, setContextFile] = useState<File | null>(null);
   const [confirmedSynthetic, setConfirmedSynthetic] = useState(false);
-  const [state, setState] = useState<ImportState>({ status: 'idle' });
+  const [state, setState] = useState<FlowState>({ status: 'idle' });
 
-  async function validate(event: FormEvent<HTMLFormElement>) {
+  async function startEvaluation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!file || !confirmedSynthetic) return;
-    if (file.size > maximumBytes) {
+    if (!csv || !contextFile || !confirmedSynthetic) return;
+    if (csv.size > maximumBytes || contextFile.size > 256 * 1024) {
       setState({
         status: 'error',
-        message: 'Choose a CSV file smaller than 10 MiB.',
+        message:
+          'CSV files must be under 10 MiB and context JSON under 256 KiB.',
       });
       return;
     }
-
     const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '');
     if (!apiUrl) {
       setState({
         status: 'error',
         message:
-          'CSV validation API is not configured. Set NEXT_PUBLIC_API_BASE_URL and enable development CSV validation on the API.',
+          'Development API is not configured. Set NEXT_PUBLIC_API_BASE_URL.',
       });
       return;
     }
 
-    setState({ status: 'submitting' });
+    const client = createFishEyeApiClient(apiUrl);
+    setState({
+      status: 'working',
+      step: 'Checking the CSV and context files…',
+    });
     try {
-      const client = createFishEyeApiClient(apiUrl);
-      const { data, error, response } = await client.POST(
+      let context: unknown;
+      try {
+        context = JSON.parse(await contextFile.text());
+      } catch {
+        throw new Error('Context file must contain valid JSON.');
+      }
+      if (
+        typeof context !== 'object' ||
+        context === null ||
+        Array.isArray(context)
+      ) {
+        throw new Error(
+          'Context JSON must be an object matching the FishEye context template.',
+        );
+      }
+      const syntheticContext = context as Record<string, unknown>;
+
+      const validation = await client.POST(
         '/api/v1/datasets/imports/validate',
         {
           headers: {
             'Content-Type': 'text/csv',
             'X-FishEye-Synthetic-Data-Confirmed': 'true',
           },
-          body: await file.text(),
+          body: await csv.text(),
         },
       );
-
-      if (!response.ok) {
-        throw new Error(getApiErrorMessage(error, response.status));
+      if (!validation.response.ok)
+        throw new Error(
+          apiMessage(validation.error, validation.response.status),
+        );
+      if (!isValidationResponse(validation.data))
+        throw new Error('CSV validation returned an unexpected response.');
+      if (!validation.data.valid) {
+        setState({ status: 'invalid', result: validation.data });
+        return;
       }
-      if (!isValidationResponse(data)) {
-        throw new Error('Validation API returned an unexpected response.');
+      if (validation.data.schema_version !== 'fisheye.events.v2') {
+        throw new Error(
+          'Evaluation runs require an events v2 CSV with baseline, calibration, and evaluation partitions.',
+        );
       }
 
-      const result = data;
       setState({
-        status: result.valid ? 'success' : 'invalid',
-        result,
+        status: 'working',
+        step: 'Importing the confirmed synthetic dataset…',
+      });
+      const imported = await client.POST('/api/v1/datasets/imports', {
+        headers: {
+          'Content-Type': 'text/csv',
+          'X-FishEye-Synthetic-Data-Confirmed': 'true',
+        },
+        body: await csv.text(),
+      });
+      if (!imported.response.ok || !imported.data)
+        throw new Error(apiMessage(imported.error, imported.response.status));
+
+      const idempotencyKey = crypto.randomUUID();
+      setState({
+        status: 'working',
+        step: 'Creating a durable evaluation run…',
+      });
+      const queued = await client.POST('/api/v1/runs', {
+        headers: { 'Idempotency-Key': idempotencyKey },
+        body: {
+          dataset_id: imported.data.dataset_id,
+          synthetic_context: syntheticContext,
+        },
+      });
+      if (!queued.response.ok || !queued.data)
+        throw new Error(apiMessage(queued.error, queued.response.status));
+
+      let run = queued.data;
+      for (
+        let attempt = 0;
+        attempt < 60 && (run.status === 'queued' || run.status === 'running');
+        attempt += 1
+      ) {
+        setState({
+          status: 'working',
+          step:
+            run.status === 'queued'
+              ? 'Waiting for a worker to claim this run…'
+              : 'Worker is processing the evaluation…',
+        });
+        await pause(2000);
+        const latest = await client.GET('/api/v1/runs/{run_id}', {
+          params: { path: { run_id: run.run_id } },
+        });
+        if (!latest.response.ok || !latest.data)
+          throw new Error(apiMessage(latest.error, latest.response.status));
+        run = latest.data;
+      }
+      setState({
+        status: 'completed',
+        datasetId: imported.data.dataset_id,
+        run,
       });
     } catch (error) {
       setState({
         status: 'error',
         message:
-          error instanceof TypeError
-            ? 'Could not reach the validation API. Check the connection and try again.'
-            : error instanceof SyntaxError
-              ? 'Validation API returned an unexpected response.'
-              : error instanceof Error
-                ? error.message
-                : 'Could not reach the validation API. Check the connection and try again.',
+          error instanceof Error
+            ? error.message
+            : 'The evaluation could not be started.',
       });
     }
   }
@@ -123,42 +190,64 @@ export function DatasetImport() {
     >
       <div className="dataset-import-heading">
         <div>
-          <p className="metric-label">SYNTHETIC DATA · SCHEMA V1</p>
-          <h2 id="dataset-import-title">Validate a CSV dataset</h2>
+          <p className="metric-label">DEVELOPMENT · SYNTHETIC DATA ONLY</p>
+          <h2 id="dataset-import-title">Run an evaluation</h2>
           <p className="card-intro">
-            Check the event format before an import workflow is available.
-            Validation does not save the file or start a detection run.
+            Upload an events v2 CSV and its employee context JSON. The API
+            stores the dataset, queues a durable run, and a worker processes it.
+            The experimental method has not been benchmarked.
           </p>
         </div>
         <a
           className="template-link"
-          href="/templates/fisheye-events-v1.csv"
+          href="/templates/fisheye-events-v2.csv"
           download
         >
           Download CSV template
         </a>
       </div>
 
-      <form className="dataset-import-form" onSubmit={validate}>
+      <form className="dataset-import-form" onSubmit={startEvaluation}>
         <div className="field">
-          <label htmlFor="synthetic-csv">CSV file</label>
+          <label htmlFor="synthetic-csv">Synthetic events CSV</label>
           <input
             id="synthetic-csv"
             type="file"
             accept=".csv,text/csv"
-            aria-describedby="csv-file-help"
-            disabled={state.status === 'submitting'}
+            disabled={state.status === 'working'}
             onChange={(event) => {
-              setFile(event.target.files?.[0] ?? null);
+              setCsv(event.target.files?.[0] ?? null);
               setConfirmedSynthetic(false);
               setState({ status: 'idle' });
             }}
           />
-          <p className="field-help" id="csv-file-help">
-            UTF-8 CSV, maximum 10 MiB. Uses the employee-day evaluation unit.
+          <p className="field-help">
+            Events v2 with baseline, calibration, and evaluation partitions;
+            maximum 10 MiB.
           </p>
         </div>
-
+        <div className="field">
+          <label htmlFor="synthetic-context">
+            Synthetic employee context JSON
+          </label>
+          <input
+            id="synthetic-context"
+            type="file"
+            accept=".json,application/json"
+            disabled={state.status === 'working'}
+            onChange={(event) => {
+              setContextFile(event.target.files?.[0] ?? null);
+              setState({ status: 'idle' });
+            }}
+          />
+          <p className="field-help">
+            Must define role permissions and schedules for every role and
+            employee in the CSV.{' '}
+            <a href="/templates/fisheye-context-v1.json" download>
+              Download context template
+            </a>
+          </p>
+        </div>
         <label className="synthetic-confirmation">
           <input
             type="checkbox"
@@ -166,72 +255,138 @@ export function DatasetImport() {
             onChange={(event) => setConfirmedSynthetic(event.target.checked)}
           />
           <span>
-            I confirm this file contains synthetic employee and event data only.
+            I confirm both files contain synthetic employee and event data only.
           </span>
         </label>
         <p className="field-help synthetic-caveat">
-          FishEye cannot verify data provenance from CSV contents. Do not upload
-          real employee, customer, bank, credential, or production log data.
+          Do not upload real employee, customer, bank, credential, or production
+          log data.
         </p>
-
         <div className="dataset-import-actions">
           <Button
             type="submit"
             disabled={
-              !file || !confirmedSynthetic || state.status === 'submitting'
+              !csv ||
+              !contextFile ||
+              !confirmedSynthetic ||
+              state.status === 'working'
             }
           >
-            {state.status === 'submitting' ? 'Checking CSV…' : 'Validate CSV'}
+            {state.status === 'working'
+              ? 'Processing…'
+              : 'Import and run evaluation'}
           </Button>
-          {file ? <span className="selected-file">{file.name}</span> : null}
+          {csv ? (
+            <span className="selected-file">
+              {csv.name}
+              {contextFile ? ` · ${contextFile.name}` : ''}
+            </span>
+          ) : null}
         </div>
       </form>
 
-      {state.status === 'submitting' ? (
+      {state.status === 'working' ? (
         <p className="import-state" role="status">
-          Checking the CSV schema…
+          {state.step}
         </p>
       ) : null}
       {state.status === 'error' ? (
         <div className="import-state import-state-error" role="alert">
-          <strong>Validation could not be completed</strong>
+          <strong>Evaluation could not be completed</strong>
           <p>{state.message}</p>
         </div>
       ) : null}
       {state.status === 'invalid' ? (
-        <ValidationSummary result={state.result} />
+        <div className="import-state import-state-error" role="alert">
+          <strong>CSV needs corrections</strong>
+          <p>{state.result.errors.join(' ') || 'The CSV is invalid.'}</p>
+        </div>
       ) : null}
-      {state.status === 'success' ? (
-        <ValidationSummary result={state.result} />
+      {state.status === 'completed' ? (
+        <RunSummary datasetId={state.datasetId} run={state.run} />
       ) : null}
     </section>
   );
 }
 
-function ValidationSummary({ result }: { result: ValidationResponse }) {
+function RunSummary({
+  datasetId,
+  run,
+}: {
+  datasetId: string;
+  run: RunResponse;
+}) {
   return (
-    <div
-      className={`import-state${result.valid ? '' : ' import-state-error'}`}
-      role={result.valid ? 'status' : 'alert'}
-    >
+    <div className="import-state" role="status">
       <strong>
-        {result.valid ? 'CSV schema is valid' : 'CSV needs corrections'}
+        {run.status === 'completed'
+          ? 'Evaluation run completed'
+          : run.status === 'failed'
+            ? 'Evaluation run failed'
+            : `Run ${run.status}`}
       </strong>
       <p>
-        {result.row_count} event rows · {result.employee_day_count}{' '}
-        employee-days · {result.schema_version}
+        Dataset {datasetId} · Run {run.run_id} · {run.methodology_version}
       </p>
-      {result.errors.length > 0 ? (
-        <ul className="import-errors">
-          {result.errors.map((error, index) => (
-            <li key={`${index}-${error}`}>{error}</li>
-          ))}
-        </ul>
-      ) : null}
+      {run.error_code ? <p>Worker error: {run.error_code}</p> : null}
+      {run.metrics ? <RunMetrics metrics={run.metrics} /> : null}
       <p className="import-result-caveat">
-        This is a format check only. No dataset was saved, no detector ran, and
-        no risk score or evaluation result was created.
+        {run.claim_status}. Synthetic development result only; this is not
+        evidence of real-world detection performance.
       </p>
     </div>
   );
+}
+
+function RunMetrics({ metrics }: { metrics: Record<string, unknown> }) {
+  const comparisons = metrics.comparisons;
+  if (typeof comparisons !== 'object' || comparisons === null) return null;
+  return (
+    <div className="table-wrap">
+      <table className="data-table">
+        <caption>Held-out synthetic employee-day comparison</caption>
+        <thead>
+          <tr>
+            <th scope="col">Method</th>
+            <th scope="col">Precision</th>
+            <th scope="col">Recall</th>
+            <th scope="col">False-positive rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(comparisons).map(([name, item]) => {
+            const report =
+              typeof item === 'object' && item !== null
+                ? (item as Record<string, unknown>).report
+                : null;
+            const values =
+              typeof report === 'object' && report !== null
+                ? ((report as Record<string, unknown>).metrics as
+                    Record<string, unknown> | undefined)
+                : undefined;
+            const ratio = (key: string) => {
+              const item = values?.[key];
+              return typeof item === 'object' && item !== null
+                ? (item as Record<string, unknown>).value
+                : undefined;
+            };
+            return (
+              <tr key={name}>
+                <td>{name.replaceAll('_', ' ')}</td>
+                <td>{percent(ratio('precision'))}</td>
+                <td>{percent(ratio('recall'))}</td>
+                <td>{percent(ratio('false_positive_rate'))}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function percent(value: unknown): string {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? `${(value * 100).toFixed(1)}%`
+    : 'Unavailable';
 }

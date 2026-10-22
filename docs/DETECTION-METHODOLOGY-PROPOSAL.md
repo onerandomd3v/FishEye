@@ -1,10 +1,11 @@
 # FishEye v1 detection and evaluation proposal
 
-> **Status: partial decisions approved; scoring proposal still requires review.**
-> The employee-day unit, separate calibration partition, and maximum 5
-> percentage-point absolute recall drop are agreed. The proposed detector
-> weights, thresholds, baseline behavior and benchmark protocol are not yet
-> approved. No held-out benchmark or performance claim is authorized.
+> **Status: v1 experimental policy approved provisionally.**
+> The employee-day unit, separate calibration partition, 5 percentage-point
+> recall tolerance, baseline rules, detector weights, thresholds, and calibration
+> procedure are approved for implementation and synthetic demos. These choices
+> are not scientifically validated. No held-out benchmark or effectiveness claim
+> is authorized until its dataset and protocol are frozen and reviewed.
 
 ## Purpose
 
@@ -30,7 +31,7 @@ recall.
 - Any result must report errors, denominators, provenance and synthetic-world
   limitations. No prior presentation metrics are defaults or acceptance goals.
 
-## Proposed first evaluation protocol
+## Approved provisional v1 evaluation protocol
 
 | Topic | Proposal | Reason |
 | --- | --- | --- |
@@ -44,18 +45,25 @@ recall.
 | Metrics | Employee-day TP/FP/TN/FN; precision, recall, FPR; alerts per 100 evaluation employee-days; detection delay only if onset timestamps are added | Avoids fabricating delay from fields not supplied. |
 | Undefined ratios | Return `null` plus an explanatory status when the denominator is zero | Avoids substituting misleading perfect scores. |
 
-The v1 implementation exposes the agreed split contract and a deterministic
-research-engine proposal. It does not make the unreviewed scoring choices
-approved or produce a benchmark result. Current labels distinguish threat from
-benign outcomes, but the CSV does not identify scenario families; per-scenario
-reporting requires a future versioned scenario identifier rather than treating
-the threat/benign label as a scenario ID.
+Use every available employee-day in the baseline partition as history; do not
+apply an invented calendar lookback. Personal volume history requires at least
+three baseline employee-days. If that is unavailable, use the role median only
+when the role has at least three baseline employee-days. If neither baseline is
+available, do not flag high volume and include an insufficient-history reason.
+Calibration and evaluation rows never contribute to these histories.
 
-## Current code proposal (not approved)
+The v1 implementation follows this provisional policy for synthetic demos. It
+does not produce a validated benchmark result. Current labels distinguish threat
+from benign outcomes, but the CSV does not identify scenario families;
+per-scenario reporting requires a future versioned scenario identifier rather
+than treating the threat/benign label as a scenario ID.
 
-These values are implemented only to make the research engine testable and
-reviewable. They must not be presented as scientifically validated or used for
-a final held-out benchmark until reviewers approve or replace them.
+## Approved provisional v1 scoring policy (experimental only)
+
+The following values are approved for implementation and synthetic demos. They
+remain experimental and must not be presented as scientifically validated or
+used for a final held-out benchmark until a benchmark protocol and dataset are
+frozen and reviewed.
 
 | Candidate | Proposed score behavior |
 | --- | --- |
@@ -66,39 +74,36 @@ a final held-out benchmark until reviewers approve or replace them.
 | Novelty | Device and location familiarity use only that employee's baseline observations. With no such history, nonempty devices/locations are marked unseen and the employee-day carries an insufficient-history reason. |
 | Calibration | For tuned simple and contextual candidates, choose the strictest observed calibration-score threshold meeting simple-rule calibration recall minus 0.05. Calibration labels never tune on held-out evaluation. |
 
-Scores are review priority, not proof of malicious intent. Thresholds, feature
-definitions, baseline selection and score aggregation remain open for review.
+Scores are review priority, not proof of malicious intent. The provisional
+thresholds, feature definitions, baseline selection and score aggregation are
+versioned for synthetic experiments and still require validation before any
+benchmark or effectiveness claim.
 
-## Decisions still required before detector implementation
+## Decisions still required before held-out benchmarking or release
 
-1. **Baseline history:** define the history span and minimum data needed for an
-   employee-specific baseline; specify the role-level cold-start behavior.
-2. **Simple-rule baseline:** approve its signals and rule behavior, including
-   the off-hours and out-of-role guardrails.
-3. **Scoring and calibration:** review contextual signals/weights, severity
-   thresholds, baseline threshold and threshold-selection algorithm. The current
-   calibration code chooses the strictest observed score threshold meeting the
-   simple-rule calibration recall minus 0.05; reviewers must approve this exact
-   policy before a benchmark.
-4. **Benchmark dataset:** choose total size, scenario balance, generation
+1. **Benchmark dataset:** choose total size, scenario balance, generation
    assumptions and independent seeds before benchmarking.
-5. **Scenario identity:** add a versioned scenario-family identifier if
+2. **Scenario identity:** add a versioned scenario-family identifier if
    per-scenario metrics are required; current labels only encode threat/benign.
-6. **Detection delay:** decide whether to add an explicit scenario onset time
+3. **Detection delay:** decide whether to add an explicit scenario onset time
    to a future dataset schema. The current CSV cannot support a reliable delay
    metric by itself.
+4. **Authentication provider and roles:** decide before enabling protected
+   console access outside the development-only workflow.
 
-## Implementation sequence after review
+## Implementation sequence
 
-1. Review the proposal weights, baseline, calibration method, thresholds and
-   scenario balance; record approved choices in a versioned config.
-2. Extend the CSV/sidecar boundary as needed for scenario identity and synthetic
-   context, with backward-compatible migration tests.
-3. Wire artifact loading and evaluation into a durable worker run with immutable
+1. Store this approved experimental policy version and its configuration hash
+   with every run. **Implemented for development runs.**
+2. Wire artifact loading and evaluation into a durable worker run with immutable
    provenance; expose actual stored results through the API and console.
+   **Implemented for development runs.**
+3. Decide whether scenario-family IDs or onset timestamps are needed before
+   extending the dataset schema.
 4. Freeze a benchmark dataset and protocol, then run held-out evaluation only
-   after the methodology review.
+   after that review.
 
-The current research engine is a pure development library function over prepared
-frames. CSV validation/import/preparation do not yet invoke it, persist scores,
-create an evaluation run, or establish effectiveness.
+The development console can validate and import synthetic v2 CSV, queue a
+durable run with a context sidecar, and display worker-produced metrics and
+findings. This workflow is unauthenticated and must stay development-only. The
+provisional method does not establish effectiveness.

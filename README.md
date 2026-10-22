@@ -13,7 +13,7 @@ pnpm db:start
 pnpm dev:landing
 ```
 
-In separate terminals, start the console and API with `pnpm dev:console` and `pnpm dev:api`. `pnpm dev:worker` starts the worker scaffold; it logs that no jobs are configured and exits.
+In separate terminals, start the console and API with `pnpm dev:console` and `pnpm dev:api`. After enabling the local development flags and configuring encrypted artifact storage, start the durable evaluation worker with `uv run --package fisheye-worker fisheye-worker work`.
 
 For database checks, start a disposable PostgreSQL test database and set `FISHEYE_TEST_DATABASE_URL` as described in [Development](docs/DEVELOPMENT.md). Run all checks with `pnpm check`.
 
