@@ -1151,11 +1151,9 @@ def _require_dev_evaluation_runs() -> tuple[str, ArtifactStore, bytes]:
 
 
 def _feature_enabled(development_flag: str) -> bool:
-    local_enabled = os.getenv("FISHEYE_ENV") == "development" and os.getenv(development_flag) == "1"
-    hosted_demo_enabled = (
-        os.getenv("FISHEYE_ENV") == "production" and os.getenv("FISHEYE_SYNTHETIC_DEMO_MODE") == "1"
-    )
-    return local_enabled or hosted_demo_enabled
+    # These routes remain local-development-only until a shared synthetic-data
+    # boundary is approved and documented in an architecture decision.
+    return os.getenv("FISHEYE_ENV") == "development" and os.getenv(development_flag) == "1"
 
 
 def _local_data_reset_enabled() -> bool:
