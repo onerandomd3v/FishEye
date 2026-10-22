@@ -1,6 +1,7 @@
 """FishEye API entrypoint; no live banking integrations in the MVP."""
 
 import asyncio
+import csv
 import hashlib
 import io
 import json
@@ -9,6 +10,7 @@ from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal, cast
+from urllib.parse import quote, unquote
 
 import polars as pl
 from cryptography.fernet import Fernet, InvalidToken
@@ -23,6 +25,12 @@ from fisheye_persistence.datasets import (
     get_dataset,
     import_dataset,
     list_datasets,
+    read_dataset_source,
+)
+from fisheye_persistence.reviews import (
+    FindingReviewRecord,
+    create_finding_review,
+    list_finding_reviews,
 )
 from fisheye_persistence.runs import (
     EvaluationRunRecord,
@@ -171,6 +179,41 @@ class RunFindingsResponse(BaseModel):
     total: int
     has_more: bool
     claim_status: str
+
+
+class FindingReviewResponse(BaseModel):
+    review_id: str
+    decision: Literal["under_review", "reviewed_benign", "escalated"]
+    note: str | None
+    reviewer_label: str
+    created_at: str
+
+
+class FindingEvidenceEventResponse(BaseModel):
+    event_id: str
+    employee_id: str
+    role_id: str
+    department_id: str
+    event_timestamp_utc: str
+    event_type: str
+    system: str
+    device_id: str | None
+    location_label: str | None
+    record_count: int | None
+
+
+class FindingDetailResponse(BaseModel):
+    finding: RunFindingResponse
+    events: list[FindingEvidenceEventResponse]
+    reviews: list[FindingReviewResponse]
+    review_mode: Literal["local_development_unauthenticated"] = "local_development_unauthenticated"
+
+
+class FindingReviewCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision: Literal["under_review", "reviewed_benign", "escalated"]
+    note: str | None = Field(default=None, max_length=1000)
 
 
 @lru_cache(maxsize=4)
@@ -543,7 +586,9 @@ def get_evaluation_findings(
     page = selected.slice(offset, limit).to_dicts()
     items = [
         RunFindingResponse(
-            finding_id=f"{run_id}:{detector}:{row['employee_id']}:{row['employee_day_utc']}",
+            finding_id=_finding_id(
+                run_id, detector, row["employee_id"], row["employee_day_utc"].isoformat()
+            ),
             run_id=run_id,
             employee_id=row["employee_id"],
             employee_day_utc=row["employee_day_utc"].isoformat(),
@@ -563,6 +608,199 @@ def get_evaluation_findings(
         total=total,
         has_more=offset + len(items) < total,
         claim_status=str(metrics.get("claim_status", "provisional_experiment; not_benchmarked")),
+    )
+
+
+@app.get(
+    "/api/v1/runs/{run_id}/findings/{finding_id}",
+    response_model=FindingDetailResponse,
+    responses={status_code: {"model": ApiErrorResponse} for status_code in (404, 409, 503)},
+)
+def get_finding_detail(run_id: str, finding_id: str) -> FindingDetailResponse:
+    """Read a stored finding and only the synthetic source events it references."""
+    database_url, artifact_root, encryption_key = _require_dev_evaluation_runs()
+    record, dataset = _get_run_and_dataset(run_id, database_url)
+    finding = _resolve_stored_finding(
+        record, finding_id, artifact_root=artifact_root, encryption_key=encryption_key
+    )
+    events = _read_finding_events(dataset, finding, artifact_root, encryption_key)
+    try:
+        factory = _session_factory(database_url)
+        with factory() as session:
+            reviews = list_finding_reviews(session, run_id=run_id, finding_id=finding_id)
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail="Finding reviews could not be read.") from None
+    return FindingDetailResponse(
+        finding=finding,
+        events=events,
+        reviews=[_finding_review_response(review) for review in reviews],
+    )
+
+
+@app.post(
+    "/api/v1/runs/{run_id}/findings/{finding_id}/reviews",
+    response_model=FindingReviewResponse,
+    status_code=201,
+    responses={status_code: {"model": ApiErrorResponse} for status_code in (404, 409, 503)},
+)
+def record_finding_review(
+    run_id: str,
+    finding_id: str,
+    body: FindingReviewCreateRequest,
+) -> FindingReviewResponse:
+    """Append a local development review; this endpoint does not authenticate an analyst."""
+    database_url, artifact_root, encryption_key = _require_dev_evaluation_runs()
+    record, _ = _get_run_and_dataset(run_id, database_url)
+    _resolve_stored_finding(
+        record, finding_id, artifact_root=artifact_root, encryption_key=encryption_key
+    )
+    try:
+        factory = _session_factory(database_url)
+        with factory() as session:
+            review = create_finding_review(
+                session,
+                run_id=run_id,
+                finding_id=finding_id,
+                decision=body.decision,
+                note=body.note.strip() if body.note and body.note.strip() else None,
+            )
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail="Finding review could not be saved.") from None
+    return _finding_review_response(review)
+
+
+def _get_run_and_dataset(
+    run_id: str, database_url: str
+) -> tuple[EvaluationRunRecord, DatasetRecord]:
+    try:
+        factory = _session_factory(database_url)
+        with factory() as session:
+            record = get_run(session, run_id)
+            dataset = get_dataset(session, record.dataset_id) if record else None
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail="Evaluation run could not be read.") from None
+    if record is None or dataset is None:
+        raise HTTPException(status_code=404, detail="Evaluation run was not found.")
+    if record.status != "completed" or not record.result_artifact_uri:
+        raise HTTPException(status_code=409, detail="Findings are available after a run completes.")
+    return record, dataset
+
+
+def _resolve_stored_finding(
+    record: EvaluationRunRecord,
+    finding_id: str,
+    *,
+    artifact_root: Path,
+    encryption_key: bytes,
+) -> RunFindingResponse:
+    parts = finding_id.split(":", 3)
+    if len(parts) != 4 or parts[0] != record.id:
+        raise HTTPException(status_code=404, detail="Finding was not found in this run.")
+    _, detector, encoded_employee_id, day = parts
+    employee_id = unquote(encoded_employee_id)
+    if detector not in {"simple_rule", "tuned_rules", "contextual"}:
+        raise HTTPException(status_code=404, detail="Finding was not found in this run.")
+    try:
+        target_day = datetime.strptime(day, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Finding was not found in this run.") from None
+    if not record.result_artifact_uri:
+        raise HTTPException(status_code=409, detail="Findings are available after a run completes.")
+    try:
+        frame = _read_findings_frame(
+            record.result_artifact_uri,
+            record.result_manifest_sha256 or "",
+            artifact_root,
+            encryption_key,
+        )
+    except (OSError, RuntimeError, ValueError):
+        raise HTTPException(
+            status_code=503, detail="Run findings could not be read safely."
+        ) from None
+    metrics = record.metrics_json or {}
+    comparisons = metrics.get("comparisons", {})
+    detector_result = comparisons.get(detector, {}) if isinstance(comparisons, dict) else {}
+    threshold = detector_result.get("threshold") if isinstance(detector_result, dict) else None
+    if not isinstance(threshold, (int, float)):
+        raise HTTPException(status_code=503, detail="Run detector metadata is incomplete.")
+    score_column = {
+        "simple_rule": "simple_score",
+        "tuned_rules": "tuned_score",
+        "contextual": "contextual_score",
+    }[detector]
+    selected = frame.filter(
+        (pl.col(score_column) >= threshold)
+        & (pl.col("employee_id") == employee_id)
+        & (pl.col("employee_day_utc").cast(pl.String) == day)
+    )
+    if selected.is_empty():
+        raise HTTPException(status_code=404, detail="Finding was not found in this run.")
+    row = selected.row(0, named=True)
+    stem = score_column.removesuffix("_score")
+    return RunFindingResponse(
+        finding_id=finding_id,
+        run_id=record.id,
+        employee_id=employee_id,
+        employee_day_utc=target_day.isoformat(),
+        detector=detector,  # type: ignore[arg-type]
+        score=row[score_column],
+        severity=row[f"{stem}_severity"],
+        reason_codes=row[f"{stem}_reason_codes"],
+        evidence_event_ids=row[f"{stem}_evidence_event_ids"],
+    )
+
+
+def _finding_id(run_id: str, detector: str, employee_id: str, day: str) -> str:
+    """Encode employee IDs so reserved delimiters cannot corrupt finding identity."""
+    return f"{run_id}:{detector}:{quote(employee_id, safe='')}:{day}"
+
+
+def _read_finding_events(
+    dataset: DatasetRecord,
+    finding: RunFindingResponse,
+    artifact_root: Path,
+    encryption_key: bytes,
+) -> list[FindingEvidenceEventResponse]:
+    try:
+        source = read_dataset_source(dataset, artifact_root, encryption_key).decode("utf-8-sig")
+        wanted = set(finding.evidence_event_ids)
+        events = []
+        for row in csv.DictReader(io.StringIO(source)):
+            if row.get("event_id") not in wanted:
+                continue
+            events.append(
+                FindingEvidenceEventResponse(
+                    event_id=row["event_id"],
+                    employee_id=row["employee_id"],
+                    role_id=row["role_id"],
+                    department_id=row["department_id"],
+                    event_timestamp_utc=row["event_timestamp_utc"],
+                    event_type=row["event_type"],
+                    system=row["system"],
+                    device_id=row.get("device_id") or None,
+                    location_label=row.get("location_label") or None,
+                    record_count=int(row["record_count"]) if row.get("record_count") else None,
+                )
+            )
+    except (OSError, RuntimeError, InvalidToken, UnicodeDecodeError, KeyError, ValueError):
+        raise HTTPException(
+            status_code=503, detail="Finding evidence could not be read safely."
+        ) from None
+    if len(events) != len(wanted):
+        raise HTTPException(status_code=503, detail="Finding evidence failed its integrity check.")
+    return sorted(events, key=lambda event: (event.event_timestamp_utc, event.event_id))
+
+
+def _finding_review_response(record: FindingReviewRecord) -> FindingReviewResponse:
+    created_at = record.created_at
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=UTC)
+    return FindingReviewResponse(
+        review_id=record.id,
+        decision=record.decision,  # type: ignore[arg-type]
+        note=record.note,
+        reviewer_label=record.reviewer_label,
+        created_at=created_at.isoformat(),
     )
 
 

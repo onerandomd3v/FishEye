@@ -35,6 +35,8 @@ The console's demo login and signed session are enabled only by the Next.js deve
 
 Copy `.env.example` to `.env` for local API configuration. Enable `FISHEYE_ENABLE_DEV_CSV_VALIDATION`, `FISHEYE_ENABLE_DEV_CSV_IMPORT`, `FISHEYE_ENABLE_DEV_DATASET_READS`, and `FISHEYE_ENABLE_DEV_EVALUATION_RUNS` only for local development. Set an artifact encryption key, run `pnpm db:migrate`, and use the same database, artifact directory, and key for the API and worker. Set `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000` in the console `.env.local`. Run the worker command above in a separate terminal. These unauthenticated endpoints are development-only and must remain disabled outside local development; the policy is provisional and does not support benchmark or production claims.
 
+Completed development runs populate the overview and investigation pages from stored API results. Finding review actions append local development records labeled `Local development user (not authenticated)`; the signed console preview does not authenticate requests to FastAPI. Do not expose the development API or review writes to shared or production environments.
+
 ## Checks
 
 ```sh

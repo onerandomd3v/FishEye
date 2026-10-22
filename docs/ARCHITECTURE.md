@@ -156,7 +156,7 @@ The root should be one Git repository. `apps/web` and `apps/backend` are organiz
 - `GET /events` (server-paginated, authorized)
 - `GET /scenarios`, `POST /runs`, `GET /runs/{id}`
 - `GET /runs/{id}/metrics`, `GET /runs/{id}/findings`
-- `GET /datasets` and `GET /datasets/{id}` (development-only, paginated metadata reads), `POST /datasets/imports/validate` (development-only schema validation), and `POST /datasets/imports` (development-only import of validated synthetic CSV into an immutable source artifact). `POST /runs` queues an idempotent development-only run using an encrypted context sidecar; `GET /runs`, `GET /runs/{id}`, and `GET /runs/{id}/findings` expose worker status and persisted outputs. The worker claims runs with expiring database leases, retries failures within a bound, prepares encrypted Parquet artifacts, evaluates the provisional policy, and publishes immutable encrypted results. These endpoints are unauthenticated and must remain disabled outside local development. See [DATASET-CSV.md](./DATASET-CSV.md). Production authentication/authorization remains future work.
+- `GET /datasets` and `GET /datasets/{id}` (development-only, paginated metadata reads), `POST /datasets/imports/validate` (development-only schema validation), and `POST /datasets/imports` (development-only import of validated synthetic CSV into an immutable source artifact). `POST /runs` queues an idempotent development-only run using an encrypted context sidecar; `GET /runs`, `GET /runs/{id}`, and `GET /runs/{id}/findings` expose worker status and persisted outputs. `GET /runs/{id}/findings/{finding_id}` returns a stored finding and only its referenced source events; `POST /runs/{id}/findings/{finding_id}/reviews` appends a review record. The worker claims runs with expiring database leases, retries failures within a bound, prepares encrypted Parquet artifacts, evaluates the provisional policy, and publishes immutable encrypted results. These endpoints are unauthenticated and must remain disabled outside local development. Development review records explicitly identify the actor as unauthenticated local development; they are not production analyst audit records. See [DATASET-CSV.md](./DATASET-CSV.md). Production authentication/authorization remains future work.
 
 Requests and responses require stable IDs, explicit timestamps/timezones, pagination contracts, error codes and a `schema_version` where appropriate. Document authorization rules per endpoint. Never let the browser trigger an arbitrary shell/script execution.
 
@@ -188,6 +188,8 @@ Only necessary metadata and indexable views need PostgreSQL rows. Large event co
 **Artifact integrity:** Hash bytes (SHA-256), include schema and dataset versions, freeze experiment splits, and preserve code commit, random seed, algorithm configuration, library versions and scoring time window. Do not silently overwrite published run artifacts.
 
 **Identity separation:** Synthetic employee IDs are not login accounts. `analyst_user` represents the authenticated application operator and must be modeled independently.
+
+The current local development review table is append-only and records decision, note, finding/run IDs, timestamp, and the explicit label `Local development user (not authenticated)`. It does not establish reviewer identity or satisfy production audit requirements.
 
 ## 8. Detection and scoring design
 

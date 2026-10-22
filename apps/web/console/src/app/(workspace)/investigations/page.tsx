@@ -1,4 +1,4 @@
-import { FixtureNotice, PageHeading } from '../shared';
+import { PageHeading } from '../shared';
 import { InvestigationList } from './list';
 
 export default function InvestigationsPage() {
@@ -6,9 +6,8 @@ export default function InvestigationsPage() {
     <>
       <PageHeading
         title="Investigations"
-        description="Review the synthetic examples and the evidence a future detector would need to explain."
+        description="Review stored findings from completed synthetic evaluation runs."
       />
-      <FixtureNotice />
       <InvestigationList />
     </>
   );
