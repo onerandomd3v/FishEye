@@ -5,9 +5,15 @@ repository `onerandomd3v/FishEye`. Both use the same backend image and the monor
 root as build context:
 
 ```text
-Build context: .
+Build context: repository root
 Dockerfile: infra/docker/backend.Dockerfile
 ```
+
+The root `brimble.toml` configures both `fisheye-api` and `fisheye-worker` from
+that Dockerfile. It sets the production synthetic-demo flags, R2 bucket and
+prefix, verified console CORS origin, API health check, and worker privacy.
+Secret values are required through Brimble's environment-variable manager and
+are never stored in this file. The API runs the Alembic upgrade before startup.
 
 Use a **Web Service** for the API with this start command:
 
@@ -47,7 +53,5 @@ and the existing upload limit.
 Local development remains on filesystem storage by default. The development-only
 workspace reset remains local-storage-only and is not enabled by hosted demo mode.
 
-Do not create or scale services until the Brimble workspace, current resource
-estimate, and approved budget are confirmed. Do not point FishEye at another
-project's Neon database; confirm the intended existing Neon project before running
-migrations.
+Do not point FishEye at another project's Neon database. Confirm the intended
+existing Neon project before adding `DATABASE_URL` or running migrations.
