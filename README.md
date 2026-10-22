@@ -163,7 +163,7 @@ We test three ways of detecting suspicious activity using the **same simulated b
 - **Improved rules:** Use adjusted conditions to make the comparison fairer.
 - **FishEye's contextual approach:** Consider employee behaviour and job roles before deciding which activities need attention.
 
-We measure **false alarms** (harmless activity flagged as suspicious) and **missed threats** (genuine suspicious activity not detected), along with other detection results. **Success means fewer unnecessary alerts without missing more genuine threats.** Our first version tests this using synthetic data; it does not prove how FishEye would perform inside a real bank.
+The Evaluation screen reports **precision, recall, false-positive rate, alerts per 100 employee-days and missed threats**. Detection delay is **not available** in the current version. **Success means fewer unnecessary alerts without missing more genuine threats.** These results come from synthetic data; they do not prove how FishEye would perform inside a real bank.
 
 ## Project status and limitations
 
