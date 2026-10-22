@@ -1,4 +1,4 @@
-# How I used AI to build FishEye
+# How We used AI to build FishEye
 
 AI helped me research, plan, build and review FishEye. I used it as a **research and development assistant**, not as a replacement for making product decisions or checking the results.
 
