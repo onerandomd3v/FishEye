@@ -14,7 +14,7 @@ jobs:
     name: release-readiness
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Report release state
         run: |
           echo 'Builds and required checks are validated separately by pull request CI.'
