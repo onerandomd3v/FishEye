@@ -1,0 +1,18 @@
+{
+  "schema_version": "fisheye.context.v1",
+  "roles": [
+    {
+      "role_id": "role-teller",
+      "authorized_systems": ["core"]
+    }
+  ],
+  "employee_schedules": [
+    {
+      "employee_id": "emp-demo-1",
+      "timezone": "Africa/Lagos",
+      "working_weekdays": [0, 1, 2, 3, 4, 5, 6],
+      "work_start_local": "08:00",
+      "work_end_local": "17:00"
+    }
+  ]
+}

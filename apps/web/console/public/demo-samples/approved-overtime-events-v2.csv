@@ -1,0 +1,13 @@
+event_id,employee_id,role_id,department_id,event_timestamp_utc,event_type,system,device_id,location_label,record_count,dataset_partition,ground_truth_label
+evt-ot-base-001,emp-overtime-demo,role-operations,operations,2026-01-05T09:00:00Z,sign_in,synthetic-core,device-known,lagos-office,1,baseline,
+evt-ot-base-002,emp-overtime-demo,role-operations,operations,2026-01-06T09:05:00Z,record_read,synthetic-core,device-known,lagos-office,12,baseline,
+evt-ot-base-003,emp-overtime-demo,role-operations,operations,2026-01-07T09:10:00Z,record_read,synthetic-core,device-known,lagos-office,14,baseline,
+evt-ot-cal-001,emp-overtime-demo,role-operations,operations,2026-01-08T19:20:00Z,record_read,synthetic-core,device-known,lagos-office,18,calibration,benign_scenario
+evt-ot-eval-001,emp-overtime-demo,role-operations,operations,2026-01-09T19:35:00Z,record_read,synthetic-core,device-known,lagos-office,20,evaluation,benign_scenario
+evt-ot-eval-002,emp-overtime-demo,role-operations,operations,2026-01-12T19:10:00Z,record_read,synthetic-core,device-known,lagos-office,16,evaluation,benign_scenario
+evt-access-base-001,emp-access-demo,role-teller,branch,2026-01-05T09:00:00Z,sign_in,synthetic-core,device-branch,branch-office,1,baseline,
+evt-access-base-002,emp-access-demo,role-teller,branch,2026-01-06T09:00:00Z,record_read,synthetic-core,device-branch,branch-office,9,baseline,
+evt-access-base-003,emp-access-demo,role-teller,branch,2026-01-07T09:00:00Z,record_read,synthetic-core,device-branch,branch-office,11,baseline,
+evt-access-cal-001,emp-access-demo,role-teller,branch,2026-01-08T09:00:00Z,record_export,synthetic-wire,device-unknown,unknown-location,40,calibration,threat_scenario
+evt-access-eval-001,emp-access-demo,role-teller,branch,2026-01-09T09:00:00Z,record_export,synthetic-wire,device-unknown,unknown-location,55,evaluation,threat_scenario
+evt-access-eval-002,emp-access-demo,role-teller,branch,2026-01-12T09:00:00Z,record_read,synthetic-core,device-branch,branch-office,10,evaluation,benign_scenario

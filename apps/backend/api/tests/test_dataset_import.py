@@ -171,3 +171,80 @@ def test_import_requires_artifact_encryption_key(configured_import, monkeypatch)
 
     assert response.status_code == 503
     assert "Encrypted dataset storage" in response.json()["detail"]
+
+
+def test_dataset_reads_are_disabled_without_explicit_development_flag(
+    configured_import, monkeypatch
+) -> None:
+    monkeypatch.delenv("FISHEYE_ENABLE_DEV_DATASET_READS", raising=False)
+
+    listing = TestClient(app).get("/api/v1/datasets")
+    detail = TestClient(app).get("/api/v1/datasets/unknown")
+
+    assert listing.status_code == 503
+    assert detail.status_code == 503
+
+
+def test_dataset_list_is_paginated_and_returns_only_provenance_metadata(
+    configured_import, monkeypatch
+) -> None:
+    monkeypatch.setenv("FISHEYE_ENABLE_DEV_DATASET_READS", "1")
+    first_content = make_valid_csv()
+    second_content = first_content.replace(b"evt-eval-1", b"evt-eval-2")
+    first = post_import(first_content).json()
+    second = post_import(second_content).json()
+
+    response = TestClient(app).get("/api/v1/datasets?limit=1&offset=0")
+    assert response.status_code == 200
+    page = response.json()
+    assert page["limit"] == 1
+    assert page["offset"] == 0
+    assert page["total"] == 2
+    assert page["has_more"] is True
+    assert len(page["items"]) == 1
+
+    next_page = TestClient(app).get("/api/v1/datasets?limit=1&offset=1")
+    assert next_page.status_code == 200
+    assert next_page.json()["has_more"] is False
+    assert next_page.json()["items"][0]["dataset_id"] != page["items"][0]["dataset_id"]
+
+    dataset_id = first["dataset_id"]
+    detail = TestClient(app).get(f"/api/v1/datasets/{dataset_id}")
+    assert detail.status_code == 200
+    metadata = detail.json()
+    assert metadata["dataset_id"] == dataset_id
+    assert metadata["sha256"] == first["sha256"]
+    assert metadata["manifest_sha256"] == first["manifest_sha256"]
+    assert metadata["schema_version"] == "fisheye.events.v1"
+    assert metadata["row_count"] == 2
+    assert metadata["employee_day_count"] == 2
+    assert metadata["synthetic_only"] is True
+    assert metadata["evaluation_status"] == "not_run"
+    assert metadata["preparation_status"] == "source_only"
+    assert metadata["prepared_at"] is None
+    assert metadata["analysis_manifest_sha256"] is None
+    assert metadata["ground_truth_usage"] == "evaluation_only"
+    assert metadata["run_created"] is False
+    assert metadata["risk_calculated"] is False
+    assert "artifact_uri" not in metadata
+    assert "manifest_uri" not in metadata
+    assert "ground_truth_label" not in metadata
+    assert second["dataset_id"] != dataset_id
+
+
+def test_dataset_detail_returns_not_found_for_unknown_id(configured_import, monkeypatch) -> None:
+    monkeypatch.setenv("FISHEYE_ENABLE_DEV_DATASET_READS", "1")
+
+    response = TestClient(app).get("/api/v1/datasets/unknown")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Dataset was not found."
+
+
+@pytest.mark.parametrize("query", ["limit=0", "limit=101", "offset=-1"])
+def test_dataset_list_rejects_invalid_pagination(configured_import, monkeypatch, query) -> None:
+    monkeypatch.setenv("FISHEYE_ENABLE_DEV_DATASET_READS", "1")
+
+    response = TestClient(app).get(f"/api/v1/datasets?{query}")
+
+    assert response.status_code == 422

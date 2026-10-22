@@ -61,6 +61,161 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/datasets': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Datasets
+     * @description Development-only, paginated listing of imported dataset metadata.
+     */
+    get: operations['get_datasets_api_v1_datasets_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/datasets/{dataset_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Dataset Metadata
+     * @description Development-only read of one dataset's provenance metadata.
+     */
+    get: operations['get_dataset_metadata_api_v1_datasets__dataset_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/runs': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Evaluation Runs */
+    get: operations['get_evaluation_runs_api_v1_runs_get'];
+    put?: never;
+    /**
+     * Create Evaluation Run
+     * @description Queue a development-only synthetic evaluation for a prepared-schema dataset.
+     */
+    post: operations['create_evaluation_run_api_v1_runs_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/runs/{run_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Evaluation Run */
+    get: operations['get_evaluation_run_api_v1_runs__run_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/runs/{run_id}/manifest': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Download Evaluation Manifest
+     * @description Download verified provenance for a completed development evaluation.
+     */
+    get: operations['download_evaluation_manifest_api_v1_runs__run_id__manifest_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/runs/{run_id}/findings': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Evaluation Findings */
+    get: operations['get_evaluation_findings_api_v1_runs__run_id__findings_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/runs/{run_id}/findings/{finding_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Finding Detail
+     * @description Read a stored finding and only the synthetic source events it references.
+     */
+    get: operations['get_finding_detail_api_v1_runs__run_id__findings__finding_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/runs/{run_id}/findings/{finding_id}/reviews': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Record Finding Review
+     * @description Append a local development review; this endpoint does not authenticate an analyst.
+     */
+    post: operations['record_finding_review_api_v1_runs__run_id__findings__finding_id__reviews_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -117,6 +272,72 @@ export interface components {
        */
       risk_calculated: boolean;
     };
+    /** DatasetListResponse */
+    DatasetListResponse: {
+      /** Items */
+      items: components['schemas']['DatasetMetadataResponse'][];
+      /** Limit */
+      limit: number;
+      /** Offset */
+      offset: number;
+      /** Total */
+      total: number;
+      /** Has More */
+      has_more: boolean;
+    };
+    /** DatasetMetadataResponse */
+    DatasetMetadataResponse: {
+      /** Dataset Id */
+      dataset_id: string;
+      /**
+       * Status
+       * @default imported
+       */
+      status: string;
+      /** Sha256 */
+      sha256: string;
+      /** Manifest Sha256 */
+      manifest_sha256: string;
+      /** Schema Version */
+      schema_version: string;
+      /** Row Count */
+      row_count: number;
+      /** Employee Day Count */
+      employee_day_count: number;
+      /** Created At */
+      created_at: string;
+      /** Preparation Status */
+      preparation_status: string;
+      /** Prepared At */
+      prepared_at?: string | null;
+      /** Analysis Manifest Sha256 */
+      analysis_manifest_sha256?: string | null;
+      /**
+       * Synthetic Only
+       * @default true
+       */
+      synthetic_only: boolean;
+      /**
+       * Evaluation Status
+       * @default not_run
+       */
+      evaluation_status: string;
+      /**
+       * Ground Truth Usage
+       * @default calibration_for_threshold_selection; evaluation_for_metrics; never_a_detector_feature
+       */
+      ground_truth_usage: string;
+      /**
+       * Run Created
+       * @default false
+       */
+      run_created: boolean;
+      /**
+       * Risk Calculated
+       * @default false
+       */
+      risk_calculated: boolean;
+    };
     /** DatasetValidationResponse */
     DatasetValidationResponse: {
       /** Valid */
@@ -140,6 +361,176 @@ export interface components {
        */
       run_created: boolean;
     };
+    /** EvaluationRunCreateRequest */
+    EvaluationRunCreateRequest: {
+      /** Dataset Id */
+      dataset_id: string;
+      /** Synthetic Context */
+      synthetic_context: {
+        [key: string]: unknown;
+      };
+    };
+    /** EvaluationRunListResponse */
+    EvaluationRunListResponse: {
+      /** Items */
+      items: components['schemas']['EvaluationRunResponse'][];
+      /** Limit */
+      limit: number;
+      /** Offset */
+      offset: number;
+      /** Total */
+      total: number;
+      /** Has More */
+      has_more: boolean;
+    };
+    /** EvaluationRunManifestResponse */
+    EvaluationRunManifestResponse: {
+      /**
+       * Manifest Schema Version
+       * @constant
+       */
+      manifest_schema_version: 'fisheye.evaluation-run-manifest.v1';
+      /** Run Id */
+      run_id: string;
+      /** Dataset Id */
+      dataset_id: string;
+      /** Dataset Sha256 */
+      dataset_sha256: string;
+      /** Dataset Schema Version */
+      dataset_schema_version: string;
+      /** Analysis Manifest Sha256 */
+      analysis_manifest_sha256: string;
+      /** Context Sha256 */
+      context_sha256: string;
+      /** Methodology Version */
+      methodology_version: string;
+      /** Config Sha256 */
+      config_sha256: string;
+      /** Worker Build Revision */
+      worker_build_revision: string;
+      /**
+       * Evaluation Unit
+       * @constant
+       */
+      evaluation_unit: 'employee_day_utc';
+      /** Ground Truth Usage */
+      ground_truth_usage: string;
+      /**
+       * Result Artifact
+       * @constant
+       */
+      result_artifact: 'scores.parquet.enc';
+      /** Result Artifact Sha256 */
+      result_artifact_sha256: string;
+      /** Result Row Count */
+      result_row_count: number;
+      /** Metrics Sha256 */
+      metrics_sha256: string;
+      /** Claim Status */
+      claim_status: string;
+      /** Completed At */
+      completed_at: string;
+    };
+    /** EvaluationRunResponse */
+    EvaluationRunResponse: {
+      /** Run Id */
+      run_id: string;
+      /** Dataset Id */
+      dataset_id: string;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'queued' | 'running' | 'completed' | 'failed';
+      /** Methodology Version */
+      methodology_version: string;
+      /** Claim Status */
+      claim_status: string;
+      /** Created At */
+      created_at: string;
+      /** Started At */
+      started_at?: string | null;
+      /** Completed At */
+      completed_at?: string | null;
+      /** Failed At */
+      failed_at?: string | null;
+      /** Error Code */
+      error_code?: string | null;
+      /** Metrics */
+      metrics?: {
+        [key: string]: unknown;
+      } | null;
+      /** Result Manifest Sha256 */
+      result_manifest_sha256?: string | null;
+      /**
+       * Synthetic Only
+       * @default true
+       */
+      synthetic_only: boolean;
+    };
+    /** FindingDetailResponse */
+    FindingDetailResponse: {
+      finding: components['schemas']['RunFindingResponse'];
+      /** Events */
+      events: components['schemas']['FindingEvidenceEventResponse'][];
+      /** Reviews */
+      reviews: components['schemas']['FindingReviewResponse'][];
+      /**
+       * Review Mode
+       * @default local_development_unauthenticated
+       * @constant
+       */
+      review_mode: 'local_development_unauthenticated';
+    };
+    /** FindingEvidenceEventResponse */
+    FindingEvidenceEventResponse: {
+      /** Event Id */
+      event_id: string;
+      /** Employee Id */
+      employee_id: string;
+      /** Role Id */
+      role_id: string;
+      /** Department Id */
+      department_id: string;
+      /** Event Timestamp Utc */
+      event_timestamp_utc: string;
+      /** Event Type */
+      event_type: string;
+      /** System */
+      system: string;
+      /** Device Id */
+      device_id: string | null;
+      /** Location Label */
+      location_label: string | null;
+      /** Record Count */
+      record_count: number | null;
+    };
+    /** FindingReviewCreateRequest */
+    FindingReviewCreateRequest: {
+      /**
+       * Decision
+       * @enum {string}
+       */
+      decision: 'under_review' | 'reviewed_benign' | 'escalated';
+      /** Note */
+      note?: string | null;
+    };
+    /** FindingReviewResponse */
+    FindingReviewResponse: {
+      /** Review Id */
+      review_id: string;
+      /**
+       * Decision
+       * @enum {string}
+       */
+      decision: 'under_review' | 'reviewed_benign' | 'escalated';
+      /** Note */
+      note: string | null;
+      /** Reviewer Label */
+      reviewer_label: string;
+      /** Created At */
+      created_at: string;
+    };
     /** HTTPValidationError */
     HTTPValidationError: {
       /** Detail */
@@ -151,6 +542,50 @@ export interface components {
       status: string;
       /** Synthetic Only */
       synthetic_only: boolean;
+    };
+    /** RunFindingResponse */
+    RunFindingResponse: {
+      /** Finding Id */
+      finding_id: string;
+      /** Run Id */
+      run_id: string;
+      /** Employee Id */
+      employee_id: string;
+      /** Employee Day Utc */
+      employee_day_utc: string;
+      /**
+       * Detector
+       * @enum {string}
+       */
+      detector: 'simple_rule' | 'tuned_rules' | 'contextual';
+      /** Score */
+      score: number;
+      /** Severity */
+      severity: string;
+      /** Reason Codes */
+      reason_codes: string[];
+      /** Evidence Event Ids */
+      evidence_event_ids: string[];
+    };
+    /** RunFindingsResponse */
+    RunFindingsResponse: {
+      /** Items */
+      items: components['schemas']['RunFindingResponse'][];
+      /**
+       * Detector
+       * @enum {string}
+       */
+      detector: 'simple_rule' | 'tuned_rules' | 'contextual';
+      /** Limit */
+      limit: number;
+      /** Offset */
+      offset: number;
+      /** Total */
+      total: number;
+      /** Has More */
+      has_more: boolean;
+      /** Claim Status */
+      claim_status: string;
     };
     /** ValidationError */
     ValidationError: {
@@ -332,6 +767,463 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['CsvImportValidationError'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+    };
+  };
+  get_datasets_api_v1_datasets_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DatasetListResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+    };
+  };
+  get_dataset_metadata_api_v1_datasets__dataset_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        dataset_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DatasetMetadataResponse'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+    };
+  };
+  get_evaluation_runs_api_v1_runs_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EvaluationRunListResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  create_evaluation_run_api_v1_runs_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        'Idempotency-Key'?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['EvaluationRunCreateRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EvaluationRunResponse'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+    };
+  };
+  get_evaluation_run_api_v1_runs__run_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        run_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EvaluationRunResponse'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+    };
+  };
+  download_evaluation_manifest_api_v1_runs__run_id__manifest_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        run_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EvaluationRunManifestResponse'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+    };
+  };
+  get_evaluation_findings_api_v1_runs__run_id__findings_get: {
+    parameters: {
+      query?: {
+        detector?: 'simple_rule' | 'tuned_rules' | 'contextual';
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path: {
+        run_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RunFindingsResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  get_finding_detail_api_v1_runs__run_id__findings__finding_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        run_id: string;
+        finding_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FindingDetailResponse'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+    };
+  };
+  record_finding_review_api_v1_runs__run_id__findings__finding_id__reviews_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        run_id: string;
+        finding_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['FindingReviewCreateRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FindingReviewResponse'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
         };
       };
       /** @description Service Unavailable */

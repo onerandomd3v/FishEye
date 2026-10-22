@@ -50,9 +50,67 @@ def test_initial_migration_and_rollback() -> None:
             assert inspect(connection).has_table("alembic_version")
             assert (
                 connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-                == "0002_datasets"
+                == "0005_finding_reviews"
             )
-            assert inspect(connection).get_table_names() == ["alembic_version", "datasets"]
+            assert inspect(connection).get_table_names() == [
+                "alembic_version",
+                "datasets",
+                "evaluation_runs",
+                "finding_reviews",
+            ]
+            dataset_columns = {
+                column["name"] for column in inspect(connection).get_columns("datasets")
+            }
+            assert {
+                "preparation_status",
+                "prepared_at",
+                "analysis_artifact_uri",
+                "analysis_manifest_sha256",
+            }.issubset(dataset_columns)
+            run_columns = {
+                column["name"] for column in inspect(connection).get_columns("evaluation_runs")
+            }
+            assert {
+                "status",
+                "attempt_count",
+                "lease_token",
+                "lease_expires_at",
+                "metrics_json",
+                "result_artifact_uri",
+                "result_manifest_sha256",
+            }.issubset(run_columns)
+            review_columns = {
+                column["name"] for column in inspect(connection).get_columns("finding_reviews")
+            }
+            assert {
+                "id",
+                "run_id",
+                "finding_id",
+                "decision",
+                "note",
+                "reviewer_label",
+                "created_at",
+            }.issubset(review_columns)
+            review_constraints = inspect(connection).get_check_constraints("finding_reviews")
+            assert any(
+                constraint["name"] == "ck_finding_reviews_decision"
+                and "under_review" in (constraint["sqltext"] or "")
+                and "reviewed_benign" in (constraint["sqltext"] or "")
+                and "escalated" in (constraint["sqltext"] or "")
+                for constraint in review_constraints
+            )
+            review_foreign_keys = inspect(connection).get_foreign_keys("finding_reviews")
+            assert any(
+                foreign_key["constrained_columns"] == ["run_id"]
+                and foreign_key["referred_table"] == "evaluation_runs"
+                and foreign_key["options"].get("ondelete") == "RESTRICT"
+                for foreign_key in review_foreign_keys
+            )
+            assert any(
+                index["name"] == "ix_finding_reviews_finding_created"
+                and index["column_names"] == ["run_id", "finding_id", "created_at"]
+                for index in inspect(connection).get_indexes("finding_reviews")
+            )
 
         command.downgrade(config, "base")
         with engine.connect() as connection:

@@ -1,4 +1,4 @@
-# FishEye synthetic event CSV — v1
+# FishEye synthetic event CSV — v1 and v2
 
 This file defines the first user-supplied synthetic dataset format. The API has
 a development-only validation endpoint and a separate development-only import
@@ -30,20 +30,26 @@ event_id,employee_id,role_id,department_id,event_timestamp_utc,event_type,system
 | `system`              | Required synthetic target-system name.                                                           |
 | `device_id`           | Optional; blank means missing or unreported.                                                     |
 | `location_label`      | Optional; blank means missing or unreported.                                                     |
-| `record_count`        | Optional nonnegative integer count; blank means unknown or not applicable.                       |
-| `dataset_partition`   | Required enum: `baseline` or `evaluation`.                                                       |
-| `ground_truth_label`  | Blank on baseline rows. Evaluation rows require `threat_scenario` or `benign_scenario`.          |
+| `record_count`        | Optional nonnegative signed 64-bit integer; blank means unknown or not applicable.                |
+| `dataset_partition`   | Required enum: `baseline`, `calibration`, or `evaluation`.                                       |
+| `ground_truth_label`  | Blank on baseline rows. Calibration/evaluation rows require `threat_scenario` or `benign_scenario`. |
 
 ## Evaluation unit and validation
 
 The evaluation unit is an employee-day: rows are grouped by `employee_id` and
-the UTC calendar date of `event_timestamp_utc`. The evaluation label applies to
-the whole employee-day and must be consistent across its evaluation rows. All
-events for an employee-day must belong to one partition; an employee-day cannot
-be split between baseline and evaluation. All baseline events must precede
-evaluation events. Ground-truth labels are reserved for evaluation and must
-never become detector features. Validation returns at most 99 row-level errors
-plus an omitted-error count to keep responses bounded.
+the UTC calendar date of `event_timestamp_utc`. A label applies to the whole
+employee-day and must be consistent across its calibration/evaluation rows. All
+events for an employee-day must belong to one partition. Baseline events must
+precede calibration events, which must precede evaluation events. Baseline rows
+have no labels; calibration and evaluation labels are stored separately from
+detector inputs. Calibration labels may select thresholds; evaluation labels
+are held out and may only be joined after predictions are frozen.
+
+The original `fisheye.events.v1` contract accepts `baseline` and `evaluation`
+only. Files containing `calibration` use `fisheye.events.v2`. V1 imports remain
+readable and preparable, but the research comparison requires the v2 three-way
+split. Validation returns at most 99 row-level errors plus an omitted-error
+count to keep responses bounded.
 
 The validation endpoint is `POST /api/v1/datasets/imports/validate` with
 `Content-Type: text/csv` and
@@ -66,20 +72,53 @@ same uploaded bytes. The response states `run_created: false` and
 The source CSV and manifest are encrypted at rest using Fernet. The manifest
 records the source checksum, schema version, counts, and the absence of an
 uploaded random seed. It explicitly reserves ground-truth labels for evaluation.
-The original CSV is retained as the encrypted source artifact for provenance;
-worker-side parsing into analytical artifacts and any evaluation run are
-separate future steps.
+The original CSV is retained as the encrypted source artifact for provenance.
+Development-only `GET /api/v1/datasets` and
+`GET /api/v1/datasets/{dataset_id}` expose paginated dataset provenance and
+status metadata, but never return the artifact path, source rows or labels.
+Enable these reads only with `FISHEYE_ENV=development` and
+`FISHEYE_ENABLE_DEV_DATASET_READS=1`. These endpoints do not authenticate
+callers and must remain disabled outside local development. Production
+authentication/authorization remain future work. A development-only evaluation
+run requires a v2 dataset and a separate synthetic context JSON sidecar.
+
+After running migrations, a local developer can prepare an imported dataset
+using `uv run --package fisheye-worker fisheye-worker prepare-dataset
+--dataset-id <dataset-id>`. The worker verifies/decrypts the source and writes
+encrypted Parquet files for event features, employee-day split membership and
+calibration/evaluation labels under the dataset's immutable analysis artifact directory.
+Event feature rows contain neither split membership nor ground-truth labels;
+labels are stored separately from detector inputs. Calibration labels are for
+threshold selection; evaluation labels remain held out for metrics. Dataset metadata
+changes from `preparation_status=source_only` to `prepared` only after the
+artifacts are published and checksummed. Repeating preparation verifies and
+reuses the existing artifacts. This preparation command by itself creates no
+evaluation run and calculates no risk scores. To create a run from the console,
+enable `FISHEYE_ENABLE_DEV_EVALUATION_RUNS=1` on the API and run the worker with
+`uv run --package fisheye-worker fisheye-worker work`. The API validates and
+encrypts the context sidecar, then queues a durable run; the worker prepares the
+dataset if needed, evaluates the provisional policy, and publishes encrypted
+result artifacts. `GET /api/v1/runs`, `GET /api/v1/runs/{run_id}`, and
+`GET /api/v1/runs/{run_id}/findings` expose run state and worker-produced data.
+After a run completes, `GET /api/v1/runs/{run_id}/manifest` downloads its
+verified JSON provenance manifest, including dataset, configuration, method,
+and artifact checksums. It returns `409` while a run is incomplete and `503` if
+the encrypted manifest cannot be verified. These unauthenticated endpoints
+must remain disabled outside development.
 
 For local validation, set `FISHEYE_ENV=development` and
 `FISHEYE_ENABLE_DEV_CSV_VALIDATION=1` in the API process environment. For local
 import, also set `FISHEYE_ENABLE_DEV_CSV_IMPORT=1`, configure the database and
-artifact directory, and provide an encryption key. Generate a local Fernet key
+artifact directory, and provide an encryption key. To list imported datasets,
+also set `FISHEYE_ENABLE_DEV_DATASET_READS=1`; to queue runs set
+`FISHEYE_ENABLE_DEV_EVALUATION_RUNS=1`. Generate a local Fernet key
 with `uv run --package fisheye-persistence python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
 Keep it in your local environment, never commit it, and keep using the same key
 for existing artifacts. Then run `pnpm db:migrate`. Start the API with
 `pnpm dev:api`. Set `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000` in
 `apps/web/console/.env.local` and start the console with `pnpm dev:console`.
-Keep both development flags off outside local development.
+Start the worker in another terminal using the command above. Keep every
+development flag off outside local development.
 
 Validation errors identify row numbers and rules, not submitted event values.
 Successful validation reports row and employee-day counts only. It does not

@@ -5,8 +5,11 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
   "alembic>=1.16,<2",
   "fastapi>=0.116,<1",
+  "fisheye-domain",
+  "fisheye-evaluation",
   "pydantic>=2.11,<3",
   "fisheye-persistence",
+  "polars>=1.30,<2",
   "psycopg[binary]>=3.2,<4",
   "sqlalchemy>=2.0,<3",
   "uvicorn[standard]>=0.35,<1",
@@ -20,4 +23,6 @@ build-backend = "hatchling.build"
 packages = ["src/fisheye_api"]
 
 [tool.uv.sources]
+fisheye-domain = { workspace = true }
+fisheye-evaluation = { workspace = true }
 fisheye-persistence = { workspace = true }

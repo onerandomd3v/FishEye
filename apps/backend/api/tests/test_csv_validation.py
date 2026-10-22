@@ -41,6 +41,10 @@ def evaluation_row(event_id: str, event_time: str, label: str) -> tuple[str, ...
     )
 
 
+def calibration_row(event_id: str, event_time: str, label: str) -> tuple[str, ...]:
+    return (*evaluation_row(event_id, event_time, label)[:10], "calibration", label)
+
+
 def test_accepts_valid_baseline_and_employee_day_evaluation_rows() -> None:
     result = validate_events_csv(
         make_csv(
@@ -55,6 +59,59 @@ def test_accepts_valid_baseline_and_employee_day_evaluation_rows() -> None:
     assert result.row_count == 3
     assert result.employee_day_count == 2
     assert result.errors == ()
+
+
+def test_accepts_calibration_between_baseline_and_held_out_evaluation() -> None:
+    result = validate_events_csv(
+        make_csv(
+            baseline_row("evt-base", "2026-01-01T09:00:00Z"),
+            calibration_row("evt-cal", "2026-01-02T09:00:00Z", "threat_scenario"),
+            evaluation_row("evt-eval", "2026-01-03T09:00:00Z", "benign_scenario"),
+        )
+    )
+
+    assert result.valid is True
+    assert result.schema_version == "fisheye.events.v2"
+    assert result.employee_day_count == 3
+
+
+def test_rejects_v2_without_baseline_rows() -> None:
+    result = validate_events_csv(
+        make_csv(
+            calibration_row("evt-cal", "2026-01-02T09:00:00Z", "threat_scenario"),
+            evaluation_row("evt-eval", "2026-01-03T09:00:00Z", "benign_scenario"),
+        )
+    )
+
+    assert result.valid is False
+    assert result.schema_version == "fisheye.events.v2"
+    assert "V2 CSVs must contain at least one baseline row." in result.errors
+
+
+def test_rejects_v2_without_evaluation_rows() -> None:
+    result = validate_events_csv(
+        make_csv(
+            baseline_row("evt-base", "2026-01-01T09:00:00Z"),
+            calibration_row("evt-cal", "2026-01-02T09:00:00Z", "threat_scenario"),
+        )
+    )
+
+    assert result.valid is False
+    assert result.schema_version == "fisheye.events.v2"
+    assert "V2 CSVs must contain at least one evaluation row." in result.errors
+
+
+def test_rejects_calibration_after_held_out_evaluation() -> None:
+    result = validate_events_csv(
+        make_csv(
+            baseline_row("evt-base", "2026-01-01T09:00:00Z"),
+            evaluation_row("evt-eval", "2026-01-02T09:00:00Z", "benign_scenario"),
+            calibration_row("evt-cal", "2026-01-03T09:00:00Z", "threat_scenario"),
+        )
+    )
+
+    assert result.valid is False
+    assert any("calibration events must predate evaluation" in error for error in result.errors)
 
 
 def test_rejects_timestamp_without_time_component() -> None:
@@ -126,6 +183,20 @@ def test_rejects_baseline_after_evaluation_and_malformed_values() -> None:
         make_csv(evaluation_row("evt-test-3", "2026-01-02T10:00:00+00:00", "threat_scenario"))
     )
     assert any("ending in Z" in error for error in offset_timestamp.errors)
+
+
+def test_record_count_stays_within_signed_64_bit_parquet_range() -> None:
+    maximum = list(evaluation_row("evt-test-max", "2026-01-02T10:00:00Z", "benign_scenario"))
+    maximum[9] = str(2**63 - 1)
+    overflow = list(evaluation_row("evt-test-overflow", "2026-01-02T10:00:00Z", "benign_scenario"))
+    overflow[9] = str(2**63)
+
+    accepted = validate_events_csv(make_csv(tuple(maximum)))
+    rejected = validate_events_csv(make_csv(tuple(overflow)))
+
+    assert accepted.valid is True
+    assert rejected.valid is False
+    assert any("signed 64-bit integer" in error for error in rejected.errors)
 
 
 def test_requires_exact_versioned_headers_and_utf8() -> None:

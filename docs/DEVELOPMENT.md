@@ -26,14 +26,18 @@ Start each application in a separate terminal:
 pnpm dev:landing  # Astro at http://localhost:4321
 pnpm dev:console  # Next.js at http://localhost:3000
 pnpm dev:api      # FastAPI at http://127.0.0.1:8000
-pnpm dev:worker   # Logs scaffold status, then exits
+uv run --package fisheye-worker fisheye-worker work  # Polls for durable development runs
 ```
 
 For the local landing page and console, copy each app's `.env.example` to `.env.local`. The landing app's `PUBLIC_CONSOLE_URL` points its buttons to the separate console origin (`http://localhost:3000/login`). In the console `.env.local`, set `FISHEYE_DEMO_EMAIL` and `FISHEYE_DEMO_PASSWORD` to local-only demo credentials and `FISHEYE_SESSION_SECRET` to a random secret of at least 32 characters. Restart both dev servers after changing environment files.
 
 The console's demo login and signed session are enabled only by the Next.js development server. They provide a local UI gate for synthetic fixtures; they are not an identity provider, do not authorize FastAPI requests, and must not be used in a shared or production deployment. Keep `.env.local` files untracked.
 
-The API reads `DATABASE_URL` when database-backed behavior is added. Copy `.env.example` to `.env` for local configuration. The worker currently has no job transport or evaluation jobs.
+Copy `.env.example` to `.env` for local API configuration. Enable `FISHEYE_ENABLE_DEV_CSV_VALIDATION`, `FISHEYE_ENABLE_DEV_CSV_IMPORT`, `FISHEYE_ENABLE_DEV_DATASET_READS`, and `FISHEYE_ENABLE_DEV_EVALUATION_RUNS` only for local development. Set an artifact encryption key, run `pnpm db:migrate`, and use the same database, artifact directory, and key for the API and worker. Set `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000` in the console `.env.local`. Run the worker command above in a separate terminal. These unauthenticated endpoints are development-only and must remain disabled outside local development; the policy is provisional and does not support benchmark or production claims.
+
+Completed development runs populate the overview and investigation pages from stored API results. Finding review actions append local development records labeled `Local development user (not authenticated)`; the signed console preview does not authenticate requests to FastAPI. Do not expose the development API or review writes to shared or production environments.
+
+The Scenario lab offers two bundled synthetic CSV/context pairs for repeatable local demos. Selecting a sample only preloads those files; the console still requires the synthetic-data confirmation and sends them through the same API validation, import, durable-run, and worker processing path as manually selected files. Ground-truth labels are evaluation-only and are not sent to detector feature construction. Both sample pairs are checked against the current CSV and context contracts in backend tests.
 
 ## Checks
 
@@ -44,7 +48,7 @@ pnpm check:database
 pnpm check
 ```
 
-`check:web` runs ESLint, TypeScript/Astro checks, Vitest, and production builds. `check:backend` runs Ruff lint/format checks, strict mypy, API/worker tests, and worker startup checks. `check:database` requires an isolated PostgreSQL database named `fisheye_test`; it applies the Alembic baseline, verifies the revision table, and rolls back to `base`. The baseline is intentionally empty because no product schema has been approved yet.
+`check:web` runs ESLint, TypeScript/Astro checks, Vitest, and production builds. Set `PUBLIC_CONSOLE_URL` for the Astro build. `check:backend` runs Ruff lint/format checks, strict mypy, API/worker tests, and worker startup checks. `check:database` requires an isolated PostgreSQL database named `fisheye_test`; it applies the Alembic migrations through the current head, verifies the schema, and rolls back to `base`.
 
 For a disposable local database, run this in PowerShell:
 

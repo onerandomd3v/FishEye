@@ -1,0 +1,7 @@
+event_id,employee_id,role_id,department_id,event_timestamp_utc,event_type,system,device_id,location_label,record_count,dataset_partition,ground_truth_label
+evt-base-001,emp-demo-1,role-teller,branch,2026-01-05T09:00:00Z,sign_in,core,device-1,branch-1,1,baseline,
+evt-base-002,emp-demo-1,role-teller,branch,2026-01-06T09:00:00Z,record_read,core,device-1,branch-1,10,baseline,
+evt-base-003,emp-demo-1,role-teller,branch,2026-01-07T09:00:00Z,record_read,core,device-1,branch-1,10,baseline,
+evt-cal-001,emp-demo-1,role-teller,branch,2026-01-08T09:00:00Z,record_export,wire,device-1,branch-1,40,calibration,threat_scenario
+evt-eval-threat-001,emp-demo-1,role-teller,branch,2026-01-09T09:00:00Z,record_export,wire,device-1,branch-1,40,evaluation,threat_scenario
+evt-eval-benign-001,emp-demo-1,role-teller,branch,2026-01-12T09:00:00Z,record_read,core,device-1,branch-1,10,evaluation,benign_scenario

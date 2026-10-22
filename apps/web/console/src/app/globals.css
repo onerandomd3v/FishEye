@@ -375,6 +375,39 @@
 .review-form .button-stack {
   margin-top: 0;
 }
+.review-history {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 0;
+  padding-left: 20px;
+}
+.review-history li {
+  display: grid;
+  gap: 4px;
+  color: var(--fe-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.review-history strong {
+  color: var(--fe-ink);
+  text-transform: capitalize;
+}
+.review-history p {
+  margin: 4px 0 0;
+  color: var(--fe-ink);
+}
+.form-error,
+.form-success {
+  padding: 10px 12px;
+  border-left: 3px solid var(--fe-ink);
+  background: var(--fe-surface-muted);
+  color: var(--fe-ink);
+  font-size: 13px;
+}
+.empty-state-action {
+  display: block;
+  margin-top: 18px;
+}
 .scenario-description {
   max-width: 550px;
   margin: 10px 0 20px;
@@ -527,34 +560,21 @@
 .button-stack .fe-button {
   width: 100%;
 }
-.scenario-grid {
-  display: grid;
-  grid-template-columns: minmax(280px, 0.92fr) minmax(0, 1.18fr);
-  gap: 16px;
-}
 .scenario-list {
   display: grid;
   gap: 10px;
   margin-top: 18px;
 }
 .scenario-option {
-  width: 100%;
-  display: block;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
   padding: 15px;
   border: 1px solid var(--fe-border);
   border-radius: 8px;
-  text-align: left;
   color: var(--fe-ink);
   background: white;
-  cursor: pointer;
-}
-.scenario-option:hover {
-  background: #fafafa;
-}
-.scenario-option[aria-pressed='true'] {
-  border-color: #666;
-  background: var(--fe-surface-muted);
-  box-shadow: inset 0 0 0 1px #666;
 }
 .scenario-option strong {
   display: block;
@@ -567,14 +587,23 @@
   font-size: 11px;
   line-height: 1.45;
 }
-.scenario-result {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
+.sample-download {
+  color: var(--fe-ink);
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
-.scenario-result .result-empty {
-  margin: auto 0;
-  padding: 28px 0;
+.sample-downloads {
+  display: flex;
+  gap: 12px;
+}
+.sample-selection {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--fe-border);
+  border-radius: 8px;
+  color: var(--fe-text-secondary);
+  font-size: 12px;
 }
 .dataset-import {
   margin-top: 16px;
@@ -931,8 +960,11 @@
   .metric-value {
     font-size: 20px;
   }
-  .scenario-grid {
-    grid-template-columns: 1fr;
+  .scenario-option {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .scenario-option .sample-downloads {
+    grid-column: 1 / -1;
   }
   .dataset-import-heading {
     display: grid;
