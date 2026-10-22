@@ -48,6 +48,11 @@ from fisheye_persistence.runs import (
     list_runs,
     store_context_artifact,
 )
+from fisheye_persistence.workspace_reset import (
+    ActiveEvaluationRunsError,
+    reset_workspace,
+    workspace_counts,
+)
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
@@ -60,7 +65,7 @@ api = APIRouter(dependencies=[Depends(require_analyst)])
 app.add_middleware(
     CORSMiddleware,
     allow_origins=os.getenv("FISHEYE_CORS_ORIGINS", "http://127.0.0.1:3000").split(","),
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type", "Idempotency-Key", "X-FishEye-Synthetic-Data-Confirmed"],
 )
 
@@ -205,6 +210,27 @@ class EvaluationRunListResponse(BaseModel):
     offset: int
     total: int
     has_more: bool
+
+
+class LocalWorkspaceResponse(BaseModel):
+    enabled: bool
+    run_count: int = 0
+    dataset_count: int = 0
+    review_count: int = 0
+    active_run_count: int = 0
+
+
+class LocalWorkspaceResetRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    confirmation: Literal["CLEAR ALL DATA"]
+
+
+class LocalWorkspaceResetResponse(BaseModel):
+    deleted_run_count: int
+    deleted_dataset_count: int
+    deleted_review_count: int
+    artifacts_removed: bool
 
 
 class RunFindingResponse(BaseModel):
@@ -653,6 +679,56 @@ def get_evaluation_runs(
     )
 
 
+@api.get("/api/v1/local-workspace", response_model=LocalWorkspaceResponse)
+def get_local_workspace() -> LocalWorkspaceResponse:
+    """Report local reset availability and the number of saved records."""
+    if not _local_data_reset_enabled():
+        return LocalWorkspaceResponse(enabled=False)
+    database_url, _, _ = _require_dev_evaluation_runs()
+    try:
+        with _session_factory(database_url)() as session:
+            counts = workspace_counts(session)
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail="Workspace data could not be read.") from None
+    return LocalWorkspaceResponse(
+        enabled=True,
+        run_count=counts.runs,
+        dataset_count=counts.datasets,
+        review_count=counts.reviews,
+        active_run_count=counts.active_runs,
+    )
+
+
+@api.delete(
+    "/api/v1/local-workspace/data",
+    response_model=LocalWorkspaceResetResponse,
+    responses={status_code: {"model": ApiErrorResponse} for status_code in (404, 409, 422, 503)},
+)
+def clear_local_workspace(
+    body: LocalWorkspaceResetRequest,
+) -> LocalWorkspaceResetResponse:
+    """Permanently clear local run, review, dataset and referenced artifact data."""
+    if not _local_data_reset_enabled():
+        raise HTTPException(status_code=404, detail="Workspace reset is not enabled.")
+    database_url, artifact_root, _ = _require_dev_evaluation_runs()
+    try:
+        with _session_factory(database_url)() as session:
+            result = reset_workspace(session, artifact_root)
+    except ActiveEvaluationRunsError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
+    except (OSError, RuntimeError, SQLAlchemyError):
+        raise HTTPException(
+            status_code=503,
+            detail="Workspace data could not be cleared safely.",
+        ) from None
+    return LocalWorkspaceResetResponse(
+        deleted_run_count=result.counts.runs,
+        deleted_dataset_count=result.counts.datasets,
+        deleted_review_count=result.counts.reviews,
+        artifacts_removed=result.artifacts_removed,
+    )
+
+
 @api.get(
     "/api/v1/runs/{run_id}",
     response_model=EvaluationRunResponse,
@@ -1072,6 +1148,14 @@ def _require_dev_evaluation_runs() -> tuple[str, Path, bytes]:
             detail="Run artifact encryption is not configured correctly.",
         ) from None
     return database_url, Path(artifact_root), encryption_key.encode("utf-8")
+
+
+def _local_data_reset_enabled() -> bool:
+    return (
+        os.getenv("FISHEYE_ENV") == "development"
+        and os.getenv("FISHEYE_ENABLE_DEV_EVALUATION_RUNS") == "1"
+        and os.getenv("FISHEYE_ENABLE_LOCAL_DATA_RESET") == "1"
+    )
 
 
 def _evaluation_run_response(record: EvaluationRunRecord) -> EvaluationRunResponse:

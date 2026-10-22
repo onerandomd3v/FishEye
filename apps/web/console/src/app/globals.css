@@ -599,8 +599,103 @@
 }
 .table-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
-  padding: 14px 18px 18px;
+  gap: 12px;
+}
+.pagination-text {
+  min-height: 32px;
+  padding: 6px 4px;
+  border: 0;
+  color: var(--fe-ink);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.pagination-text:hover:not(:disabled) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.pagination-text:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--fe-ink);
+  outline-offset: 2px;
+}
+.pagination-text:disabled {
+  color: var(--fe-text-secondary);
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.overview-findings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--fe-border);
+}
+.overview-findings-footer .below-table-note {
+  margin: 0;
+  padding: 0;
+}
+.overview-findings-footer .table-actions {
+  padding: 0;
+}
+.workspace-reset-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.reset-result {
+  margin: 0;
+  color: var(--fe-text-secondary);
+  font-size: 12px;
+}
+.workspace-reset-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(520px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 24px;
+  border: 1px solid var(--fe-border);
+  border-radius: var(--fe-radius-card);
+  color: var(--fe-ink);
+  background: white;
+}
+.workspace-reset-dialog::backdrop {
+  background: rgb(0 0 0 / 36%);
+}
+.workspace-reset-dialog h2 {
+  margin: 0;
+  font-size: 19px;
+}
+.workspace-reset-dialog > p {
+  margin: 12px 0 18px;
+  color: var(--fe-text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.workspace-reset-dialog .field {
+  margin-top: 16px;
+}
+.workspace-reset-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+.reset-error {
+  padding: 10px 12px;
+  border-left: 3px solid var(--fe-ink);
+  background: var(--fe-surface-muted);
+  color: var(--fe-ink) !important;
 }
 .filters {
   display: flex;
@@ -608,6 +703,25 @@
   align-items: end;
   gap: 12px;
   padding: 0 18px 16px;
+}
+.investigation-filters {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.7fr) repeat(2, minmax(150px, 1fr));
+  gap: 14px;
+  padding: 4px 18px 20px;
+}
+.investigation-filters .field {
+  min-width: 0;
+}
+.investigation-filters .search-field {
+  grid-column: 1 / -1;
+  max-width: 560px;
+}
+.investigation-table td:nth-child(1) {
+  min-width: 125px;
+}
+.investigation-table td:nth-child(6) {
+  min-width: 220px;
 }
 .field {
   display: grid;
@@ -724,8 +838,12 @@
 }
 .scenario-list {
   display: grid;
-  gap: 10px;
-  margin-top: 18px;
+  margin: 0;
+  border-top: 1px solid var(--fe-border);
+}
+.scenario-picker .section-title-row {
+  align-items: flex-start;
+  padding: 0 0 16px;
 }
 .scenario-mode {
   display: flex;
@@ -737,12 +855,17 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  padding: 15px;
-  border: 1px solid var(--fe-border);
-  border-radius: 8px;
+  column-gap: 20px;
+  row-gap: 10px;
+  padding: 18px 12px;
+  border-bottom: 1px solid var(--fe-border);
   color: var(--fe-ink);
-  background: white;
+}
+.scenario-option:last-child {
+  border-bottom: 0;
+}
+.scenario-option > div {
+  min-width: 0;
 }
 .scenario-option strong {
   display: block;
@@ -752,8 +875,17 @@
   display: block;
   margin-top: 8px;
   color: var(--fe-text-secondary);
-  font-size: 11px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.scenario-option .fe-button {
+  grid-column: 2;
+  grid-row: 1;
+  white-space: nowrap;
+}
+.scenario-option .sample-downloads {
+  grid-column: 1;
+  grid-row: 2;
 }
 .sample-download {
   color: var(--fe-ink);
@@ -1179,6 +1311,97 @@
 .guide-back-link {
   justify-self: start;
 }
+.faq-content {
+  display: grid;
+  gap: 32px;
+}
+.faq-section {
+  min-width: 0;
+}
+.faq-item {
+  border-bottom: 1px solid var(--fe-border);
+}
+.faq-item > summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 17px 4px;
+  color: var(--fe-ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  cursor: pointer;
+  list-style: none;
+}
+.faq-item > summary::-webkit-details-marker {
+  display: none;
+}
+.faq-item > summary::after {
+  flex: 0 0 auto;
+  color: var(--fe-text-secondary);
+  content: '+';
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+.faq-item[open] > summary::after {
+  content: '−';
+}
+.faq-item > summary:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--fe-ink);
+  outline-offset: 2px;
+}
+.faq-answer {
+  max-width: 920px;
+  padding: 0 40px 18px 4px;
+  color: var(--fe-text-secondary);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.faq-answer p {
+  margin: 0 0 12px;
+}
+.faq-answer p:last-child {
+  margin-bottom: 0;
+}
+.faq-answer ul {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+.faq-answer li + li {
+  margin-top: 4px;
+}
+.faq-table-wrap {
+  max-width: 100%;
+  margin: 0 0 12px;
+  overflow-x: auto;
+}
+.faq-comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--fe-text-secondary);
+  font-size: 12px;
+  text-align: left;
+}
+.faq-comparison-table th,
+.faq-comparison-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--fe-border);
+  vertical-align: top;
+}
+.faq-comparison-table thead th {
+  color: var(--fe-ink);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.faq-comparison-table tbody th {
+  min-width: 145px;
+  color: var(--fe-ink);
+  font-weight: 600;
+}
 .login-page {
   min-height: 100vh;
   display: grid;
@@ -1211,11 +1434,6 @@
   font-size: 14px;
   line-height: 1.6;
 }
-.login-foot {
-  margin-top: auto;
-  color: var(--fe-text-secondary);
-  font-size: 11px;
-}
 .login-form-panel {
   display: grid;
   place-items: center;
@@ -1240,12 +1458,6 @@
 .login-form .fe-button {
   width: 100%;
   margin-top: 9px;
-}
-.login-disclaimer {
-  margin-top: 18px;
-  color: var(--fe-text-subtle);
-  font-size: 11px;
-  line-height: 1.5;
 }
 .local-confirmation {
   margin-top: 14px;
@@ -1322,6 +1534,69 @@
 @media (max-width: 760px) {
   .investigation-card {
     padding: 18px;
+  }
+  .investigation-filters {
+    grid-template-columns: 1fr;
+  }
+  .investigation-filters .search-field {
+    grid-column: auto;
+    max-width: none;
+  }
+  .overview-findings-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .overview-findings-footer .table-actions {
+    justify-content: flex-start;
+  }
+  .mobile-readable-table {
+    border-collapse: separate;
+  }
+  .mobile-readable-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .mobile-readable-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px 18px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--fe-border);
+  }
+  .mobile-readable-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+  .mobile-readable-table td,
+  .mobile-readable-table td:nth-child(1),
+  .mobile-readable-table td:nth-child(6) {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+    padding: 7px 0;
+    border: 0;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+  .mobile-readable-table td::before {
+    content: attr(data-label);
+    color: var(--fe-text-secondary);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+  }
+  .mobile-readable-table .mobile-table-span {
+    grid-column: 1 / -1;
+  }
+  .workspace-reset-action {
+    justify-content: flex-start;
   }
   .source-event-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1461,9 +1736,6 @@
   .login-brand-copy p {
     margin-top: 12px;
     font-size: 12px;
-  }
-  .login-foot {
-    margin-top: 24px;
   }
   .login-form-panel {
     align-items: start;

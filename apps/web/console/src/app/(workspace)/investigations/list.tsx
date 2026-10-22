@@ -26,6 +26,37 @@ function reviewStatusLabel(status: Finding['review_status']) {
   }
 }
 
+const reasonLabels: Record<string, string> = {
+  out_of_role_access: 'Access outside role',
+  high_access_volume: 'High access volume',
+  repeated_failed_sign_ins: 'Repeated failed sign-ins',
+  unfamiliar_device: 'New device',
+  unfamiliar_location: 'New location',
+  outside_declared_work_schedule: 'Outside work schedule',
+};
+
+function formatReasonCodes(codes: string[]) {
+  return codes
+    .map(
+      (code) =>
+        reasonLabels[code] ??
+        code
+          .replaceAll('_', ' ')
+          .replace(/^\w/, (letter) => letter.toUpperCase()),
+    )
+    .join(' · ');
+}
+
+function formatRunDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.valueOf())
+    ? value
+    : new Intl.DateTimeFormat(undefined, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }).format(date);
+}
+
 export function InvestigationList({
   initialRunId = '',
   initialDetector = 'contextual',
@@ -96,6 +127,16 @@ export function InvestigationList({
       current = false;
     };
   }, [reload]);
+
+  useEffect(() => {
+    function refreshAfterReset() {
+      setRunState('loading');
+      setReload((value) => value + 1);
+    }
+    window.addEventListener('fisheye-workspace-reset', refreshAfterReset);
+    return () =>
+      window.removeEventListener('fisheye-workspace-reset', refreshAfterReset);
+  }, []);
 
   useEffect(() => {
     let current = true;
@@ -207,11 +248,7 @@ export function InvestigationList({
           </p>
         </div>
       </div>
-      <Notice title="Development data">
-        This workspace uses synthetic data and one shared analyst login. The
-        login protects review actions but does not identify individual analysts.
-      </Notice>
-      <div className="filters">
+      <div className="filters investigation-filters">
         <div className="field">
           <label htmlFor="investigation-run">Evaluation run</label>
           <select
@@ -227,7 +264,7 @@ export function InvestigationList({
           >
             {runs.map((run) => (
               <option key={run.run_id} value={run.run_id}>
-                {run.run_id.slice(0, 8)} · {run.status} · {run.created_at}
+                {formatRunDate(run.created_at)} · {run.status}
               </option>
             ))}
           </select>
@@ -312,7 +349,7 @@ export function InvestigationList({
             findings. Status and search filters apply to this page.
           </p>
           <div className="table-wrap">
-            <table className="data-table">
+            <table className="data-table investigation-table mobile-readable-table">
               <caption className="visually-hidden">
                 Review queue for run {selectedRun.run_id}, detector {detector}
               </caption>
@@ -330,25 +367,34 @@ export function InvestigationList({
               <tbody>
                 {visibleFindings.map((finding) => (
                   <tr key={finding.finding_id}>
-                    <td>
+                    <td data-label="Employee">
                       <Link
                         href={`/investigations/${encodeURIComponent(finding.finding_id)}?run_id=${encodeURIComponent(selectedRun.run_id)}&detector=${encodeURIComponent(detector)}`}
                       >
                         {finding.employee_id}
                       </Link>
                     </td>
-                    <td>{finding.employee_day_utc}</td>
-                    <td>{finding.score} / 100</td>
-                    <td>{finding.severity}</td>
-                    <td>
+                    <td data-label="UTC day">{finding.employee_day_utc}</td>
+                    <td data-label="Priority score">{finding.score} / 100</td>
+                    <td data-label="Severity">
+                      {finding.severity.charAt(0).toUpperCase() +
+                        finding.severity.slice(1)}
+                    </td>
+                    <td data-label="Review status">
                       <span className="review-status">
                         {reviewStatusLabel(finding.review_status)}
                       </span>
                     </td>
-                    <td>
-                      {finding.reason_codes.join(', ') || 'No reason codes'}
+                    <td className="mobile-table-span" data-label="Reasons">
+                      {formatReasonCodes(finding.reason_codes) ||
+                        'No reasons listed'}
                     </td>
-                    <td>{finding.evidence_event_ids.length} source events</td>
+                    <td data-label="Evidence">
+                      {finding.evidence_event_ids.length}{' '}
+                      {finding.evidence_event_ids.length === 1
+                        ? 'source event'
+                        : 'source events'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -360,8 +406,9 @@ export function InvestigationList({
             </p>
           )}
           <div className="table-actions">
-            <Button
-              variant="secondary"
+            <button
+              type="button"
+              className="pagination-text"
               disabled={offset === 0}
               onClick={() => {
                 setFindingsState('loading');
@@ -369,9 +416,10 @@ export function InvestigationList({
               }}
             >
               Previous page
-            </Button>
-            <Button
-              variant="secondary"
+            </button>
+            <button
+              type="button"
+              className="pagination-text"
               disabled={offset + limit >= total}
               onClick={() => {
                 setFindingsState('loading');
@@ -379,7 +427,7 @@ export function InvestigationList({
               }}
             >
               Next page
-            </Button>
+            </button>
           </div>
         </>
       )}

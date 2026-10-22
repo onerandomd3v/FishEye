@@ -6,7 +6,6 @@ import type { components } from '@fisheye/api-client';
 import { Button, Notice } from '@fisheye/ui';
 import { EmptyState, MetricCard } from '../shared';
 import { apiBaseUrl, investigationApi } from '../investigations/data';
-import { formatDetectorName } from '../evaluation-format';
 
 type Run = components['schemas']['EvaluationRunResponse'];
 type Finding = components['schemas']['RunFindingResponse'];
@@ -21,6 +20,27 @@ function count(value: unknown): string {
   return typeof value === 'number' && Number.isFinite(value)
     ? value.toLocaleString()
     : 'Not available';
+}
+
+const reasonLabels: Record<string, string> = {
+  out_of_role_access: 'Access outside role',
+  high_access_volume: 'High access volume',
+  repeated_failed_sign_ins: 'Repeated failed sign-ins',
+  unfamiliar_device: 'New device',
+  unfamiliar_location: 'New location',
+  outside_declared_work_schedule: 'Outside work schedule',
+};
+
+function formatReasons(reasons: string[]): string {
+  return reasons
+    .map(
+      (reason) =>
+        reasonLabels[reason] ??
+        reason
+          .replaceAll('_', ' ')
+          .replace(/^\w/, (letter) => letter.toUpperCase()),
+    )
+    .join(' · ');
 }
 
 export function LiveOverview() {
@@ -99,6 +119,17 @@ export function LiveOverview() {
     };
   }, [reload]);
 
+  useEffect(() => {
+    function refreshAfterReset() {
+      setLoading(true);
+      setError('');
+      setReload((value) => value + 1);
+    }
+    window.addEventListener('fisheye-workspace-reset', refreshAfterReset);
+    return () =>
+      window.removeEventListener('fisheye-workspace-reset', refreshAfterReset);
+  }, []);
+
   function retry() {
     if (!apiBaseUrl()) {
       setError('The FishEye API is not configured.');
@@ -153,24 +184,24 @@ export function LiveOverview() {
         aria-label="Latest completed evaluation run metrics"
       >
         <MetricCard
-          label="Person-days evaluated"
+          label="Employee days checked"
           value={count(metrics.evaluation_unit_count)}
-          help="One count per person per day"
+          help="One employee for one day"
         />
         <MetricCard
-          label="Contextual findings"
+          label="Findings from this run"
           value={findingTotal.toLocaleString()}
-          help="From this completed run"
+          help="Prioritized for review"
         />
         <MetricCard
           label="False alarms"
           value={count(confusion.false_positive)}
-          help={`Evaluation split; ${formatDetectorName('contextual')}`}
+          help="In the test data"
         />
         <MetricCard
           label="Threats missed"
           value={count(confusion.false_negative)}
-          help={`Evaluation split; ${formatDetectorName('contextual')}`}
+          help="In the test data"
         />
       </section>
       <section className="card section-card" aria-labelledby="priority-title">
@@ -188,7 +219,7 @@ export function LiveOverview() {
           </p>
         ) : (
           <div className="table-wrap">
-            <table className="data-table">
+            <table className="data-table mobile-readable-table">
               <caption className="visually-hidden">
                 Latest findings in a completed evaluation run
               </caption>
@@ -204,18 +235,22 @@ export function LiveOverview() {
               <tbody>
                 {findings.map((finding) => (
                   <tr key={finding.finding_id}>
-                    <td>
+                    <td data-label="Employee">
                       <Link
                         href={`/investigations/${encodeURIComponent(finding.finding_id)}`}
                       >
                         {finding.employee_id}
                       </Link>
                     </td>
-                    <td>{finding.employee_day_utc}</td>
-                    <td>{finding.score} / 100</td>
-                    <td>{finding.severity}</td>
-                    <td>
-                      {finding.reason_codes.join(', ') || 'No reason codes'}
+                    <td data-label="UTC day">{finding.employee_day_utc}</td>
+                    <td data-label="Score">{finding.score} / 100</td>
+                    <td data-label="Severity">
+                      {finding.severity.charAt(0).toUpperCase() +
+                        finding.severity.slice(1)}
+                    </td>
+                    <td className="mobile-table-span" data-label="Reasons">
+                      {formatReasons(finding.reason_codes) ||
+                        'No reasons listed'}
                     </td>
                   </tr>
                 ))}
@@ -223,17 +258,22 @@ export function LiveOverview() {
             </table>
           </div>
         )}
-        <p className="below-table-note">
-          Showing {findings.length} of {findingTotal.toLocaleString()} findings.
-          Priority is not proof of intent.
-        </p>
-        <div className="table-actions">
-          <Link className="fe-button fe-button-primary" href="/investigations">
-            Review all findings
-          </Link>
-          <Link className="fe-button fe-button-secondary" href="/evaluation">
-            View evaluation details
-          </Link>
+        <div className="overview-findings-footer">
+          <p className="below-table-note">
+            Showing {findings.length} of {findingTotal.toLocaleString()}{' '}
+            findings. Priority is not proof of intent.
+          </p>
+          <div className="table-actions">
+            <Link
+              className="fe-button fe-button-primary"
+              href="/investigations"
+            >
+              Review all findings
+            </Link>
+            <Link className="fe-button fe-button-secondary" href="/evaluation">
+              View evaluation details
+            </Link>
+          </div>
         </div>
       </section>
     </>

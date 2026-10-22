@@ -1,5 +1,6 @@
 import { PageHeading } from '../shared';
 import { InvestigationList } from './list';
+import { ResetWorkspace } from './reset-workspace';
 
 const detectors = ['simple_rule', 'tuned_rules', 'contextual'] as const;
 
@@ -23,6 +24,7 @@ export default async function InvestigationsPage({
       <PageHeading
         title="Investigations"
         description="Review flagged activity, record what you learn, and track follow-up."
+        action={<ResetWorkspace />}
       />
       <InvestigationList initialRunId={runId} initialDetector={detector} />
     </>
