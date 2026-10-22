@@ -40,17 +40,23 @@ test('a bundled synthetic dataset runs through API, worker, storage, and console
     .check();
   await page.getByRole('button', { name: 'Run evaluation' }).click();
 
-  await page.waitForFunction(
-    () => {
-      const panel = document.querySelector('.dataset-import');
-      return Boolean(
-        panel?.querySelector('.import-state-error') ||
-        panel?.textContent?.includes('Evaluation run completed'),
-      );
-    },
-    undefined,
-    { timeout: 180_000 },
-  );
+  try {
+    await page.waitForFunction(
+      () => {
+        const panel = document.querySelector('.dataset-import');
+        return Boolean(
+          panel?.querySelector('.import-state-error') ||
+          panel?.textContent?.includes('Evaluation run completed'),
+        );
+      },
+      undefined,
+      { timeout: 180_000 },
+    );
+  } catch (error) {
+    const panelText = await page.locator('.dataset-import').innerText();
+    console.log(`[e2e] Dataset import state at timeout: ${panelText}`);
+    throw error;
+  }
   const importState = await page.locator('.dataset-import').innerText();
   console.log(`[e2e] Dataset import state:\n${importState}`);
   expect(importState).toContain('Evaluation run completed');
