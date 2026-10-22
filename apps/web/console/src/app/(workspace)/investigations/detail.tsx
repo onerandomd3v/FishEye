@@ -147,9 +147,9 @@ export function InvestigationDetail({ findingId }: { findingId: string }) {
           Employee day: {finding.employee_day_utc} UTC
         </span>
       </div>
-      <Notice title="Local development review mode">
-        Review records are stored for this synthetic run, but no analyst is
-        authenticated. This is not suitable for shared or production use.
+      <Notice title="Synthetic demo review mode">
+        This demo uses one configured analyst login. Review records are saved to
+        the synthetic run and do not change its evidence or scores.
       </Notice>
       <div className="two-column">
         <section className="card card-pad" aria-labelledby="signals-title">

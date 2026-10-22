@@ -76,7 +76,6 @@ const environment = {
   FISHEYE_DEMO_PASSWORD: randomBytes(24).toString('base64url'),
   FISHEYE_SESSION_SECRET: randomBytes(32).toString('base64url'),
   FISHEYE_CONSOLE_URL: 'http://127.0.0.1:3000',
-  FISHEYE_OIDC_REDIRECT_URI: 'http://127.0.0.1:3000/api/auth/callback',
   API_INTERNAL_URL: 'http://127.0.0.1:8000',
 };
 

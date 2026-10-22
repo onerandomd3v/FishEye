@@ -2,13 +2,9 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import {
   consoleOrigin,
-  decryptSession,
-  SESSION_COOKIE,
-} from '../../../../lib/oidc';
-import {
-  LOCAL_SESSION_COOKIE,
-  verifyLocalSession,
-} from '../../../../lib/local-auth';
+  DEMO_SESSION_COOKIE,
+  verifyDemoSession,
+} from '../../../../lib/demo-auth';
 import {
   PayloadTooLargeError,
   readBodyWithinLimit,
@@ -36,11 +32,9 @@ async function proxy(request: Request, context: RouteContext) {
     );
   }
   const jar = await cookies();
-  const session = await decryptSession(jar.get(SESSION_COOKIE)?.value);
-  const localSession =
-    process.env.NODE_ENV === 'development' &&
-    (await verifyLocalSession(jar.get(LOCAL_SESSION_COOKIE)?.value));
-  if (!session && !localSession)
+  const session = jar.get(DEMO_SESSION_COOKIE)?.value;
+  const authenticated = await verifyDemoSession(session);
+  if (!authenticated)
     return NextResponse.json(
       { detail: 'Sign in to access FishEye.' },
       { status: 401 },
@@ -97,7 +91,7 @@ async function proxy(request: Request, context: RouteContext) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
-  if (session) headers.set('authorization', `Bearer ${session.accessToken}`);
+  if (session) headers.set('authorization', `Bearer ${session}`);
   try {
     const response = await fetch(target, {
       method: request.method,

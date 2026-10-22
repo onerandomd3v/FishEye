@@ -64,7 +64,9 @@ services:
       - 0.0.0.0
       - --port
       - '8000'
-    environment: *backend_environment
+    environment:
+      <<: *backend_environment
+      FISHEYE_SESSION_SECRET: ${FISHEYE_SESSION_SECRET:?Set FISHEYE_SESSION_SECRET in .env}
     ports:
       - '127.0.0.1:8000:8000'
     volumes:
@@ -131,7 +133,6 @@ services:
     environment:
       API_INTERNAL_URL: http://api:8000
       FISHEYE_CONSOLE_URL: http://127.0.0.1:3000
-      FISHEYE_OIDC_REDIRECT_URI: http://127.0.0.1:3000/api/auth/callback
       FISHEYE_SESSION_SECRET: ${FISHEYE_SESSION_SECRET:?Set FISHEYE_SESSION_SECRET in .env}
       FISHEYE_DEMO_EMAIL: ${FISHEYE_DEMO_EMAIL:?Set FISHEYE_DEMO_EMAIL in .env}
       FISHEYE_DEMO_PASSWORD: ${FISHEYE_DEMO_PASSWORD:?Set FISHEYE_DEMO_PASSWORD in .env}

@@ -318,7 +318,7 @@ The MVP is release-ready when all are true:
 | Scoring weights, calibration and tier thresholds | Detection/research lead — before held-out evaluation |
 | Comparable-recall tolerance and primary success metric | Product + research — before test freeze |
 | Final synthetic dataset sizes and scenario balance | Research — before benchmarks |
-| Auth0 tenant, hosted environments and role-claim mapping | Engineering — before shared deployment |
+| Shared demo email/password and session-signing secret | Engineering — configure in console and API secret stores before shared deployment |
 | Published retention and artifact expiration rules | Engineering/product — before release |
 | Formal Figma implementation QA and responsive breakpoints | Design + frontend — during product polish |
 
