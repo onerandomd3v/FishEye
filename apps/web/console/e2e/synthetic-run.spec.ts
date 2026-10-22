@@ -63,7 +63,9 @@ test('a bundled synthetic dataset runs through API, worker, storage, and console
   await expect(page.getByText('Results on the evaluation data')).toBeVisible();
 
   await page.goto('/overview');
-  await expect(page.getByText('Latest findings')).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Latest findings' }),
+  ).toBeVisible();
   await expect(page.getByText('Person-days evaluated')).toBeVisible();
 
   await page.goto('/evaluation');
