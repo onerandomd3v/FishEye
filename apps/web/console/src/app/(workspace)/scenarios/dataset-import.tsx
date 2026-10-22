@@ -200,7 +200,7 @@ export function DatasetImport() {
         </div>
         <a
           className="template-link"
-          href="/templates/fisheye-events-v1.csv"
+          href="/templates/fisheye-events-v2.csv"
           download
         >
           Download CSV template

@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button, Notice } from '@fisheye/ui';
 import { createFishEyeApiClient, type components } from '@fisheye/api-client';
 import { PageHeading } from '../shared';
+import {
+  formatAlertsPer100EmployeeDays,
+  formatMetricRatio,
+} from '../evaluation-format';
 
 type Run = components['schemas']['EvaluationRunResponse'];
 type Finding = components['schemas']['RunFindingResponse'];
@@ -326,10 +330,14 @@ function Comparison({ metrics }: { metrics: Record<string, unknown> }) {
             return (
               <tr key={name}>
                 <td>{name.replaceAll('_', ' ')}</td>
-                <td>{ratio(scores?.precision)}</td>
-                <td>{ratio(scores?.recall)}</td>
-                <td>{ratio(scores?.false_positive_rate)}</td>
-                <td>{ratio(scores?.alerts_per_100_employee_days)}</td>
+                <td>{formatMetricRatio(scores?.precision)}</td>
+                <td>{formatMetricRatio(scores?.recall)}</td>
+                <td>{formatMetricRatio(scores?.false_positive_rate)}</td>
+                <td>
+                  {formatAlertsPer100EmployeeDays(
+                    scores?.alerts_per_100_employee_days,
+                  )}
+                </td>
               </tr>
             );
           })}
@@ -343,13 +351,6 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null
     ? (value as Record<string, unknown>)
     : null;
-}
-
-function ratio(value: unknown): string {
-  const number = asRecord(value)?.value;
-  return typeof number === 'number'
-    ? `${(number * 100).toFixed(1)}%`
-    : 'Unavailable';
 }
 
 function stringValue(value: unknown): string | null {

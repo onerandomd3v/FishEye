@@ -2,6 +2,7 @@ import csv
 import io
 from datetime import UTC
 
+import fisheye_worker.run_processing as run_processing
 from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 from fisheye_api.main import app
@@ -97,12 +98,32 @@ def test_import_queue_process_and_read_real_synthetic_run(tmp_path, monkeypatch)
     assert duplicate.json()["run_id"] == queued.json()["run_id"]
 
     factory = create_session_factory(database_url)
+    original_execute = run_processing.execute_run
+    heartbeat_count = 0
+
+    def delayed_execute(*args, **kwargs):
+        import time
+
+        time.sleep(0.05)
+        return original_execute(*args, **kwargs)
+
+    original_heartbeat = run_processing.heartbeat_run
+
+    def count_heartbeat(*args, **kwargs):
+        nonlocal heartbeat_count
+        heartbeat_count += 1
+        return original_heartbeat(*args, **kwargs)
+
+    monkeypatch.setattr(run_processing, "execute_run", delayed_execute)
+    monkeypatch.setattr(run_processing, "heartbeat_run", count_heartbeat)
     assert process_next_run(
         factory,
         artifact_root=artifact_root,
         encryption_key=encryption_key,
         worker_id="test-worker",
+        heartbeat_interval_seconds=0.01,
     )
+    assert heartbeat_count >= 1
 
     completed = client.get(f"/api/v1/runs/{queued.json()['run_id']}")
     assert completed.status_code == 200

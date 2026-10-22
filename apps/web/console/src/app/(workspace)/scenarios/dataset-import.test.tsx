@@ -44,6 +44,11 @@ describe('development evaluation run flow', () => {
         .getByRole('button', { name: 'Import and run evaluation' })
         .hasAttribute('disabled'),
     ).toBe(true);
+    expect(
+      screen
+        .getByRole('link', { name: 'Download CSV template' })
+        .getAttribute('href'),
+    ).toBe('/templates/fisheye-events-v2.csv');
     expect(screen.getByText(/Do not upload real employee/i)).toBeTruthy();
   });
 
