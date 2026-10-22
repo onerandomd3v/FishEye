@@ -14,9 +14,11 @@ It helps security teams distinguish genuine threats from harmless unusual behavi
 
 ## The problem
 
-At 11 PM, an employee's account accesses customer records outside normal working hours. The employee might be working late, or someone else might be using their account without permission.
+Banks protect sensitive systems, customer information and other important assets. When an employee account performs unusual activity involving those assets, security systems may generate an alert.
 
-A security alert tells the team that something unusual happened, but **it doesn't tell them whether there is a genuine threat**. Investigating every alert takes time, while ignoring alerts can be dangerous.
+But unusual activity isn't always a threat. It could be legitimate work, a mistake or unauthorized access. Security teams must investigate to establish the facts, and that takes time.
+
+**The challenge is knowing which alerts deserve attention first without overlooking genuine threats.**
 
 Existing tools such as Microsoft Purview, Splunk and Exabeam already help security teams detect and investigate suspicious activity. **FishEye focuses on making alerts easier to understand and prioritize—and testing whether that reduces false alarms without missing more real threats.**
 
@@ -45,7 +47,7 @@ Follow these pages in order to explore the demo:
 
 ### Suggested live demonstration
 
-**Start with an employee doing legitimate work at an unusual time. Then compare that with an account showing several suspicious actions.** Visit Scenario lab → Risk overview → Investigations → Evaluation to show how FishEye handles each case and why the alerts receive different priorities.
+**Compare a harmless but unusual activity with one showing multiple warning signs.** Visit Scenario lab → Risk overview → Investigations → Evaluation to show how FishEye prioritizes the findings and explains the evidence.
 
 All examples use **simulated activity**, not real bank records. To see results, the backend API and worker must be running. If there is no hosted demo, follow the local setup below.
 
