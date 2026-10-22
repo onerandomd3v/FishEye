@@ -4,6 +4,16 @@ test('a bundled synthetic dataset runs through API, worker, storage, and console
   page,
 }) => {
   test.setTimeout(240_000);
+  page.on('response', (response) => {
+    if (
+      new URL(response.url()).pathname.startsWith('/api/backend/') &&
+      response.status() >= 400
+    ) {
+      console.log(
+        `[e2e] API proxy returned ${response.status()} for ${new URL(response.url()).pathname}`,
+      );
+    }
+  });
   const email = process.env.FISHEYE_DEMO_EMAIL;
   const password = process.env.FISHEYE_DEMO_PASSWORD;
   expect(email, 'E2E demo email must be supplied by the runner').toBeTruthy();
@@ -30,9 +40,20 @@ test('a bundled synthetic dataset runs through API, worker, storage, and console
     .check();
   await page.getByRole('button', { name: 'Import and run evaluation' }).click();
 
-  await expect(page.getByText('Evaluation run completed')).toBeVisible({
-    timeout: 180_000,
-  });
+  await page.waitForFunction(
+    () => {
+      const panel = document.querySelector('.dataset-import');
+      return Boolean(
+        panel?.querySelector('.import-state-error') ||
+        panel?.textContent?.includes('Evaluation run completed'),
+      );
+    },
+    undefined,
+    { timeout: 180_000 },
+  );
+  const importState = await page.locator('.dataset-import').innerText();
+  console.log(`[e2e] Dataset import state:\n${importState}`);
+  expect(importState).toContain('Evaluation run completed');
   await expect(
     page.getByText(/Synthetic development result only/),
   ).toBeVisible();
