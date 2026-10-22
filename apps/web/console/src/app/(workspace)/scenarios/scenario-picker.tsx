@@ -9,11 +9,13 @@ export function ScenarioPicker({
   selectedId,
   loadingId,
   error,
+  disabled = false,
   onSelect,
 }: {
   selectedId: string | null;
   loadingId: string | null;
   error: string;
+  disabled?: boolean;
   onSelect: (scenario: ScenarioPack) => void;
 }) {
   return (
@@ -54,7 +56,7 @@ export function ScenarioPicker({
               type="button"
               variant={selectedId === scenario.id ? 'secondary' : 'primary'}
               aria-pressed={selectedId === scenario.id}
-              disabled={loadingId !== null}
+              disabled={disabled || loadingId !== null}
               onClick={() => onSelect(scenario)}
             >
               {loadingId === scenario.id

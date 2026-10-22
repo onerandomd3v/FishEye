@@ -11,6 +11,7 @@ export function ScenarioLab() {
   const [selected, setSelected] = useState<ScenarioPack | null>(null);
   const [files, setFiles] = useState<SampleFiles | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [runWorking, setRunWorking] = useState(false);
   const [error, setError] = useState('');
 
   async function selectScenario(scenario: ScenarioPack) {
@@ -62,6 +63,7 @@ export function ScenarioLab() {
       <ScenarioPicker
         selectedId={selected?.id ?? null}
         loadingId={loadingId}
+        disabled={runWorking}
         error={error}
         onSelect={selectScenario}
       />
@@ -76,6 +78,7 @@ export function ScenarioLab() {
           <Button
             type="button"
             variant="ghost"
+            disabled={runWorking}
             onClick={() => {
               setSelected(null);
               setFiles(null);
@@ -89,6 +92,7 @@ export function ScenarioLab() {
         key={selected?.id ?? 'manual-upload'}
         initialCsv={files?.csv ?? null}
         initialContextFile={files?.context ?? null}
+        onWorkingChange={setRunWorking}
       />
     </>
   );
