@@ -66,6 +66,22 @@ This stack sets `FISHEYE_ENV=development`; development-only CSV and run routes r
 
 The backend image is a local runtime build, not a hosted deployment recipe. Shared deployment still requires a hosting provider, production secret management, managed PostgreSQL, durable object storage and an OIDC provider/role mapping. Do not copy local Compose credentials or use local filesystem artifact storage in a shared environment.
 
+The landing and console also have independent container builds: `infra/docker/landing.Dockerfile` produces a static Nginx image, and `infra/docker/console.Dockerfile` produces a standalone Next.js server image. Build either from the repository root; set the landing build argument `PUBLIC_CONSOLE_URL` for its product link:
+
+```sh
+docker build -f infra/docker/landing.Dockerfile \
+  --build-arg PUBLIC_CONSOLE_URL=https://console.example.invalid/login .
+docker build -f infra/docker/console.Dockerfile .
+```
+
+To run the full local web and backend stack, add a random `FISHEYE_SESSION_SECRET` to the root `.env` (for example, generate one with `openssl rand -base64 32`), then enable both profiles:
+
+```sh
+docker compose -f infra/compose.yaml --profile application --profile web up --build -d
+```
+
+The landing page is at `http://127.0.0.1:4321` and the console at `http://127.0.0.1:3000`. The containerized console uses production mode and requires OIDC configuration for sign-in; it does not enable the development-only demo login. Without an OIDC provider, the console correctly reports sign-in as unavailable. For the local demo login, run the console with `pnpm dev:console` instead and set `API_INTERNAL_URL=http://127.0.0.1:8000` in its `.env.local`.
+
 ## Checks
 
 ```sh
