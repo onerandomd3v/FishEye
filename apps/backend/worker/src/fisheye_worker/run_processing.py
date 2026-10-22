@@ -306,24 +306,16 @@ def _publish_result_artifact(
     manifest_uri = f"{relative_uri}/manifest.json.enc"
     scores_uri = f"{relative_uri}/scores.parquet.enc"
     if store.exists(manifest_uri):
-        try:
-            existing = _cipher(encryption_key).decrypt(store.read(manifest_uri))
-            existing_manifest = json.loads(existing)
-            if any(
-                existing_manifest.get(key) != value
-                for key, value in manifest.items()
-                if key not in {"completed_at", "worker_build_revision"}
-            ):
-                raise RuntimeError("Existing run result artifacts do not match this run.")
-            if not isinstance(existing_manifest.get("worker_build_revision"), str):
-                raise RuntimeError("Existing run manifest is missing its worker revision.")
-            existing_result = _cipher(encryption_key).decrypt(store.read(scores_uri))
-            if hashlib.sha256(existing_result).hexdigest() != result_sha256:
-                raise RuntimeError("Existing run scores failed their integrity check.")
-            assert_lease_active()
-            return relative_uri, hashlib.sha256(existing).hexdigest()
-        except (OSError, json.JSONDecodeError, InvalidToken) as error:
-            raise RuntimeError("Existing run result artifacts are unreadable.") from error
+        return _reuse_published_result(
+            store,
+            relative_uri,
+            manifest_uri,
+            scores_uri,
+            manifest,
+            result_sha256,
+            encryption_key,
+            assert_lease_active,
+        )
     cipher = _cipher(encryption_key)
     # Publish the immutable score object before the manifest commit marker.
     write_encrypted_immutable(
@@ -334,18 +326,64 @@ def _publish_result_artifact(
         decrypt=cipher.decrypt,
     )
     assert_lease_active()
-    write_encrypted_immutable(
-        store,
-        manifest_uri,
-        manifest_bytes,
-        encrypt=cipher.encrypt,
-        decrypt=cipher.decrypt,
-    )
+    try:
+        write_encrypted_immutable(
+            store,
+            manifest_uri,
+            manifest_bytes,
+            encrypt=cipher.encrypt,
+            decrypt=cipher.decrypt,
+        )
+    except RuntimeError:
+        # Another valid lease holder may have committed its manifest between our
+        # existence check and immutable put. Reuse only after validating that winner.
+        if not store.exists(manifest_uri):
+            raise
+        return _reuse_published_result(
+            store,
+            relative_uri,
+            manifest_uri,
+            scores_uri,
+            manifest,
+            result_sha256,
+            encryption_key,
+            assert_lease_active,
+        )
     # Verify through the same interface used by readers before marking the run complete.
     published = cipher.decrypt(store.read(manifest_uri))
     if hashlib.sha256(published).hexdigest() != hashlib.sha256(manifest_bytes).hexdigest():
         raise RuntimeError("Published run manifest failed its integrity check.")
     return relative_uri, hashlib.sha256(manifest_bytes).hexdigest()
+
+
+def _reuse_published_result(
+    store: ArtifactStore,
+    relative_uri: str,
+    manifest_uri: str,
+    scores_uri: str,
+    expected_manifest: dict[str, object],
+    result_sha256: str,
+    encryption_key: bytes,
+    assert_lease_active: Callable[[], None],
+) -> tuple[str, str]:
+    try:
+        existing = _cipher(encryption_key).decrypt(store.read(manifest_uri))
+        existing_manifest = json.loads(existing)
+        if any(
+            existing_manifest.get(key) != value
+            for key, value in expected_manifest.items()
+            if key not in {"completed_at", "worker_build_revision"}
+        ):
+            raise RuntimeError("Existing run result artifacts do not match this run.")
+        if not isinstance(existing_manifest.get("worker_build_revision"), str):
+            raise RuntimeError("Existing run manifest is missing its worker revision.")
+        existing_result = _cipher(encryption_key).decrypt(store.read(scores_uri))
+        if hashlib.sha256(existing_result).hexdigest() != result_sha256:
+            raise RuntimeError("Existing run scores failed their integrity check.")
+        assert_lease_active()
+        return relative_uri, hashlib.sha256(existing).hexdigest()
+    except (OSError, json.JSONDecodeError, InvalidToken) as error:
+        raise RuntimeError("Existing run result artifacts are unreadable.") from error
 
 
 def _worker_build_revision() -> str:
