@@ -74,13 +74,13 @@ docker build -f infra/docker/landing.Dockerfile \
 docker build -f infra/docker/console.Dockerfile .
 ```
 
-To run the full local web and backend stack, add a random `FISHEYE_SESSION_SECRET` to the root `.env` (for example, generate one with `openssl rand -base64 32`), then enable both profiles:
+To run the full local demo, copy the root `.env.example` to `.env`. Generate a local artifact encryption key using the command above, set a unique `FISHEYE_DEMO_PASSWORD`, and generate a random `FISHEYE_SESSION_SECRET` (for example, with `openssl rand -base64 32`). Set `FISHEYE_ENABLE_DEV_CSV_VALIDATION`, `FISHEYE_ENABLE_DEV_CSV_IMPORT`, `FISHEYE_ENABLE_DEV_DATASET_READS` and `FISHEYE_ENABLE_DEV_EVALUATION_RUNS` to `1` in `.env`, then enable both profiles:
 
 ```sh
 docker compose -f infra/compose.yaml --profile application --profile web up --build -d
 ```
 
-The landing page is at `http://127.0.0.1:4321` and the console at `http://127.0.0.1:3000`. The containerized console uses production mode and requires OIDC configuration for sign-in; it does not enable the development-only demo login. Without an OIDC provider, the console correctly reports sign-in as unavailable. For the local demo login, run the console with `pnpm dev:console` instead and set `API_INTERNAL_URL=http://127.0.0.1:8000` in its `.env.local`.
+The landing page is at `http://127.0.0.1:4321` and the console at `http://127.0.0.1:3000`. Compose runs the console in Next.js development mode for local demo sign-in, enables only the development API import/run routes, and keeps all published ports bound to loopback. The console demo credentials are a local UI gate; they are not real authentication and must not be used for a shared deployment. The independent production console image remains a standalone Next.js server and requires OIDC configuration for shared sign-in. Do not expose the local Compose demo stack to a network.
 
 ## Checks
 
