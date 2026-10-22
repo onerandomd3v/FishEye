@@ -21,6 +21,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fisheye_domain.context import parse_synthetic_context
 from fisheye_domain.csv_schema import SCHEMA_VERSION
 from fisheye_evaluation.methodology import METHODOLOGY_CONFIG_SHA256, METHODOLOGY_VERSION
+from fisheye_persistence.artifacts import (
+    ArtifactStore,
+    artifact_store_from_environment,
+    as_artifact_store,
+)
 from fisheye_persistence.datasets import (
     DatasetRecord,
     create_session_factory,
@@ -409,11 +414,8 @@ async def validate_dataset_import(
         alias="X-FishEye-Synthetic-Data-Confirmed",
     ),
 ) -> DatasetValidationResponse:
-    """Development-only schema check; this endpoint does not import or score data."""
-    if (
-        os.getenv("FISHEYE_ENV") != "development"
-        or os.getenv("FISHEYE_ENABLE_DEV_CSV_VALIDATION") != "1"
-    ):
+    """Validate an explicitly confirmed synthetic CSV without importing or scoring it."""
+    if not _feature_enabled("FISHEYE_ENABLE_DEV_CSV_VALIDATION"):
         raise HTTPException(status_code=503, detail="CSV validation is not enabled on this API.")
     if synthetic_data_confirmed != "true":
         raise HTTPException(
@@ -463,11 +465,8 @@ async def import_synthetic_dataset(
         alias="X-FishEye-Synthetic-Data-Confirmed",
     ),
 ) -> DatasetImportResponse:
-    """Persist a validated synthetic CSV as an immutable dev-only dataset artifact."""
-    if (
-        os.getenv("FISHEYE_ENV") != "development"
-        or os.getenv("FISHEYE_ENABLE_DEV_CSV_IMPORT") != "1"
-    ):
+    """Persist a validated synthetic CSV as an immutable dataset artifact."""
+    if not _feature_enabled("FISHEYE_ENABLE_DEV_CSV_IMPORT"):
         raise HTTPException(
             status_code=503,
             detail="Synthetic CSV import is not enabled on this API.",
@@ -487,9 +486,12 @@ async def import_synthetic_dataset(
         )
 
     database_url = os.getenv("DATABASE_URL")
-    artifact_root = os.getenv("FISHEYE_ARTIFACT_DIR")
     artifact_encryption_key = os.getenv("FISHEYE_ARTIFACT_ENCRYPTION_KEY")
-    if not database_url or not artifact_root or not artifact_encryption_key:
+    try:
+        artifact_store = artifact_store_from_environment()
+    except RuntimeError:
+        artifact_store = None
+    if not database_url or artifact_store is None or not artifact_encryption_key:
         raise HTTPException(
             status_code=503,
             detail="Encrypted dataset storage is not configured for this development API.",
@@ -499,7 +501,7 @@ async def import_synthetic_dataset(
         record, created = await asyncio.to_thread(
             _persist_dataset,
             database_url,
-            Path(artifact_root),
+            artifact_store,
             content,
             validation,
             artifact_encryption_key.encode("utf-8"),
@@ -710,7 +712,8 @@ def clear_local_workspace(
     """Permanently clear local run, review, dataset and referenced artifact data."""
     if not _local_data_reset_enabled():
         raise HTTPException(status_code=404, detail="Workspace reset is not enabled.")
-    database_url, artifact_root, _ = _require_dev_evaluation_runs()
+    database_url, _, _ = _require_dev_evaluation_runs()
+    artifact_root = Path(os.environ["FISHEYE_ARTIFACT_DIR"])
     try:
         with _session_factory(database_url)() as session:
             result = reset_workspace(session, artifact_root)
@@ -967,7 +970,7 @@ def _resolve_stored_finding(
     record: EvaluationRunRecord,
     finding_id: str,
     *,
-    artifact_root: Path,
+    artifact_root: Path | ArtifactStore,
     encryption_key: bytes,
 ) -> RunFindingResponse:
     parts = finding_id.split(":", 3)
@@ -1036,7 +1039,7 @@ def _finding_id(run_id: str, detector: str, employee_id: str, day: str) -> str:
 def _read_finding_events(
     dataset: DatasetRecord,
     finding: RunFindingResponse,
-    artifact_root: Path,
+    artifact_root: Path | ArtifactStore,
     encryption_key: bytes,
 ) -> list[FindingEvidenceEventResponse]:
     try:
@@ -1083,10 +1086,7 @@ def _finding_review_response(record: FindingReviewRecord) -> FindingReviewRespon
 
 
 def _require_dev_dataset_reads() -> str:
-    if (
-        os.getenv("FISHEYE_ENV") != "development"
-        or os.getenv("FISHEYE_ENABLE_DEV_DATASET_READS") != "1"
-    ):
+    if not _feature_enabled("FISHEYE_ENABLE_DEV_DATASET_READS"):
         raise HTTPException(
             status_code=503,
             detail="Dataset reads are not enabled on this development API.",
@@ -1123,19 +1123,19 @@ def _dataset_metadata(record: DatasetRecord) -> DatasetMetadataResponse:
     )
 
 
-def _require_dev_evaluation_runs() -> tuple[str, Path, bytes]:
-    if (
-        os.getenv("FISHEYE_ENV") != "development"
-        or os.getenv("FISHEYE_ENABLE_DEV_EVALUATION_RUNS") != "1"
-    ):
+def _require_dev_evaluation_runs() -> tuple[str, ArtifactStore, bytes]:
+    if not _feature_enabled("FISHEYE_ENABLE_DEV_EVALUATION_RUNS"):
         raise HTTPException(
             status_code=503,
             detail="Evaluation runs are not enabled on this development API.",
         )
     database_url = os.getenv("DATABASE_URL")
-    artifact_root = os.getenv("FISHEYE_ARTIFACT_DIR")
     encryption_key = os.getenv("FISHEYE_ARTIFACT_ENCRYPTION_KEY")
-    if not database_url or not artifact_root or not encryption_key:
+    try:
+        artifact_store = artifact_store_from_environment()
+    except RuntimeError:
+        artifact_store = None
+    if not database_url or artifact_store is None or not encryption_key:
         raise HTTPException(
             status_code=503,
             detail="Database and encrypted artifact storage are required for development runs.",
@@ -1147,7 +1147,15 @@ def _require_dev_evaluation_runs() -> tuple[str, Path, bytes]:
             status_code=503,
             detail="Run artifact encryption is not configured correctly.",
         ) from None
-    return database_url, Path(artifact_root), encryption_key.encode("utf-8")
+    return database_url, artifact_store, encryption_key.encode("utf-8")
+
+
+def _feature_enabled(development_flag: str) -> bool:
+    local_enabled = os.getenv("FISHEYE_ENV") == "development" and os.getenv(development_flag) == "1"
+    hosted_demo_enabled = (
+        os.getenv("FISHEYE_ENV") == "production" and os.getenv("FISHEYE_SYNTHETIC_DEMO_MODE") == "1"
+    )
+    return local_enabled or hosted_demo_enabled
 
 
 def _local_data_reset_enabled() -> bool:
@@ -1155,6 +1163,7 @@ def _local_data_reset_enabled() -> bool:
         os.getenv("FISHEYE_ENV") == "development"
         and os.getenv("FISHEYE_ENABLE_DEV_EVALUATION_RUNS") == "1"
         and os.getenv("FISHEYE_ENABLE_LOCAL_DATA_RESET") == "1"
+        and os.getenv("FISHEYE_ARTIFACT_STORAGE", "local").strip().lower() == "local"
     )
 
 
@@ -1187,25 +1196,21 @@ def _iso_utc(value: datetime) -> str:
 def _read_findings_frame(
     relative_uri: str,
     expected_manifest_sha256: str,
-    artifact_root: Path,
+    artifact_root: Path | ArtifactStore,
     encryption_key: bytes,
 ) -> pl.DataFrame:
-    directory = (artifact_root / relative_uri).resolve()
-    try:
-        directory.relative_to(artifact_root.resolve())
-    except ValueError:
-        raise RuntimeError("A run artifact path is invalid.") from None
+    store = as_artifact_store(artifact_root)
     try:
         cipher = Fernet(encryption_key)
-        manifest_bytes = cipher.decrypt((directory / "manifest.json.enc").read_bytes())
+        manifest_bytes = cipher.decrypt(store.read(f"{relative_uri}/manifest.json.enc"))
         if hashlib.sha256(manifest_bytes).hexdigest() != expected_manifest_sha256:
             raise RuntimeError("Run manifest failed its integrity check.")
         manifest = json.loads(manifest_bytes)
-        result_bytes = cipher.decrypt((directory / "scores.parquet.enc").read_bytes())
+        result_bytes = cipher.decrypt(store.read(f"{relative_uri}/scores.parquet.enc"))
         if hashlib.sha256(result_bytes).hexdigest() != manifest.get("result_artifact_sha256"):
             raise RuntimeError("Run findings failed their integrity check.")
         return pl.read_parquet(io.BytesIO(result_bytes))
-    except (OSError, InvalidToken, json.JSONDecodeError) as error:
+    except (OSError, RuntimeError, InvalidToken, json.JSONDecodeError) as error:
         raise RuntimeError("Run findings are unavailable or unreadable.") from error
 
 
@@ -1213,17 +1218,13 @@ def _read_run_manifest(
     relative_uri: str,
     expected_manifest_sha256: str,
     run_id: str,
-    artifact_root: Path,
+    artifact_root: Path | ArtifactStore,
     encryption_key: bytes,
 ) -> bytes:
-    directory = (artifact_root / relative_uri).resolve()
-    try:
-        directory.relative_to(artifact_root.resolve())
-    except ValueError:
-        raise RuntimeError("A run artifact path is invalid.") from None
+    store = as_artifact_store(artifact_root)
     try:
         manifest_bytes = Fernet(encryption_key).decrypt(
-            (directory / "manifest.json.enc").read_bytes()
+            store.read(f"{relative_uri}/manifest.json.enc")
         )
         if hashlib.sha256(manifest_bytes).hexdigest() != expected_manifest_sha256:
             raise RuntimeError("Run manifest failed its integrity check.")
@@ -1236,7 +1237,7 @@ def _read_run_manifest(
         return manifest_bytes
     except ValueError as error:
         raise RuntimeError("Run manifest does not match its documented schema.") from error
-    except (OSError, InvalidToken, json.JSONDecodeError) as error:
+    except (OSError, RuntimeError, InvalidToken, json.JSONDecodeError) as error:
         raise RuntimeError("Run manifest is unavailable or unreadable.") from error
 
 
@@ -1259,7 +1260,7 @@ async def _read_csv_body(request: Request) -> bytes:
 
 def _persist_dataset(
     database_url: str,
-    artifact_root: Path,
+    artifact_root: Path | ArtifactStore,
     content: bytes,
     validation: CsvValidationResult,
     artifact_encryption_key: bytes,
