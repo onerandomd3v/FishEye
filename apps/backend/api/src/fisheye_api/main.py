@@ -8,6 +8,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fisheye_domain.csv_schema import SCHEMA_VERSION
 from fisheye_persistence.datasets import (
     DatasetRecord,
     create_session_factory,
@@ -89,7 +90,9 @@ class DatasetMetadataResponse(BaseModel):
     analysis_manifest_sha256: str | None = None
     synthetic_only: bool = True
     evaluation_status: str = "not_run"
-    ground_truth_usage: str = "evaluation_only"
+    ground_truth_usage: str = (
+        "calibration_for_threshold_selection; evaluation_for_metrics; never_a_detector_feature"
+    )
     run_created: bool = False
     risk_calculated: bool = False
 
@@ -339,6 +342,11 @@ def _dataset_metadata(record: DatasetRecord) -> DatasetMetadataResponse:
         preparation_status=record.preparation_status,
         prepared_at=(record.prepared_at.isoformat() if record.prepared_at is not None else None),
         analysis_manifest_sha256=record.analysis_manifest_sha256,
+        ground_truth_usage=(
+            "calibration_for_threshold_selection; evaluation_for_metrics; never_a_detector_feature"
+            if record.schema_version == SCHEMA_VERSION
+            else "evaluation_only"
+        ),
     )
 
 

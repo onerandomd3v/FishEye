@@ -26,7 +26,7 @@ jobs:
       - name: Ruff format verification
         run: uv run --locked ruff format --check apps/backend
       - name: Static type checks
-        run: uv run --locked mypy apps/backend/api/src apps/backend/worker/src apps/backend/packages/domain/src apps/backend/packages/persistence/src
+        run: uv run --locked mypy apps/backend/api/src apps/backend/worker/src apps/backend/packages/domain/src apps/backend/packages/evaluation/src apps/backend/packages/persistence/src
       - name: Backend tests
         run: uv run --locked pytest -q apps/backend/api/tests apps/backend/worker/tests -m 'not integration'
       - name: Worker import and startup checks

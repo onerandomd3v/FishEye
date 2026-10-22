@@ -103,7 +103,11 @@ def import_dataset(
         "employee_day_count": employee_day_count,
         "seed": None,
         "seed_status": "not_provided_by_uploaded_csv",
-        "ground_truth_usage": "evaluation_only; never a detector feature",
+        "ground_truth_usage": (
+            "calibration_for_threshold_selection; evaluation_for_metrics; never_a_detector_feature"
+            if schema_version == "fisheye.events.v2"
+            else "evaluation_only; never a detector feature"
+        ),
         "evaluation_status": "not_run",
     }
     manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")

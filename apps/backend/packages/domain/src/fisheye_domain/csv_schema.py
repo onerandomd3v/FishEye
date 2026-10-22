@@ -1,6 +1,7 @@
 """Shared constants for the versioned synthetic event CSV contract."""
 
-SCHEMA_VERSION = "fisheye.events.v1"
+SCHEMA_VERSION_V1 = "fisheye.events.v1"
+SCHEMA_VERSION = "fisheye.events.v2"
 CSV_HEADERS = (
     "event_id",
     "employee_id",
@@ -22,7 +23,7 @@ EVENT_TYPES = {
     "record_export",
     "permission_change",
 }
-PARTITIONS = {"baseline", "evaluation"}
+PARTITIONS = {"baseline", "calibration", "evaluation"}
 GROUND_TRUTH_LABELS = {"threat_scenario", "benign_scenario"}
 MAX_CSV_ROWS = 100_000
 MAX_RECORD_COUNT = 2**63 - 1

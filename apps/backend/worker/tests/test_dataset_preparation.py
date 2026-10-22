@@ -131,7 +131,10 @@ def test_prepare_dataset_writes_encrypted_label_isolated_parquet(imported_datase
     assert manifest["source_sha256"] == hashlib.sha256(source).hexdigest()
     assert manifest["row_count"] == 3
     assert manifest["employee_day_count"] == 2
-    assert manifest["ground_truth_usage"] == "evaluation_only; stored in a separate artifact"
+    assert manifest["ground_truth_usage"] == (
+        "calibration_for_threshold_selection; evaluation_for_metrics; "
+        "stored separately from detector inputs"
+    )
 
     events = pl.read_parquet(
         io.BytesIO(cipher.decrypt((analysis_dir / "events.parquet.enc").read_bytes()))
@@ -154,6 +157,34 @@ def test_prepare_dataset_writes_encrypted_label_isolated_parquet(imported_datase
     assert labels.height == 1
     assert labels["ground_truth_label"].to_list() == ["threat_scenario"]
     assert labels["employee_day_utc"].to_list()[0].isoformat() == "2026-01-02"
+
+
+def test_v2_preparation_preserves_calibration_partition_and_labels() -> None:
+    rows = list(csv.reader(io.StringIO(make_csv().decode())))
+    calibration = list(rows[2])
+    calibration[0] = "evt-cal-1"
+    calibration[4] = "2026-01-02T12:00:00Z"
+    calibration[10] = "calibration"
+    rows[2][4] = "2026-01-03T09:00:00Z"
+    rows[3][4] = "2026-01-03T10:00:00Z"
+    rows.insert(2, calibration)
+    buffer = io.StringIO(newline="")
+    csv.writer(buffer, lineterminator="\n").writerows(rows)
+    source = buffer.getvalue().encode()
+
+    validation = validate_events_csv(source)
+    assert validation.valid is True
+    assert validation.schema_version == "fisheye.events.v2"
+    _, partition_bytes, label_bytes, _, _ = dataset_preparation._convert_csv_to_parquet(source)
+    partitions = pl.read_parquet(io.BytesIO(partition_bytes))
+    labels = pl.read_parquet(io.BytesIO(label_bytes))
+
+    assert partitions["dataset_partition"].to_list() == [
+        "baseline",
+        "calibration",
+        "evaluation",
+    ]
+    assert labels["ground_truth_label"].to_list() == ["threat_scenario", "threat_scenario"]
 
 
 def test_prepare_dataset_is_idempotent_and_keeps_artifacts_immutable(imported_dataset) -> None:

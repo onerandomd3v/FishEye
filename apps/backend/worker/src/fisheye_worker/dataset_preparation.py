@@ -15,7 +15,7 @@ from pathlib import Path
 
 import polars as pl
 from cryptography.fernet import Fernet, InvalidToken
-from fisheye_domain.csv_schema import CSV_HEADERS, SCHEMA_VERSION
+from fisheye_domain.csv_schema import CSV_HEADERS, SCHEMA_VERSION, SCHEMA_VERSION_V1
 from fisheye_domain.csv_validation import validate_events_csv
 from fisheye_persistence.datasets import DatasetRecord, get_dataset, read_dataset_source
 from sqlalchemy.orm import Session
@@ -71,7 +71,7 @@ def prepare_dataset(
     record = get_dataset(session, dataset_id)
     if record is None:
         raise LookupError("Dataset was not found.")
-    if record.schema_version != SCHEMA_VERSION:
+    if record.schema_version not in {SCHEMA_VERSION, SCHEMA_VERSION_V1}:
         raise ValueError("This worker does not support the dataset schema version.")
     session.expunge(record)
     session.commit()
@@ -139,7 +139,7 @@ def _create_and_publish_artifacts(
         "dataset_id": record.id,
         "source_sha256": record.sha256,
         "event_schema_version": record.schema_version,
-        "converter_version": "fisheye.dataset-preparation.v1",
+        "converter_version": "fisheye.dataset-preparation.v2",
         "worker_build_revision": _worker_build_revision(),
         "polars_version": pl.__version__,
         "row_count": row_count,
@@ -151,7 +151,10 @@ def _create_and_publish_artifacts(
         "label_artifact": "labels.parquet.enc",
         "label_artifact_sha256": hashlib.sha256(label_bytes).hexdigest(),
         "detector_inputs_exclude": ["dataset_partition", "ground_truth_label"],
-        "ground_truth_usage": "evaluation_only; stored in a separate artifact",
+        "ground_truth_usage": (
+            "calibration_for_threshold_selection; evaluation_for_metrics; "
+            "stored separately from detector inputs"
+        ),
         "prepared_at": prepared_at.isoformat(),
     }
     manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
@@ -179,13 +182,13 @@ def _convert_csv_to_parquet(content: bytes) -> tuple[bytes, bytes, bytes, int, i
             event_time = _parse_event_time(values["event_timestamp_utc"])
             partition = values["dataset_partition"]
             label = values["ground_truth_label"]
-            if event_time is None or partition not in {"baseline", "evaluation"}:
+            if event_time is None or partition not in {"baseline", "calibration", "evaluation"}:
                 raise ValueError
             employee_day = (values["employee_id"], event_time.date())
             previous_partition = partitions.setdefault(employee_day, partition)
             if previous_partition != partition:
                 raise ValueError
-            if partition == "evaluation":
+            if partition in {"calibration", "evaluation"}:
                 previous_label = labels.setdefault(employee_day, label)
                 if previous_label != label:
                     raise ValueError
