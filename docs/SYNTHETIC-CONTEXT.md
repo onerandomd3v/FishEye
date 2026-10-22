@@ -31,8 +31,9 @@ cover every role and employee appearing in the analyzed events. The parser
 rejects unsupported versions, duplicate mappings, empty permissions, invalid
 time zones, invalid schedules and unknown fields.
 
-The research engine accepts this parsed contract alongside prepared event,
-partition and label frames. Its detector feature construction does not accept
-ground-truth labels. At this stage the context file is not uploaded or persisted
-by the API, and the research comparison is not wired to a run endpoint. The
-scoring method remains a proposal pending methodology review.
+The development run API accepts this sidecar as part of a run request, validates
+and stores it encrypted, and the worker loads it with the prepared event,
+partition and label artifacts. Detector feature construction does not accept
+ground-truth labels. The provisional scoring policy is approved for synthetic
+experiments only; it does not establish effectiveness or authorize a held-out
+benchmark claim.

@@ -101,6 +101,61 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/runs': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Evaluation Runs */
+    get: operations['get_evaluation_runs_api_v1_runs_get'];
+    put?: never;
+    /**
+     * Create Evaluation Run
+     * @description Queue a development-only synthetic evaluation for a prepared-schema dataset.
+     */
+    post: operations['create_evaluation_run_api_v1_runs_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/runs/{run_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Evaluation Run */
+    get: operations['get_evaluation_run_api_v1_runs__run_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/runs/{run_id}/findings': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Evaluation Findings */
+    get: operations['get_evaluation_findings_api_v1_runs__run_id__findings_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -246,6 +301,65 @@ export interface components {
        */
       run_created: boolean;
     };
+    /** EvaluationRunCreateRequest */
+    EvaluationRunCreateRequest: {
+      /** Dataset Id */
+      dataset_id: string;
+      /** Synthetic Context */
+      synthetic_context: {
+        [key: string]: unknown;
+      };
+    };
+    /** EvaluationRunListResponse */
+    EvaluationRunListResponse: {
+      /** Items */
+      items: components['schemas']['EvaluationRunResponse'][];
+      /** Limit */
+      limit: number;
+      /** Offset */
+      offset: number;
+      /** Total */
+      total: number;
+      /** Has More */
+      has_more: boolean;
+    };
+    /** EvaluationRunResponse */
+    EvaluationRunResponse: {
+      /** Run Id */
+      run_id: string;
+      /** Dataset Id */
+      dataset_id: string;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'queued' | 'running' | 'completed' | 'failed';
+      /** Methodology Version */
+      methodology_version: string;
+      /** Claim Status */
+      claim_status: string;
+      /** Created At */
+      created_at: string;
+      /** Started At */
+      started_at?: string | null;
+      /** Completed At */
+      completed_at?: string | null;
+      /** Failed At */
+      failed_at?: string | null;
+      /** Error Code */
+      error_code?: string | null;
+      /** Metrics */
+      metrics?: {
+        [key: string]: unknown;
+      } | null;
+      /** Result Manifest Sha256 */
+      result_manifest_sha256?: string | null;
+      /**
+       * Synthetic Only
+       * @default true
+       */
+      synthetic_only: boolean;
+    };
     /** HTTPValidationError */
     HTTPValidationError: {
       /** Detail */
@@ -257,6 +371,50 @@ export interface components {
       status: string;
       /** Synthetic Only */
       synthetic_only: boolean;
+    };
+    /** RunFindingResponse */
+    RunFindingResponse: {
+      /** Finding Id */
+      finding_id: string;
+      /** Run Id */
+      run_id: string;
+      /** Employee Id */
+      employee_id: string;
+      /** Employee Day Utc */
+      employee_day_utc: string;
+      /**
+       * Detector
+       * @enum {string}
+       */
+      detector: 'simple_rule' | 'tuned_rules' | 'contextual';
+      /** Score */
+      score: number;
+      /** Severity */
+      severity: string;
+      /** Reason Codes */
+      reason_codes: string[];
+      /** Evidence Event Ids */
+      evidence_event_ids: string[];
+    };
+    /** RunFindingsResponse */
+    RunFindingsResponse: {
+      /** Items */
+      items: components['schemas']['RunFindingResponse'][];
+      /**
+       * Detector
+       * @enum {string}
+       */
+      detector: 'simple_rule' | 'tuned_rules' | 'contextual';
+      /** Limit */
+      limit: number;
+      /** Offset */
+      offset: number;
+      /** Total */
+      total: number;
+      /** Has More */
+      has_more: boolean;
+      /** Claim Status */
+      claim_status: string;
     };
     /** ValidationError */
     ValidationError: {
@@ -537,6 +695,175 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+    };
+  };
+  get_evaluation_runs_api_v1_runs_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EvaluationRunListResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  create_evaluation_run_api_v1_runs_post: {
+    parameters: {
+      query?: never;
+      header?: {
+        'Idempotency-Key'?: string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['EvaluationRunCreateRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EvaluationRunResponse'];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+    };
+  };
+  get_evaluation_run_api_v1_runs__run_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        run_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EvaluationRunResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  get_evaluation_findings_api_v1_runs__run_id__findings_get: {
+    parameters: {
+      query?: {
+        detector?: 'simple_rule' | 'tuned_rules' | 'contextual';
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path: {
+        run_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RunFindingsResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
         };
       };
     };

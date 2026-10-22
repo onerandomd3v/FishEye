@@ -353,6 +353,268 @@
           }
         }
       }
+    },
+    "/api/v1/runs": {
+      "post": {
+        "summary": "Create Evaluation Run",
+        "description": "Queue a development-only synthetic evaluation for a prepared-schema dataset.",
+        "operationId": "create_evaluation_run_api_v1_runs_post",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluationRunCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationRunResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      },
+      "get": {
+        "summary": "Get Evaluation Runs",
+        "operationId": "get_evaluation_runs_api_v1_runs_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationRunListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}": {
+      "get": {
+        "summary": "Get Evaluation Run",
+        "operationId": "get_evaluation_run_api_v1_runs__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationRunResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/findings": {
+      "get": {
+        "summary": "Get Evaluation Findings",
+        "operationId": "get_evaluation_findings_api_v1_runs__run_id__findings_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "detector",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": ["simple_rule", "tuned_rules", "contextual"],
+              "type": "string",
+              "default": "contextual",
+              "title": "Detector"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunFindingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -640,6 +902,166 @@
         ],
         "title": "DatasetValidationResponse"
       },
+      "EvaluationRunCreateRequest": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "maxLength": 36,
+            "minLength": 1,
+            "title": "Dataset Id"
+          },
+          "synthetic_context": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Synthetic Context"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["dataset_id", "synthetic_context"],
+        "title": "EvaluationRunCreateRequest"
+      },
+      "EvaluationRunListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationRunResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": ["items", "limit", "offset", "total", "has_more"],
+        "title": "EvaluationRunListResponse"
+      },
+      "EvaluationRunResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["queued", "running", "completed", "failed"],
+            "title": "Status"
+          },
+          "methodology_version": {
+            "type": "string",
+            "title": "Methodology Version"
+          },
+          "claim_status": {
+            "type": "string",
+            "title": "Claim Status"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "failed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failed At"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics"
+          },
+          "result_manifest_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Manifest Sha256"
+          },
+          "synthetic_only": {
+            "type": "boolean",
+            "title": "Synthetic Only",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "dataset_id",
+          "status",
+          "methodology_version",
+          "claim_status",
+          "created_at"
+        ],
+        "title": "EvaluationRunResponse"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -667,6 +1089,113 @@
         "type": "object",
         "required": ["status", "synthetic_only"],
         "title": "HealthResponse"
+      },
+      "RunFindingResponse": {
+        "properties": {
+          "finding_id": {
+            "type": "string",
+            "title": "Finding Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "employee_day_utc": {
+            "type": "string",
+            "title": "Employee Day Utc"
+          },
+          "detector": {
+            "type": "string",
+            "enum": ["simple_rule", "tuned_rules", "contextual"],
+            "title": "Detector"
+          },
+          "score": {
+            "type": "integer",
+            "title": "Score"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reason Codes"
+          },
+          "evidence_event_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Event Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "finding_id",
+          "run_id",
+          "employee_id",
+          "employee_day_utc",
+          "detector",
+          "score",
+          "severity",
+          "reason_codes",
+          "evidence_event_ids"
+        ],
+        "title": "RunFindingResponse"
+      },
+      "RunFindingsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RunFindingResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "detector": {
+            "type": "string",
+            "enum": ["simple_rule", "tuned_rules", "contextual"],
+            "title": "Detector"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          },
+          "claim_status": {
+            "type": "string",
+            "title": "Claim Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "detector",
+          "limit",
+          "offset",
+          "total",
+          "has_more",
+          "claim_status"
+        ],
+        "title": "RunFindingsResponse"
       },
       "ValidationError": {
         "properties": {

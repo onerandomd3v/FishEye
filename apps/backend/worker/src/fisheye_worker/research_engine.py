@@ -1,7 +1,7 @@
-"""Deterministic, employee-day research comparison over prepared synthetic data.
+"""Deterministic, employee-day experimental comparison over synthetic data.
 
-The scoring weights and thresholds are an initial proposal for review. They are
-not a validated benchmark and must not be presented as production effectiveness.
+This provisional policy is approved for implementation and synthetic demos, but
+has not been validated as a benchmark or production effectiveness claim.
 """
 
 from collections import defaultdict
@@ -14,6 +14,13 @@ from zoneinfo import ZoneInfo
 import polars as pl
 from fisheye_domain.context import SyntheticContext
 from fisheye_domain.evaluation import EmployeeDayKey, EmployeeDayTruth, GroundTruthLabel
+from fisheye_evaluation.methodology import (
+    METHODOLOGY_CONFIG,
+    METHODOLOGY_VERSION,
+    MIN_PERSONAL_BASELINE_DAYS,
+    MIN_ROLE_BASELINE_DAYS,
+    VOLUME_MULTIPLIER,
+)
 from fisheye_evaluation.metrics import (
     MAX_RECALL_DROP,
     EvaluationReport,
@@ -21,13 +28,6 @@ from fisheye_evaluation.metrics import (
     compare_recall,
     evaluate_employee_days,
 )
-
-METHODOLOGY_VERSION = "fisheye.employee-day-proposal.v1"
-SIMPLE_ALERT_THRESHOLD = 40
-HIGH_SEVERITY_THRESHOLD = 70
-MIN_PERSONAL_BASELINE_DAYS = 3
-MIN_ROLE_BASELINE_DAYS = 3
-VOLUME_MULTIPLIER = 3.0
 
 
 @dataclass(frozen=True)
@@ -70,7 +70,7 @@ class ResearchEvaluation:
     tuned_rules: DetectorEvaluation
     contextual: DetectorEvaluation
     scores: tuple[ScoreResult, ...]
-    claim_status: str = "not_benchmarked; methodology_requires_review"
+    claim_status: str = "provisional_experiment; not_benchmarked"
 
 
 def evaluate_prepared_frames(
@@ -121,8 +121,9 @@ def evaluate_prepared_frames(
 
     calibration_truth = {key: truth_by_key[key] for key in calibration_keys}
     calibration_simple = {key: simple_scores[key] for key in calibration_keys}
+    simple_policy = cast(dict[str, int], METHODOLOGY_CONFIG["simple_rule"])
     fixed_calibration_predictions = {
-        key: score >= SIMPLE_ALERT_THRESHOLD for key, score in calibration_simple.items()
+        key: score >= simple_policy["alert_threshold"] for key, score in calibration_simple.items()
     }
     baseline_calibration = evaluate_employee_days(fixed_calibration_predictions, calibration_truth)
     recall_floor = max(0.0, (baseline_calibration.metrics.recall.value or 0.0) - MAX_RECALL_DROP)
@@ -137,7 +138,7 @@ def evaluate_prepared_frames(
 
     held_out_truth = {key: truth_by_key[key] for key in evaluation_keys}
     simple_predictions = {
-        key: simple_scores[key] >= SIMPLE_ALERT_THRESHOLD for key in evaluation_keys
+        key: simple_scores[key] >= simple_policy["alert_threshold"] for key in evaluation_keys
     }
     tuned_predictions = {key: simple_scores[key] >= tuned_threshold for key in evaluation_keys}
     contextual_predictions = {
@@ -152,7 +153,7 @@ def evaluate_prepared_frames(
         evaluation_unit="employee_day_utc",
         calibration_unit_count=len(calibration_keys),
         evaluation_unit_count=len(evaluation_keys),
-        simple_rule=DetectorEvaluation(SIMPLE_ALERT_THRESHOLD, simple_report, True),
+        simple_rule=DetectorEvaluation(simple_policy["alert_threshold"], simple_report, True),
         tuned_rules=DetectorEvaluation(
             tuned_threshold,
             tuned_report,
@@ -277,19 +278,21 @@ def _build_signals(
 
 
 def _scores(signals: DaySignals) -> tuple[ScoreResult, ScoreResult]:
+    simple_policy = cast(dict[str, int], METHODOLOGY_CONFIG["simple_rule"])
+    contextual_policy = cast(dict[str, int], METHODOLOGY_CONFIG["contextual"])
     simple_points = 0
     simple_reasons: list[str] = []
     simple_evidence: set[str] = set()
     if signals.out_of_role_event_ids:
-        simple_points += 50
+        simple_points += simple_policy["out_of_role_points"]
         simple_reasons.append("out_of_role_access")
         simple_evidence.update(signals.out_of_role_event_ids)
     if signals.unusually_high_volume:
-        simple_points += 50
+        simple_points += simple_policy["high_volume_points"]
         simple_reasons.append("high_access_volume")
         simple_evidence.update(signals.event_ids)
-    if signals.failed_sign_in_count >= 5:
-        simple_points += 50
+    if signals.failed_sign_in_count >= simple_policy["failed_sign_in_minimum"]:
+        simple_points += simple_policy["failed_sign_in_points"]
         simple_reasons.append("repeated_failed_sign_ins")
         simple_evidence.update(signals.event_ids)
     simple = _score_result(signals.key, simple_points, simple_reasons, simple_evidence)
@@ -300,27 +303,37 @@ def _scores(signals: DaySignals) -> tuple[ScoreResult, ScoreResult]:
     evidence_signals = (
         (
             bool(signals.out_of_role_event_ids),
-            40,
+            contextual_policy["out_of_role_points"],
             "out_of_role_access",
             signals.out_of_role_event_ids,
         ),
-        (signals.unusually_high_volume, 30, "high_access_volume", signals.event_ids),
-        (signals.failed_sign_in_count >= 3, 30, "repeated_failed_sign_ins", signals.event_ids),
+        (
+            signals.unusually_high_volume,
+            contextual_policy["high_volume_points"],
+            "high_access_volume",
+            signals.event_ids,
+        ),
+        (
+            signals.failed_sign_in_count >= contextual_policy["failed_sign_in_minimum"],
+            contextual_policy["failed_sign_in_points"],
+            "repeated_failed_sign_ins",
+            signals.event_ids,
+        ),
         (
             bool(signals.unseen_device_event_ids),
-            15,
+            contextual_policy["unseen_device_points"],
             "unfamiliar_device",
             signals.unseen_device_event_ids,
         ),
         (
             bool(signals.unseen_location_event_ids),
-            15,
+            contextual_policy["unseen_location_points"],
             "unfamiliar_location",
             signals.unseen_location_event_ids,
         ),
         (
             bool(signals.off_hours_event_ids),
-            10,
+            contextual_policy["off_hours_points"],
             "outside_declared_work_schedule",
             signals.off_hours_event_ids,
         ),
@@ -345,7 +358,14 @@ def _score_result(
     evidence_event_ids: set[str],
 ) -> ScoreResult:
     score = min(100, raw_score)
-    severity = "high" if score >= HIGH_SEVERITY_THRESHOLD else "medium" if score >= 40 else "low"
+    contextual_policy = cast(dict[str, int], METHODOLOGY_CONFIG["contextual"])
+    severity = (
+        "high"
+        if score >= contextual_policy["high_severity_threshold"]
+        else "medium"
+        if score >= 40
+        else "low"
+    )
     return ScoreResult(
         key=key,
         score=score,
