@@ -1,19 +1,25 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
-  waitFor,
 } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-function response(status: number, body: unknown) {
+function response(status: number, body: unknown, onJson?: () => void) {
   return Promise.resolve({
     ok: status >= 200 && status < 300,
     status,
     headers: new Headers(),
-    json: async () => body,
-    text: async () => JSON.stringify(body),
+    json: async () => {
+      onJson?.();
+      return body;
+    },
+    text: async () => {
+      onJson?.();
+      return JSON.stringify(body);
+    },
   });
 }
 
@@ -38,6 +44,7 @@ describe('evaluation findings requests', () => {
     const { default: EvaluationPage } = await import('./evaluation/page');
     const runAResponse = deferred<Awaited<ReturnType<typeof response>>>();
     const runBResponse = deferred<Awaited<ReturnType<typeof response>>>();
+    const runAResponseConsumed = deferred<void>();
     const runs = [
       {
         run_id: 'run-a',
@@ -104,27 +111,34 @@ describe('evaluation findings requests', () => {
     );
     expect(await screen.findByText('employee-b')).toBeTruthy();
 
-    runAResponse.resolve(
-      await response(200, {
-        items: [
+    await act(async () => {
+      runAResponse.resolve(
+        await response(
+          200,
           {
-            finding_id: 'finding-a',
-            employee_id: 'employee-a',
-            employee_day_utc: '2026-01-01',
-            score: 80,
-            severity: 'High',
-            reason_codes: ['out_of_role_access'],
-            evidence_event_ids: ['event-a'],
+            items: [
+              {
+                finding_id: 'finding-a',
+                employee_id: 'employee-a',
+                employee_day_utc: '2026-01-01',
+                score: 80,
+                severity: 'High',
+                reason_codes: ['out_of_role_access'],
+                evidence_event_ids: ['event-a'],
+              },
+            ],
+            limit: 100,
+            offset: 0,
+            total: 1,
+            has_more: false,
           },
-        ],
-        limit: 100,
-        offset: 0,
-        total: 1,
-        has_more: false,
-      }),
-    );
+          () => runAResponseConsumed.resolve(),
+        ),
+      );
+      await runAResponseConsumed.promise;
+    });
 
-    await waitFor(() => expect(screen.queryByText('employee-a')).toBeNull());
+    expect(screen.queryByText('employee-a')).toBeNull();
     expect(screen.getByText('employee-b')).toBeTruthy();
   });
 });
