@@ -10,8 +10,9 @@ from fastapi.testclient import TestClient
 from fisheye_api import auth
 from fisheye_api.main import app
 from fisheye_persistence.datasets import Base
-from fisheye_persistence.login_attempts import LoginAttemptWindow
+from fisheye_persistence.login_attempts import LoginAttemptWindow, login_blocked_until
 from sqlalchemy import URL, create_engine
+from sqlalchemy.orm import Session
 
 SESSION_SECRET = "test-only-session-secret-with-at-least-32-bytes"
 
@@ -173,3 +174,32 @@ def test_login_throttle_limits_source_and_account_failures(monkeypatch, tmp_path
     global_limit = attempt("failure", "192.0.2.40")
     assert global_limit.status_code == 429
     engine.dispose()
+
+
+def test_login_throttle_keeps_lockout_when_failure_window_expires(tmp_path) -> None:
+    database_url = str(URL.create("sqlite+pysqlite", database=str(tmp_path / "lockout.db")))
+    engine = create_engine(database_url)
+    Base.metadata.create_all(engine)
+    now = 10_000
+    key_hash = "a" * 64
+    with Session(engine) as session:
+        session.add(
+            LoginAttemptWindow(
+                key_hash=key_hash,
+                failures=5,
+                window_started_at=now - 899,
+                blocked_until=now + 900,
+            )
+        )
+        session.commit()
+
+        assert login_blocked_until(session, key_hash, now=now + 1) == now + 900
+        assert login_blocked_until(session, key_hash, now=now + 901) == 0
+    engine.dispose()
+
+
+def test_login_throttle_openapi_documents_errors_and_retry_header() -> None:
+    responses = app.openapi()["paths"]["/api/v1/auth/login-throttle"]["post"]["responses"]
+
+    assert {"401", "429", "503"}.issubset(responses)
+    assert "Retry-After" in responses["429"]["headers"]

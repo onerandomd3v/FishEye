@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto';
+import { isIP } from 'node:net';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import {
@@ -26,6 +27,7 @@ async function requestLoginThrottle(
   const issuedAt = Math.floor(Date.now() / 1000);
   const normalizedEmail = email.trim().toLowerCase();
   const message = `fisheye-login-throttle:v1|${action}|${clientIp}|${normalizedEmail}|${issuedAt}`;
+  // Sign throttle metadata only; the password is never included in this message.
   const signature = createHmac('sha256', sessionSecret)
     .update(message)
     .digest('hex');
@@ -76,6 +78,19 @@ function throttleError(result: ThrottleResult) {
     },
     { status: result.status ?? 503, headers },
   );
+}
+
+function trustedClientIp(request: Request): string | null {
+  if (process.env.NODE_ENV === 'development') return '127.0.0.1';
+
+  const trustedHeader =
+    process.env.VERCEL === '1'
+      ? 'x-vercel-forwarded-for'
+      : process.env.FISHEYE_TRUSTED_CLIENT_IP_HEADER?.trim().toLowerCase();
+  if (!trustedHeader) return null;
+
+  const value = request.headers.get(trustedHeader)?.trim();
+  return value && isIP(value) ? value : null;
 }
 
 export async function POST(request: Request) {
@@ -155,10 +170,13 @@ export async function POST(request: Request) {
   }
 
   const sessionSecret = process.env.FISHEYE_SESSION_SECRET!.trim();
-  const forwardedFor = request.headers.get('x-forwarded-for');
-  const clientIp =
-    forwardedFor?.split(',')[0]?.trim() ||
-    (process.env.NODE_ENV === 'development' ? '127.0.0.1' : '0.0.0.0');
+  const clientIp = trustedClientIp(request);
+  if (!clientIp) {
+    return NextResponse.json(
+      { error: 'Trusted client IP forwarding is not configured.' },
+      { status: 503 },
+    );
+  }
   const check = await requestLoginThrottle(
     apiBase,
     sessionSecret,

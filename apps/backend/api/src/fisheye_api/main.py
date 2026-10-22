@@ -281,6 +281,19 @@ def _login_throttle_message(payload: DemoLoginThrottleRequest) -> bytes:
 @app.post(
     "/api/v1/auth/login-throttle",
     response_model=DemoLoginThrottleResponse,
+    responses={
+        401: {"model": ApiErrorResponse},
+        429: {
+            "model": ApiErrorResponse,
+            "headers": {
+                "Retry-After": {
+                    "description": "Seconds until another sign-in attempt is allowed.",
+                    "schema": {"type": "integer", "minimum": 1},
+                }
+            },
+        },
+        503: {"model": ApiErrorResponse},
+    },
 )
 def throttle_demo_login(payload: DemoLoginThrottleRequest) -> DemoLoginThrottleResponse:
     """Enforce durable login throttling for signed console requests."""

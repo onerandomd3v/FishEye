@@ -20,7 +20,8 @@ function loginRequest(password = 'correct-password') {
     method: 'POST',
     headers: {
       origin: 'https://console.example.test',
-      'x-forwarded-for': '192.0.2.20',
+      'x-forwarded-for': '198.51.100.99',
+      'x-vercel-forwarded-for': '192.0.2.20',
       'content-type': 'application/json',
     },
     body: JSON.stringify({ email: 'analyst@example.test', password }),
@@ -29,6 +30,7 @@ function loginRequest(password = 'correct-password') {
 
 function configureEnvironment() {
   vi.stubEnv('NODE_ENV', 'production');
+  vi.stubEnv('VERCEL', '1');
   vi.stubEnv('FISHEYE_CONSOLE_URL', 'https://console.example.test');
   vi.stubEnv('API_INTERNAL_URL', 'https://api.example.test');
   vi.stubEnv(
@@ -118,5 +120,17 @@ describe('console demo-login proxy', () => {
       JSON.parse(String(fetchMock.mock.calls[1][1]?.body)).password,
     ).toBeUndefined();
     expect(cookieSet).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the deployment has no trusted client IP source', async () => {
+    configureEnvironment();
+    vi.stubEnv('VERCEL', '0');
+    vi.stubGlobal('fetch', vi.fn());
+
+    const response = await POST(loginRequest());
+
+    expect(response.status).toBe(503);
+    expect((await response.json()).error).toContain('Trusted client IP');
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
