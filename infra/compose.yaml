@@ -109,6 +109,32 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
+  console:
+    profiles: ['web']
+    build:
+      context: ..
+      dockerfile: infra/docker/console.Dockerfile
+    ports:
+      - '127.0.0.1:3000:3000'
+    environment:
+      API_INTERNAL_URL: http://api:8000
+      FISHEYE_CONSOLE_URL: http://127.0.0.1:3000
+      FISHEYE_OIDC_REDIRECT_URI: http://127.0.0.1:3000/api/auth/callback
+      FISHEYE_SESSION_SECRET: ${FISHEYE_SESSION_SECRET:?Set FISHEYE_SESSION_SECRET in .env}
+    depends_on:
+      api:
+        condition: service_healthy
+
+  landing:
+    profiles: ['web']
+    build:
+      context: ..
+      dockerfile: infra/docker/landing.Dockerfile
+      args:
+        PUBLIC_CONSOLE_URL: http://127.0.0.1:3000/login
+    ports:
+      - '127.0.0.1:4321:80'
+
 volumes:
   fisheye_pg:
   fisheye_artifacts:
