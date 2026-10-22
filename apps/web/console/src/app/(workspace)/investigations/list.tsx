@@ -183,8 +183,8 @@ export function InvestigationList() {
         <span className="fixture-tag">Synthetic data</span>
       </div>
       <Notice title="Development data">
-        The current API and demo review records are for development only.
-        Reviews are recorded as unauthenticated local-development activity.
+        This workspace uses synthetic data and one shared analyst login. The
+        login protects review actions but does not identify individual analysts.
       </Notice>
       <div className="filters">
         <div className="field">
