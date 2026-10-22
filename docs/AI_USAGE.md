@@ -24,6 +24,6 @@ For example, we chose to start with **rules and statistical baselines** rather t
 
 **AI was part of the development process.** The current FishEye detection engine itself **does not use a trained AI model**. It uses rule-based detection and statistical analysis to score synthetic employee activity.
 
-FishEye v1 uses **synthetic banking data only**. Its evaluation can test a proposed approach, but it does not establish that the system reduces false alerts in a real bank.
+The current evaluation uses **synthetic banking data**. It can test a proposed approach, but it does not establish that the system reduces false alerts in a real bank.
 
 The purpose of using AI throughout development was to **research faster, explore decisions carefully, implement more efficiently and improve the quality of the work**—while keeping the decisions and claims open to review.
