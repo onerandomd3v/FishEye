@@ -1,8 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, resolve } from 'node:path';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -39,9 +38,30 @@ if (
   process.exit(1);
 }
 
-const artifactDirectory = mkdtempSync(
-  resolve(tmpdir(), 'fisheye-e2e-artifacts-'),
-);
+const artifactDirectory = resolve(repositoryRoot, 'var/fisheye-artifacts/e2e');
+mkdirSync(artifactDirectory, { recursive: true, mode: 0o700 });
+const encryptionKeyPath = join(artifactDirectory, 'fernet.key');
+let encryptionKey;
+try {
+  encryptionKey = readFileSync(encryptionKeyPath, 'utf8').trim();
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error;
+  encryptionKey = randomBytes(32).toString('base64');
+  try {
+    writeFileSync(encryptionKeyPath, encryptionKey, {
+      flag: 'wx',
+      mode: 0o600,
+    });
+  } catch (writeError) {
+    if (writeError.code !== 'EEXIST') throw writeError;
+    encryptionKey = readFileSync(encryptionKeyPath, 'utf8').trim();
+  }
+}
+if (!/^[A-Za-z0-9+/]{43}=$/.test(encryptionKey)) {
+  throw new Error(
+    `Invalid E2E artifact encryption key at ${encryptionKeyPath}.`,
+  );
+}
 const environment = {
   ...process.env,
   DATABASE_URL: databaseUrl,
@@ -51,40 +71,36 @@ const environment = {
   FISHEYE_ENABLE_DEV_DATASET_READS: '1',
   FISHEYE_ENABLE_DEV_EVALUATION_RUNS: '1',
   FISHEYE_ARTIFACT_DIR: artifactDirectory,
-  FISHEYE_ARTIFACT_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+  FISHEYE_ARTIFACT_ENCRYPTION_KEY: encryptionKey,
   FISHEYE_DEMO_EMAIL: 'e2e-analyst@example.test',
   FISHEYE_DEMO_PASSWORD: randomBytes(24).toString('base64url'),
   FISHEYE_SESSION_SECRET: randomBytes(32).toString('base64url'),
   NEXT_PUBLIC_API_BASE_URL: 'http://127.0.0.1:8000',
 };
 
-try {
-  execFileSync(
-    'uv',
-    [
-      'run',
-      '--locked',
-      '--package',
-      'fisheye-api',
-      'alembic',
-      '-c',
-      'apps/backend/api/alembic.ini',
-      'upgrade',
-      'head',
-    ],
-    { cwd: repositoryRoot, env: environment, stdio: 'inherit' },
-  );
-  const result = spawnSync(
-    'pnpm',
-    ['exec', 'playwright', 'test', '--config', 'playwright.config.ts'],
-    {
-      cwd: resolve(repositoryRoot, 'apps/web/console'),
-      env: environment,
-      stdio: 'inherit',
-    },
-  );
-  if (result.error) throw result.error;
-  process.exitCode = result.status ?? 1;
-} finally {
-  rmSync(artifactDirectory, { recursive: true, force: true });
-}
+execFileSync(
+  'uv',
+  [
+    'run',
+    '--locked',
+    '--package',
+    'fisheye-api',
+    'alembic',
+    '-c',
+    'apps/backend/api/alembic.ini',
+    'upgrade',
+    'head',
+  ],
+  { cwd: repositoryRoot, env: environment, stdio: 'inherit' },
+);
+const result = spawnSync(
+  'pnpm',
+  ['exec', 'playwright', 'test', '--config', 'playwright.config.ts'],
+  {
+    cwd: resolve(repositoryRoot, 'apps/web/console'),
+    env: environment,
+    stdio: 'inherit',
+  },
+);
+if (result.error) throw result.error;
+process.exitCode = result.status ?? 1;
