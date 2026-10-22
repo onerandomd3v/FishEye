@@ -69,6 +69,8 @@ def test_import_queue_process_and_read_real_synthetic_run(
     assert queued.status_code == 202
     assert queued.json()["status"] == "queued"
     assert duplicate.json()["run_id"] == queued.json()["run_id"]
+    pending_manifest = client.get(f"/api/v1/runs/{queued.json()['run_id']}/manifest")
+    assert pending_manifest.status_code == 409
 
     factory = create_session_factory(database_url)
     original_execute = run_processing.execute_run
@@ -110,6 +112,17 @@ def test_import_queue_process_and_read_real_synthetic_run(
         == expected_units
     )
     assert result["result_manifest_sha256"]
+
+    manifest_response = client.get(f"/api/v1/runs/{result['run_id']}/manifest")
+    assert manifest_response.status_code == 200
+    assert manifest_response.headers["content-type"].startswith("application/json")
+    assert result["run_id"] in manifest_response.headers["content-disposition"]
+    manifest = manifest_response.json()
+    assert manifest["manifest_schema_version"] == "fisheye.evaluation-run-manifest.v1"
+    assert manifest["run_id"] == result["run_id"]
+    assert manifest["dataset_id"] == dataset_id
+    assert manifest["evaluation_unit"] == "employee_day_utc"
+    assert manifest["claim_status"] == "provisional_experiment; not_benchmarked"
 
     findings = client.get(f"/api/v1/runs/{result['run_id']}/findings?detector=contextual")
     assert findings.status_code == 200
@@ -161,6 +174,12 @@ def test_import_queue_process_and_read_real_synthetic_run(
         assert record.started_at is not None
         assert record.completed_at is not None
         assert record.completed_at.replace(tzinfo=UTC) >= record.started_at.replace(tzinfo=UTC)
+
+    assert record is not None
+    manifest_path = artifact_root / record.result_artifact_uri / "manifest.json.enc"
+    manifest_path.write_bytes(b"corrupt encrypted manifest")
+    corrupt_manifest = client.get(f"/api/v1/runs/{result['run_id']}/manifest")
+    assert corrupt_manifest.status_code == 503
 
 
 def test_run_creation_requires_v2_dataset_and_idempotency_key(tmp_path, monkeypatch) -> None:

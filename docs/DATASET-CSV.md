@@ -100,7 +100,11 @@ encrypts the context sidecar, then queues a durable run; the worker prepares the
 dataset if needed, evaluates the provisional policy, and publishes encrypted
 result artifacts. `GET /api/v1/runs`, `GET /api/v1/runs/{run_id}`, and
 `GET /api/v1/runs/{run_id}/findings` expose run state and worker-produced data.
-These unauthenticated endpoints must remain disabled outside development.
+After a run completes, `GET /api/v1/runs/{run_id}/manifest` downloads its
+verified JSON provenance manifest, including dataset, configuration, method,
+and artifact checksums. It returns `409` while a run is incomplete and `503` if
+the encrypted manifest cannot be verified. These unauthenticated endpoints
+must remain disabled outside development.
 
 For local validation, set `FISHEYE_ENV=development` and
 `FISHEYE_ENABLE_DEV_CSV_VALIDATION=1` in the API process environment. For local

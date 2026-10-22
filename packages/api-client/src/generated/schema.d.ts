@@ -139,6 +139,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/runs/{run_id}/manifest': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Download Evaluation Manifest
+     * @description Download verified provenance for a completed development evaluation.
+     */
+    get: operations['download_evaluation_manifest_api_v1_runs__run_id__manifest_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/runs/{run_id}/findings': {
     parameters: {
       query?: never;
@@ -362,6 +382,54 @@ export interface components {
       total: number;
       /** Has More */
       has_more: boolean;
+    };
+    /** EvaluationRunManifestResponse */
+    EvaluationRunManifestResponse: {
+      /**
+       * Manifest Schema Version
+       * @constant
+       */
+      manifest_schema_version: 'fisheye.evaluation-run-manifest.v1';
+      /** Run Id */
+      run_id: string;
+      /** Dataset Id */
+      dataset_id: string;
+      /** Dataset Sha256 */
+      dataset_sha256: string;
+      /** Dataset Schema Version */
+      dataset_schema_version: string;
+      /** Analysis Manifest Sha256 */
+      analysis_manifest_sha256: string;
+      /** Context Sha256 */
+      context_sha256: string;
+      /** Methodology Version */
+      methodology_version: string;
+      /** Config Sha256 */
+      config_sha256: string;
+      /** Worker Build Revision */
+      worker_build_revision: string;
+      /**
+       * Evaluation Unit
+       * @constant
+       */
+      evaluation_unit: 'employee_day_utc';
+      /** Ground Truth Usage */
+      ground_truth_usage: string;
+      /**
+       * Result Artifact
+       * @constant
+       */
+      result_artifact: 'scores.parquet.enc';
+      /** Result Artifact Sha256 */
+      result_artifact_sha256: string;
+      /** Result Row Count */
+      result_row_count: number;
+      /** Metrics Sha256 */
+      metrics_sha256: string;
+      /** Claim Status */
+      claim_status: string;
+      /** Completed At */
+      completed_at: string;
     };
     /** EvaluationRunResponse */
     EvaluationRunResponse: {
@@ -927,6 +995,64 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+    };
+  };
+  download_evaluation_manifest_api_v1_runs__run_id__manifest_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        run_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['EvaluationRunManifestResponse'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Conflict */
+      409: {
         headers: {
           [name: string]: unknown;
         };

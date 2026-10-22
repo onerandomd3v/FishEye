@@ -562,6 +562,76 @@
         }
       }
     },
+    "/api/v1/runs/{run_id}/manifest": {
+      "get": {
+        "summary": "Download Evaluation Manifest",
+        "description": "Download verified provenance for a completed development evaluation.",
+        "operationId": "download_evaluation_manifest_api_v1_runs__run_id__manifest_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationRunManifestResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/runs/{run_id}/findings": {
       "get": {
         "summary": "Get Evaluation Findings",
@@ -1138,6 +1208,108 @@
         "type": "object",
         "required": ["items", "limit", "offset", "total", "has_more"],
         "title": "EvaluationRunListResponse"
+      },
+      "EvaluationRunManifestResponse": {
+        "properties": {
+          "manifest_schema_version": {
+            "type": "string",
+            "const": "fisheye.evaluation-run-manifest.v1",
+            "title": "Manifest Schema Version"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "dataset_sha256": {
+            "type": "string",
+            "title": "Dataset Sha256"
+          },
+          "dataset_schema_version": {
+            "type": "string",
+            "title": "Dataset Schema Version"
+          },
+          "analysis_manifest_sha256": {
+            "type": "string",
+            "title": "Analysis Manifest Sha256"
+          },
+          "context_sha256": {
+            "type": "string",
+            "title": "Context Sha256"
+          },
+          "methodology_version": {
+            "type": "string",
+            "title": "Methodology Version"
+          },
+          "config_sha256": {
+            "type": "string",
+            "title": "Config Sha256"
+          },
+          "worker_build_revision": {
+            "type": "string",
+            "title": "Worker Build Revision"
+          },
+          "evaluation_unit": {
+            "type": "string",
+            "const": "employee_day_utc",
+            "title": "Evaluation Unit"
+          },
+          "ground_truth_usage": {
+            "type": "string",
+            "title": "Ground Truth Usage"
+          },
+          "result_artifact": {
+            "type": "string",
+            "const": "scores.parquet.enc",
+            "title": "Result Artifact"
+          },
+          "result_artifact_sha256": {
+            "type": "string",
+            "title": "Result Artifact Sha256"
+          },
+          "result_row_count": {
+            "type": "integer",
+            "title": "Result Row Count"
+          },
+          "metrics_sha256": {
+            "type": "string",
+            "title": "Metrics Sha256"
+          },
+          "claim_status": {
+            "type": "string",
+            "title": "Claim Status"
+          },
+          "completed_at": {
+            "type": "string",
+            "title": "Completed At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "manifest_schema_version",
+          "run_id",
+          "dataset_id",
+          "dataset_sha256",
+          "dataset_schema_version",
+          "analysis_manifest_sha256",
+          "context_sha256",
+          "methodology_version",
+          "config_sha256",
+          "worker_build_revision",
+          "evaluation_unit",
+          "ground_truth_usage",
+          "result_artifact",
+          "result_artifact_sha256",
+          "result_row_count",
+          "metrics_sha256",
+          "claim_status",
+          "completed_at"
+        ],
+        "title": "EvaluationRunManifestResponse"
       },
       "EvaluationRunResponse": {
         "properties": {

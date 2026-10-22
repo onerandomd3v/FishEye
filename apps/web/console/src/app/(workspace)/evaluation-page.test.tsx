@@ -53,6 +53,7 @@ describe('evaluation findings requests', () => {
         methodology_version: 'method-v1',
         claim_status: 'provisional',
         created_at: '2026-01-01T00:00:00Z',
+        result_manifest_sha256: 'a'.repeat(64),
         synthetic_only: true,
         metrics: null,
       },
@@ -63,6 +64,7 @@ describe('evaluation findings requests', () => {
         methodology_version: 'method-v1',
         claim_status: 'provisional',
         created_at: '2026-01-02T00:00:00Z',
+        result_manifest_sha256: 'b'.repeat(64),
         synthetic_only: true,
         metrics: null,
       },
@@ -73,6 +75,8 @@ describe('evaluation findings requests', () => {
         return runAResponse.promise;
       if (url.includes('/api/v1/runs/run-b/findings'))
         return runBResponse.promise;
+      if (url.includes('/api/v1/runs/run-b/manifest'))
+        return response(503, { detail: 'Unavailable' });
       return response(200, {
         items: runs,
         limit: 50,
@@ -140,5 +144,9 @@ describe('evaluation findings requests', () => {
 
     expect(screen.queryByText('employee-a')).toBeNull();
     expect(screen.getByText('employee-b')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Download manifest' }));
+    expect(
+      await screen.findByText(/Manifest download failed \(503\)/),
+    ).toBeTruthy();
   });
 });
