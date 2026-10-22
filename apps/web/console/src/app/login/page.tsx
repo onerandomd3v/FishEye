@@ -10,6 +10,41 @@ export default function LoginPage() {
   const [message, setMessage] = useState('');
   const [pending, setPending] = useState(false);
 
+  if (process.env.NODE_ENV !== 'development') {
+    return (
+      <main className="login-page">
+        <section className="login-brand-panel">
+          <Link href="/" aria-label="FishEye home">
+            <BrandLogo />
+          </Link>
+          <div className="login-brand-copy">
+            <h1>
+              See the signal.
+              <br />
+              Ignore the noise.
+            </h1>
+            <p>Context-aware insider-risk triage for security analysts.</p>
+          </div>
+          <p className="login-foot">Synthetic research environment</p>
+        </section>
+        <section className="login-form-panel">
+          <div className="login-form">
+            <h2>Analyst sign in</h2>
+            <p>Sign in through your organization’s identity provider.</p>
+            <a className="fe-button fe-button-primary" href="/api/auth/login">
+              Continue with secure sign-in <span aria-hidden="true">→</span>
+            </a>
+            <p className="login-disclaimer">
+              FishEye accepts analyst access tokens issued by the configured
+              OIDC provider. If sign-in fails, check access with your
+              administrator and try again.
+            </p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage('');

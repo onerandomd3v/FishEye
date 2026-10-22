@@ -29,7 +29,7 @@ afterEach(() => {
 
 describe('scenario lab sample workflow', () => {
   it('sends a selected sample through validation, import, and the real run API', async () => {
-    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://127.0.0.1:8000');
+    vi.stubEnv('FISHEYE_TEST_API_URL', 'http://127.0.0.1:8000');
     vi.stubGlobal('File', NodeFile);
     const apiCalls: string[] = [];
     const fetchMock = vi.fn((input: Request | string) => {

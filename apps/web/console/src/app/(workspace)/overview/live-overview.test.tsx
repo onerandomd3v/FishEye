@@ -32,7 +32,7 @@ afterEach(() => {
 
 describe('live overview', () => {
   it('continues through run history pages to find the latest completed run', async () => {
-    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://127.0.0.1:8000');
+    vi.stubEnv('FISHEYE_TEST_API_URL', 'http://127.0.0.1:8000');
     vi.resetModules();
     const { LiveOverview } = await import('./live-overview');
     const fetchMock = vi.fn((input: Request | string) => {

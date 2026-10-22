@@ -9,12 +9,12 @@ import os
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal, cast
+from typing import Annotated, Literal, cast
 from urllib.parse import quote, unquote
 
 import polars as pl
 from cryptography.fernet import Fernet, InvalidToken
-from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fisheye_domain.context import parse_synthetic_context
 from fisheye_domain.csv_schema import SCHEMA_VERSION
@@ -43,9 +43,11 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
+from fisheye_api.auth import AnalystIdentity, require_analyst
 from fisheye_api.csv_validation import CsvValidationResult, validate_events_csv
 
 app = FastAPI(title="FishEye API", version="0.1.0")
+api = APIRouter(dependencies=[Depends(require_analyst)])
 app.add_middleware(
     CORSMiddleware,
     allow_origins=os.getenv("FISHEYE_CORS_ORIGINS", "http://127.0.0.1:3000").split(","),
@@ -249,7 +251,7 @@ def liveness() -> HealthResponse:
     return HealthResponse(status="ok", synthetic_only=True)
 
 
-@app.post(
+@api.post(
     "/api/v1/datasets/imports/validate",
     response_model=DatasetValidationResponse,
     responses={status_code: {"model": ApiErrorResponse} for status_code in (400, 413, 415, 503)},
@@ -298,7 +300,7 @@ async def validate_dataset_import(
     )
 
 
-@app.post(
+@api.post(
     "/api/v1/datasets/imports",
     response_model=DatasetImportResponse,
     status_code=201,
@@ -390,7 +392,7 @@ async def import_synthetic_dataset(
     )
 
 
-@app.get(
+@api.get(
     "/api/v1/datasets",
     response_model=DatasetListResponse,
     responses={status_code: {"model": ApiErrorResponse} for status_code in (503,)},
@@ -421,7 +423,7 @@ def get_datasets(
     )
 
 
-@app.get(
+@api.get(
     "/api/v1/datasets/{dataset_id}",
     response_model=DatasetMetadataResponse,
     responses={status_code: {"model": ApiErrorResponse} for status_code in (404, 503)},
@@ -443,7 +445,7 @@ def get_dataset_metadata(dataset_id: str) -> DatasetMetadataResponse:
     return _dataset_metadata(record)
 
 
-@app.post(
+@api.post(
     "/api/v1/runs",
     response_model=EvaluationRunResponse,
     status_code=202,
@@ -519,7 +521,7 @@ def create_evaluation_run(
     return _evaluation_run_response(record)
 
 
-@app.get("/api/v1/runs", response_model=EvaluationRunListResponse)
+@api.get("/api/v1/runs", response_model=EvaluationRunListResponse)
 def get_evaluation_runs(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0, le=1_000_000),
@@ -541,7 +543,7 @@ def get_evaluation_runs(
     )
 
 
-@app.get(
+@api.get(
     "/api/v1/runs/{run_id}",
     response_model=EvaluationRunResponse,
     responses={status_code: {"model": ApiErrorResponse} for status_code in (404, 503)},
@@ -559,7 +561,7 @@ def get_evaluation_run(run_id: str) -> EvaluationRunResponse:
     return _evaluation_run_response(record)
 
 
-@app.get(
+@api.get(
     "/api/v1/runs/{run_id}/manifest",
     response_model=EvaluationRunManifestResponse,
     responses={status_code: {"model": ApiErrorResponse} for status_code in (404, 409, 503)},
@@ -601,7 +603,7 @@ def download_evaluation_manifest(run_id: str) -> Response:
     )
 
 
-@app.get("/api/v1/runs/{run_id}/findings", response_model=RunFindingsResponse)
+@api.get("/api/v1/runs/{run_id}/findings", response_model=RunFindingsResponse)
 def get_evaluation_findings(
     run_id: str,
     detector: Literal["simple_rule", "tuned_rules", "contextual"] = "contextual",
@@ -676,7 +678,7 @@ def get_evaluation_findings(
     )
 
 
-@app.get(
+@api.get(
     "/api/v1/runs/{run_id}/findings/{finding_id}",
     response_model=FindingDetailResponse,
     responses={status_code: {"model": ApiErrorResponse} for status_code in (404, 409, 503)},
@@ -702,7 +704,7 @@ def get_finding_detail(run_id: str, finding_id: str) -> FindingDetailResponse:
     )
 
 
-@app.post(
+@api.post(
     "/api/v1/runs/{run_id}/findings/{finding_id}/reviews",
     response_model=FindingReviewResponse,
     status_code=201,
@@ -712,8 +714,9 @@ def record_finding_review(
     run_id: str,
     finding_id: str,
     body: FindingReviewCreateRequest,
+    analyst: Annotated[AnalystIdentity, Depends(require_analyst)],
 ) -> FindingReviewResponse:
-    """Append a local development review; this endpoint does not authenticate an analyst."""
+    """Append a review attributed to the verified analyst subject or local dev actor."""
     database_url, artifact_root, encryption_key = _require_dev_evaluation_runs()
     record, _ = _get_run_and_dataset(run_id, database_url)
     _resolve_stored_finding(
@@ -728,10 +731,14 @@ def record_finding_review(
                 finding_id=finding_id,
                 decision=body.decision,
                 note=body.note.strip() if body.note and body.note.strip() else None,
+                reviewer_label=analyst.subject,
             )
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail="Finding review could not be saved.") from None
     return _finding_review_response(review)
+
+
+app.include_router(api)
 
 
 def _get_run_and_dataset(

@@ -39,6 +39,7 @@ def create_finding_review(
     finding_id: str,
     decision: str,
     note: str | None,
+    reviewer_label: str = "Local development user (not authenticated)",
 ) -> FindingReviewRecord:
     """Append a review event without changing the run or its findings."""
     record = FindingReviewRecord(
@@ -46,7 +47,7 @@ def create_finding_review(
         finding_id=finding_id,
         decision=decision,
         note=note,
-        reviewer_label="Local development user (not authenticated)",
+        reviewer_label=reviewer_label[:128],
         created_at=datetime.now(UTC),
     )
     session.add(record)

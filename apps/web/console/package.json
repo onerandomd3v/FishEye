@@ -14,6 +14,7 @@
     "@fisheye/ui": "workspace:*",
     "jose": "^6.2.13",
     "next": "^16.4.2",
+    "openid-client": "^6.8.8",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

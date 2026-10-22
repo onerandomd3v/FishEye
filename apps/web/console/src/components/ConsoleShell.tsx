@@ -22,7 +22,7 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
   const current = links.find((link) => pathname.startsWith(link.href));
 
   async function signOut() {
-    await fetch('/api/local-logout', { method: 'POST' });
+    await fetch('/api/auth/logout', { method: 'POST' });
     router.replace('/login');
   }
 
