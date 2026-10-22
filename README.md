@@ -6,6 +6,8 @@ It examines activity in context—including normal behaviour, job roles and acce
 
 **Our goal:** Help analysts distinguish genuine threats from harmless unusual activity, so they can focus on the alerts that matter.
 
+> **Current scope:** FishEye v1 uses synthetic banking activity only. It has not been deployed or validated in a live bank, and results from simulated data do not establish real-world detection accuracy.
+
 ## The problem
 
 Banks monitor access to sensitive systems and customer data. An unusual action can trigger an alert, but an alert is not proof of a threat: it could also be legitimate work or a mistake.
@@ -61,9 +63,7 @@ flowchart LR
     Compare --> Output[False alarms, missed threats and recall]
 ```
 
-FishEye currently uses **explainable, deterministic rules and statistical baselines**, not a trained AI model. It considers signals such as out-of-role access, unfamiliar devices, unusual access volume and activity outside declared working hours. Results show the reasons and events behind findings.
-
-We compare FishEye's contextual scoring with simple and tuned rule-based approaches on the same labelled synthetic data. **Reducing alerts only counts as improvement if genuine threats are still detected.** The current evaluation does not report detection delay.
+The comparison uses the same labelled synthetic dataset for simple rules, tuned rules and contextual scoring. **Fewer alerts only count as an improvement if genuine threats are still detected.** Detection delay is not reported in this version. For an explanation of how FishEye scores activity and why it does not use a trained AI model yet, see the next section.
 
 ## Does FishEye use AI?
 
