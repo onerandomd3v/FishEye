@@ -24,7 +24,7 @@ def login_blocked_until(session: Session, key_hash: str, *, now: int) -> int:
     row = session.get(LoginAttemptWindow, key_hash)
     if row is None:
         return 0
-    if row.window_started_at <= now - 900:
+    if row.window_started_at <= now - 900 and row.blocked_until <= now:
         session.delete(row)
         session.commit()
         return 0

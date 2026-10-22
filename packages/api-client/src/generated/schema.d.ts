@@ -669,6 +669,15 @@ export interface operations {
           'application/json': components['schemas']['DemoLoginThrottleResponse'];
         };
       };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
       /** @description Validation Error */
       422: {
         headers: {
@@ -676,6 +685,26 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          /** @description Seconds until another sign-in attempt is allowed. */
+          'Retry-After'?: number;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
         };
       };
     };
