@@ -75,7 +75,7 @@ const environment = {
   FISHEYE_DEMO_EMAIL: 'e2e-analyst@example.test',
   FISHEYE_DEMO_PASSWORD: randomBytes(24).toString('base64url'),
   FISHEYE_SESSION_SECRET: randomBytes(32).toString('base64url'),
-  NEXT_PUBLIC_API_BASE_URL: 'http://127.0.0.1:8000',
+  API_INTERNAL_URL: 'http://127.0.0.1:8000',
 };
 
 execFileSync(
