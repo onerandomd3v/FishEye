@@ -611,6 +611,104 @@
         }
       }
     },
+    "/api/v1/local-workspace": {
+      "get": {
+        "summary": "Get Local Workspace",
+        "description": "Report local reset availability and the number of saved records.",
+        "operationId": "get_local_workspace_api_v1_local_workspace_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalWorkspaceResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "FishEyeDemoBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/local-workspace/data": {
+      "delete": {
+        "summary": "Clear Local Workspace",
+        "description": "Permanently clear local run, review, dataset and referenced artifact data.",
+        "operationId": "clear_local_workspace_api_v1_local_workspace_data_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalWorkspaceResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalWorkspaceResetResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "FishEyeDemoBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/runs/{run_id}": {
       "get": {
         "summary": "Get Evaluation Run",
@@ -1797,6 +1895,78 @@
         "type": "object",
         "required": ["status", "synthetic_only"],
         "title": "HealthResponse"
+      },
+      "LocalWorkspaceResetRequest": {
+        "properties": {
+          "confirmation": {
+            "type": "string",
+            "const": "CLEAR ALL DATA",
+            "title": "Confirmation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["confirmation"],
+        "title": "LocalWorkspaceResetRequest"
+      },
+      "LocalWorkspaceResetResponse": {
+        "properties": {
+          "deleted_run_count": {
+            "type": "integer",
+            "title": "Deleted Run Count"
+          },
+          "deleted_dataset_count": {
+            "type": "integer",
+            "title": "Deleted Dataset Count"
+          },
+          "deleted_review_count": {
+            "type": "integer",
+            "title": "Deleted Review Count"
+          },
+          "artifacts_removed": {
+            "type": "boolean",
+            "title": "Artifacts Removed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "deleted_run_count",
+          "deleted_dataset_count",
+          "deleted_review_count",
+          "artifacts_removed"
+        ],
+        "title": "LocalWorkspaceResetResponse"
+      },
+      "LocalWorkspaceResponse": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "run_count": {
+            "type": "integer",
+            "title": "Run Count",
+            "default": 0
+          },
+          "dataset_count": {
+            "type": "integer",
+            "title": "Dataset Count",
+            "default": 0
+          },
+          "review_count": {
+            "type": "integer",
+            "title": "Review Count",
+            "default": 0
+          },
+          "active_run_count": {
+            "type": "integer",
+            "title": "Active Run Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": ["enabled"],
+        "title": "LocalWorkspaceResponse"
       },
       "RunFindingResponse": {
         "properties": {

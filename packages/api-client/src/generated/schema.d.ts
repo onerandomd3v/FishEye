@@ -142,6 +142,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/local-workspace': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Local Workspace
+     * @description Report local reset availability and the number of saved records.
+     */
+    get: operations['get_local_workspace_api_v1_local_workspace_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/local-workspace/data': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Clear Local Workspace
+     * @description Permanently clear local run, review, dataset and referenced artifact data.
+     */
+    delete: operations['clear_local_workspace_api_v1_local_workspace_data_delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/runs/{run_id}': {
     parameters: {
       query?: never;
@@ -580,6 +620,50 @@ export interface components {
       status: string;
       /** Synthetic Only */
       synthetic_only: boolean;
+    };
+    /** LocalWorkspaceResetRequest */
+    LocalWorkspaceResetRequest: {
+      /**
+       * Confirmation
+       * @constant
+       */
+      confirmation: 'CLEAR ALL DATA';
+    };
+    /** LocalWorkspaceResetResponse */
+    LocalWorkspaceResetResponse: {
+      /** Deleted Run Count */
+      deleted_run_count: number;
+      /** Deleted Dataset Count */
+      deleted_dataset_count: number;
+      /** Deleted Review Count */
+      deleted_review_count: number;
+      /** Artifacts Removed */
+      artifacts_removed: boolean;
+    };
+    /** LocalWorkspaceResponse */
+    LocalWorkspaceResponse: {
+      /** Enabled */
+      enabled: boolean;
+      /**
+       * Run Count
+       * @default 0
+       */
+      run_count: number;
+      /**
+       * Dataset Count
+       * @default 0
+       */
+      dataset_count: number;
+      /**
+       * Review Count
+       * @default 0
+       */
+      review_count: number;
+      /**
+       * Active Run Count
+       * @default 0
+       */
+      active_run_count: number;
     };
     /** RunFindingResponse */
     RunFindingResponse: {
@@ -1039,6 +1123,86 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+    };
+  };
+  get_local_workspace_api_v1_local_workspace_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LocalWorkspaceResponse'];
+        };
+      };
+    };
+  };
+  clear_local_workspace_api_v1_local_workspace_data_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LocalWorkspaceResetRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LocalWorkspaceResetResponse'];
         };
       };
       /** @description Not Found */

@@ -19,11 +19,11 @@ export function ScenarioPicker({
   onSelect: (scenario: ScenarioPack) => void;
 }) {
   return (
-    <section className="card section-card" aria-labelledby="scenario-title">
+    <section className="scenario-picker" aria-labelledby="scenario-title">
       <div className="section-title-row">
         <div>
-          <h2 id="scenario-title">Choose a sample dataset</h2>
-          <p className="card-intro">Start with a ready-to-run example.</p>
+          <h2 id="scenario-title">Sample datasets</h2>
+          <p className="card-intro">Choose an example to load its files.</p>
         </div>
         <a
           className="template-link"
@@ -33,11 +33,7 @@ export function ScenarioPicker({
           Download events v2 template
         </a>
       </div>
-      <div
-        className="scenario-list"
-        role="list"
-        aria-label="Synthetic sample datasets"
-      >
+      <div className="scenario-list" role="list" aria-label="Sample datasets">
         {scenarioPacks.map((scenario) => (
           <article
             className="scenario-option"

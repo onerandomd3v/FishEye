@@ -12,6 +12,7 @@ const links = [
   { href: '/evaluation', label: 'Evaluation' },
   { href: '/scenarios', label: 'Scenario lab' },
   { href: '/guide', label: 'Guide' },
+  { href: '/faq', label: 'FAQ' },
 ];
 
 export function ConsoleShell({ children }: { children: React.ReactNode }) {
@@ -116,7 +117,6 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
             FishEye&nbsp; / &nbsp;{current?.label ?? 'Workspace'}
           </div>
           <div className="flex items-center gap-3">
-            <span className="fixture-chip">Synthetic data</span>
             {signOutError && (
               <span role="alert">Could not sign out. Try again.</span>
             )}

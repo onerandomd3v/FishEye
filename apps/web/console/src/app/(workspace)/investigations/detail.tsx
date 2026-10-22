@@ -186,10 +186,6 @@ export function InvestigationDetail({
           Employee day: {finding.employee_day_utc} UTC
         </span>
       </div>
-      <Notice title="Synthetic demo review mode">
-        This demo uses one configured analyst login. Review records are saved to
-        the synthetic run and do not change its evidence or scores.
-      </Notice>
       <div className="investigation-layout">
         <section
           className="card investigation-card"

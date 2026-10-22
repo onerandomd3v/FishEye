@@ -117,7 +117,7 @@ export async function POST(request: Request) {
 
   if (!demoLoginConfigured()) {
     return NextResponse.json(
-      { error: 'Demo sign-in is not configured for this deployment.' },
+      { error: 'Sign-in is not configured for this workspace.' },
       { status: 503 },
     );
   }
@@ -127,13 +127,13 @@ export async function POST(request: Request) {
     body = await request.json();
   } catch {
     return NextResponse.json(
-      { error: 'Enter your demo email and password.' },
+      { error: 'Enter your email and password.' },
       { status: 400 },
     );
   }
   if (!body || typeof body !== 'object') {
     return NextResponse.json(
-      { error: 'Enter your demo email and password.' },
+      { error: 'Enter your email and password.' },
       { status: 400 },
     );
   }
@@ -146,7 +146,7 @@ export async function POST(request: Request) {
     password.length > 1024
   ) {
     return NextResponse.json(
-      { error: 'Enter your demo email and password.' },
+      { error: 'Enter your email and password.' },
       { status: 400 },
     );
   }
@@ -222,7 +222,7 @@ export async function POST(request: Request) {
   const session = await createDemoSession(expectedEmail);
   if (!session) {
     return NextResponse.json(
-      { error: 'Demo sign-in is not configured for this deployment.' },
+      { error: 'Sign-in is not configured for this workspace.' },
       { status: 503 },
     );
   }

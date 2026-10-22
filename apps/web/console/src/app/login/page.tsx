@@ -3,7 +3,7 @@
 import { Suspense, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BrandLogo, Button, Notice } from '@fisheye/ui';
+import { BrandLogo, Button } from '@fisheye/ui';
 
 export default function LoginPage() {
   return (
@@ -43,7 +43,7 @@ function LoginContent() {
 
       if (!response.ok) {
         setMessage(
-          result.error ?? 'Sign-in failed. Check your demo credentials.',
+          result.error ?? 'Sign-in failed. Check your email and password.',
         );
         return;
       }
@@ -70,17 +70,11 @@ function LoginContent() {
           </h1>
           <p>Context-aware insider-risk triage for security analysts.</p>
         </div>
-        <p className="login-foot">Synthetic research environment</p>
       </section>
       <section className="login-form-panel">
         <form className="login-form" onSubmit={submit}>
-          <span className="fixture-chip">Synthetic demo</span>
           <h2>Analyst sign in</h2>
-          <p>Access the FishEye research workspace.</p>
-          <Notice title="Synthetic demo access">
-            Use the email and password configured for this FishEye demo. No live
-            bank systems or real employee data are connected.
-          </Notice>
+          <p>Sign in to continue.</p>
           <div className="field">
             <label htmlFor="email">Work email</label>
             <input
@@ -112,10 +106,6 @@ function LoginContent() {
               {message}
             </p>
           )}
-          <p className="login-disclaimer">
-            Demo access is managed by FishEye. No external identity provider is
-            required.
-          </p>
         </form>
       </section>
     </main>
