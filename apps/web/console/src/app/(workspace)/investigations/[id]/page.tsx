@@ -7,7 +7,7 @@ export default async function InvestigationDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const findingId = decodeURIComponent(id);
+  const findingId = id;
 
   return (
     <>

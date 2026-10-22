@@ -39,16 +39,25 @@ export function LiveOverview() {
     if (!apiBaseUrl) return;
     void (async () => {
       try {
-        const runsResult = await investigationApi().GET('/api/v1/runs', {
-          params: { query: { limit: 50, offset: 0 } },
-        });
-        if (!runsResult.response.ok || !runsResult.data)
-          throw new Error(
-            `Evaluation runs could not be loaded (${runsResult.response.status}).`,
+        let offset = 0;
+        let latest: Run | undefined;
+        let hasMore = true;
+        while (hasMore) {
+          const runsResult = await investigationApi().GET('/api/v1/runs', {
+            params: { query: { limit: 50, offset } },
+          });
+          if (!runsResult.response.ok || !runsResult.data)
+            throw new Error(
+              `Evaluation runs could not be loaded (${runsResult.response.status}).`,
+            );
+          latest = runsResult.data.items.find(
+            (item) => item.status === 'completed',
           );
-        const latest = runsResult.data.items.find(
-          (item) => item.status === 'completed',
-        );
+          if (latest) break;
+          hasMore =
+            runsResult.data.has_more && runsResult.data.items.length > 0;
+          offset += runsResult.data.items.length;
+        }
         if (!latest) {
           if (current) {
             setRun(null);
