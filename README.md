@@ -65,6 +65,26 @@ FishEye currently uses **explainable, deterministic rules and statistical baseli
 
 We compare FishEye's contextual scoring with simple and tuned rule-based approaches on the same labelled synthetic data. **Reducing alerts only counts as improvement if genuine threats are still detected.** The current evaluation does not report detection delay.
 
+## Does FishEye use AI?
+
+Currently, FishEye doesn't use a trained AI model. Instead, we use **rule-based detection and statistical analysis** to detect suspicious employee activity.
+
+We establish what normal activity looks like based on employees' past behaviour and job roles. When something unusual happens, FishEye checks factors like working hours, devices, access permissions, and the amount of data accessed.
+
+Based on these factors, FishEye assigns a risk score and explains why the activity might need investigation.
+
+We also compare our system with traditional rule-based detection to test whether it reduces false alarms without missing genuine threats.
+
+FishEye is designed to support machine learning in the future, but for now, we're focusing on a system whose decisions can be explained and tested.
+
+### Why didn't we use AI?
+
+Adding AI doesn't automatically make a cybersecurity system better.
+
+We wanted to build a **reliable foundation first**, where every risk score can be understood, explained, and tested.
+
+Later, we can introduce machine learning and compare its performance with our existing system. That way, we'll know whether AI actually improves threat detection instead of adding it just for the sake of using AI.
+
 ## Technology and why we chose it
 
 | Technology | Purpose | Why it fits |
