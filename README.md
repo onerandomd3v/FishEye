@@ -2,29 +2,37 @@
 
 **See the signal. Ignore the noise.**
 
-FishEye is a cybersecurity research MVP that helps security teams **understand, prioritize and investigate unusual access to protected systems and data**. Instead of treating every unusual employee-account action as equally risky, it examines the activity in context—such as the account's normal patterns, permitted job role, device and access volume—and explains why a finding deserves attention.
+**FishEye is a cybersecurity platform that helps banks detect suspicious employee activity while reducing false security alerts.**
 
-> **Hackathon scope:** FishEye v1 uses **synthetic banking-style access events only**. It is not deployed at a bank, does not access real customer records, and does not prove production accuracy. Its purpose is to demonstrate and evaluate an approach to reducing unnecessary alerts **without losing detection of meaningful threats**.
+FishEye learns how employees normally work based on their behaviour and job roles. When something unusual happens, it examines the context to determine whether the activity deserves investigation.
+
+It helps security teams distinguish genuine threats from harmless unusual behaviour, so they can focus on the alerts that actually matter.
+
+**For our first version**, we'll use synthetic banking activity data to build and test the system, measuring whether it reduces false alarms without missing more genuine threats.
+
+> **Research demo:** FishEye does not use real bank or customer data and has not been deployed at a bank. Its results are based on simulated activity, not proven performance in a real banking environment.
 
 ## The problem
 
-At 11 PM, an account accesses customer records outside its usual working hours. That could be legitimate overtime—or misuse of a compromised account. A simple rule can flag the activity, but the analyst still needs to understand **what happened, whether the account was authorized, and which alerts deserve attention first**.
+At 11 PM, an employee's account accesses customer records outside normal working hours. The employee might be working late, or someone else might be using their account without permission.
 
-Banks already use security monitoring technologies, and products such as Microsoft Purview, Splunk and Exabeam provide relevant detection and investigation capabilities. FishEye is **not claiming to invent behavioural security analytics**. We are testing a narrower question: *can explainable, context-aware prioritization lower false alarms compared with fixed rules while preserving detection recall?*
+A security alert tells the team that something unusual happened, but **it doesn't tell them whether there is a genuine threat**. Investigating every alert takes time, while ignoring alerts can be dangerous.
+
+Existing tools such as Microsoft Purview, Splunk and Exabeam already help security teams detect and investigate suspicious activity. **FishEye focuses on making alerts easier to understand and prioritize—and testing whether that reduces false alarms without missing more real threats.**
 
 ## What FishEye does
 
-1. **Ingest synthetic events:** Load a bundled demonstration scenario or a correctly formatted synthetic dataset.
-2. **Analyze context:** Compare events with role permissions and relevant behavioural patterns.
-3. **Prioritize findings:** Assign an investigation priority and show the supporting reasons and evidence.
-4. **Support analyst review:** Let an analyst inspect and record a disposition without rewriting the original evidence or detector output.
-5. **Evaluate the approach:** Compare contextual scoring with simple-rule and tuned-rule baselines using the same test data. Report false positives, missed threats and other evaluation metrics.
+1. **Load sample activity:** Use a built-in example or upload simulated bank activity data.
+2. **Check the context:** Look at what is normal for the account and what its job role allows.
+3. **Prioritize alerts:** Show which activities need attention and explain why.
+4. **Help analysts investigate:** Let the security team review the evidence and record their findings.
+5. **Test the results:** Compare FishEye with rule-based detection to see how many harmless activities are flagged and how many genuine threats are missed.
 
-**A high-priority finding is a request to investigate, not proof that an employee committed wrongdoing.**
+**An alert is a reason to investigate, not proof that an employee has done something wrong.**
 
 ## For hackathon judges — where to start
 
-The shortest path through the project:
+Follow these pages in order to explore the demo:
 
 | Step | Page | What to look for |
 | --- | --- | --- |
@@ -37,9 +45,9 @@ The shortest path through the project:
 
 ### Suggested live demonstration
 
-**Start with a benign unusual-access scenario, then compare it with an account showing several warning signs.** Walk through the Scenario lab → completed run → Risk overview → finding details → Evaluation. Explain why one abnormal signal alone may not justify the same priority as multiple corroborating signals.
+**Start with an employee doing legitimate work at an unusual time. Then compare that with an account showing several suspicious actions.** Visit Scenario lab → Risk overview → Investigations → Evaluation to show how FishEye handles each case and why the alerts receive different priorities.
 
-The bundled examples and results are **synthetic**, and a completed run requires the **API and worker to execute**. The system must never present fixture values as production security findings. If a shared demo has not been configured, use the local setup below instead of assuming a public demo URL exists.
+All examples use **simulated activity**, not real bank records. To see results, the backend API and worker must be running. If there is no hosted demo, follow the local setup below.
 
 **Demo links:** No public landing or console URL is established in this README. Add verified deployed links here once they exist. Login credentials must be provided securely by the team; they are **not stored in this repository**.
 
@@ -147,13 +155,13 @@ The API and worker own scoring and metrics; the console displays the results. Th
 
 ## How we evaluate FishEye
 
-We compare three approaches on the **same synthetic evaluation inputs**:
+We test three ways of detecting suspicious activity using the **same simulated bank data**:
 
-- **Simple rules:** A fixed-rule reference.
-- **Tuned rules:** A stronger rule-based comparison.
-- **Contextual scoring:** FishEye's behavioural/role-aware approach.
+- **Simple rules:** Flag activity based on fixed conditions.
+- **Improved rules:** Use adjusted conditions to make the comparison fairer.
+- **FishEye's contextual approach:** Consider employee behaviour and job roles before deciding which activities need attention.
 
-The Evaluation screen reports outcomes that can include precision, recall, false-positive rate, alert rate, detection delay and missed threats. **Lower alert volume by itself is not success:** the comparison must also account for genuine threats missed. Results are only claims about the documented synthetic test conditions, **not a bank deployment**.
+We measure **false alarms** (harmless activity flagged as suspicious) and **missed threats** (genuine suspicious activity not detected), along with other detection results. **Success means fewer unnecessary alerts without missing more genuine threats.** Our first version tests this using synthetic data; it does not prove how FishEye would perform inside a real bank.
 
 ## Project status and limitations
 
