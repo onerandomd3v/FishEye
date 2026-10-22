@@ -17,13 +17,20 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [signOutError, setSignOutError] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
   const current = links.find((link) => pathname.startsWith(link.href));
 
   async function signOut() {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.replace('/login');
+    setSignOutError(false);
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST' });
+      if (!response.ok) throw new Error('Sign-out request failed.');
+      router.replace('/login');
+    } catch {
+      setSignOutError(true);
+    }
   }
 
   useEffect(() => {
@@ -110,6 +117,9 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-3">
             <span className="fixture-chip">Development fixture</span>
+            {signOutError && (
+              <span role="alert">Could not sign out. Try again.</span>
+            )}
             <Button type="button" variant="secondary" onClick={signOut}>
               Sign out
             </Button>

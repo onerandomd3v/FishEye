@@ -28,7 +28,7 @@ async function proxy(request: Request, context: RouteContext) {
   if (
     !['GET', 'HEAD', 'OPTIONS'].includes(request.method) &&
     origin &&
-    new URL(origin).origin !== consoleOrigin(requestUrl.origin)
+    new URL(origin).origin !== consoleOrigin(request)
   ) {
     return NextResponse.json(
       { detail: 'Cross-origin request blocked.' },

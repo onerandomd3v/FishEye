@@ -52,7 +52,7 @@ export async function oidcClient(): Promise<oidc.Configuration> {
 
 export function redirectUri(): string {
   const value =
-    process.env.FISHEYE_OIDC_REDIRECT_URI ??
+    process.env.FISHEYE_OIDC_REDIRECT_URI?.trim() ||
     `${setting('FISHEYE_CONSOLE_URL').replace(/\/$/, '')}/api/auth/callback`;
   const uri = new URL(value);
   if (process.env.NODE_ENV !== 'development' && uri.protocol !== 'https:') {
@@ -63,14 +63,14 @@ export function redirectUri(): string {
   return uri.href;
 }
 
-export function consoleOrigin(fallbackOrigin?: string): string {
-  const configured = process.env.FISHEYE_CONSOLE_URL;
+export function consoleOrigin(request?: Request): string {
+  const configured = process.env.FISHEYE_CONSOLE_URL?.trim();
   if (configured) return new URL(configured).origin;
-  if (process.env.FISHEYE_OIDC_REDIRECT_URI) {
+  if (process.env.FISHEYE_OIDC_REDIRECT_URI?.trim()) {
     return new URL(process.env.FISHEYE_OIDC_REDIRECT_URI).origin;
   }
-  if (process.env.NODE_ENV === 'development') {
-    return fallbackOrigin ?? 'http://127.0.0.1:3000';
+  if (process.env.NODE_ENV === 'development' && request) {
+    return new URL(request.url).origin;
   }
   throw new Error(
     'FISHEYE_CONSOLE_URL must be configured outside local development.',

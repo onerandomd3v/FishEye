@@ -13,14 +13,13 @@ import {
 } from '../../../../lib/oidc';
 
 export async function GET(request: Request) {
-  const requestOrigin = new URL(request.url).origin;
   const jar = await cookies();
   const state = jar.get(OIDC_STATE_COOKIE)?.value;
   const nonce = jar.get(OIDC_NONCE_COOKIE)?.value;
   const verifier = jar.get(OIDC_VERIFIER_COOKIE)?.value;
   if (!state || !nonce || !verifier)
     return NextResponse.redirect(
-      new URL('/login?error=oidc', consoleOrigin(requestOrigin)),
+      new URL('/login?error=oidc', consoleOrigin(request)),
     );
   try {
     const currentUrl = new URL(request.url);
@@ -50,7 +49,7 @@ export async function GET(request: Request) {
       expiresAt,
     });
     const response = NextResponse.redirect(
-      new URL('/overview', consoleOrigin(requestOrigin)),
+      new URL('/overview', consoleOrigin(request)),
     );
     response.cookies.set(SESSION_COOKIE, session, {
       httpOnly: true,
@@ -68,7 +67,7 @@ export async function GET(request: Request) {
     return response;
   } catch {
     const response = NextResponse.redirect(
-      new URL('/login?error=oidc', consoleOrigin(requestOrigin)),
+      new URL('/login?error=oidc', consoleOrigin(request)),
     );
     for (const name of [
       OIDC_STATE_COOKIE,
