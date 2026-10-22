@@ -44,6 +44,7 @@ describe('evaluation findings requests', () => {
     const { default: EvaluationPage } = await import('./evaluation/page');
     const runAResponse = deferred<Awaited<ReturnType<typeof response>>>();
     const runBResponse = deferred<Awaited<ReturnType<typeof response>>>();
+    const manifestAResponse = deferred<Awaited<ReturnType<typeof response>>>();
     const runAResponseConsumed = deferred<void>();
     const runs = [
       {
@@ -75,6 +76,8 @@ describe('evaluation findings requests', () => {
         return runAResponse.promise;
       if (url.includes('/api/v1/runs/run-b/findings'))
         return runBResponse.promise;
+      if (url.includes('/api/v1/runs/run-a/manifest'))
+        return manifestAResponse.promise;
       if (url.includes('/api/v1/runs/run-b/manifest'))
         return response(503, { detail: 'Unavailable' });
       return response(200, {
@@ -144,6 +147,20 @@ describe('evaluation findings requests', () => {
 
     expect(screen.queryByText('employee-a')).toBeNull();
     expect(screen.getByText('employee-b')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'View run' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Download manifest' }));
+    fireEvent.click(screen.getByRole('button', { name: 'View run' }));
+    await act(async () => {
+      manifestAResponse.resolve(
+        await response(503, { detail: 'Run A manifest unavailable.' }),
+      );
+    });
+    expect(screen.queryByText(/Manifest download failed/)).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Download manifest' }),
+    ).toBeTruthy();
+
     fireEvent.click(screen.getByRole('button', { name: 'Download manifest' }));
     expect(
       await screen.findByText(/Manifest download failed \(503\)/),

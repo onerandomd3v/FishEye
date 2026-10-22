@@ -24,9 +24,12 @@ export default function EvaluationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [findingsLoading, setFindingsLoading] = useState(false);
-  const [manifestDownloading, setManifestDownloading] = useState(false);
+  const [manifestDownloadingRunId, setManifestDownloadingRunId] = useState<
+    string | null
+  >(null);
   const [manifestError, setManifestError] = useState('');
   const findingsRequestIdRef = useRef(0);
+  const manifestRequestIdRef = useRef(0);
 
   const loadRuns = useCallback(async () => {
     if (!baseUrl) {
@@ -103,6 +106,8 @@ export default function EvaluationPage() {
   }
 
   function selectRun(run: Run) {
+    manifestRequestIdRef.current += 1;
+    setManifestDownloadingRunId(null);
     setSelectedRun(run);
     setFindings([]);
     setManifestError('');
@@ -116,18 +121,21 @@ export default function EvaluationPage() {
 
   async function downloadManifest(run: Run) {
     if (!baseUrl || !run.result_manifest_sha256) return;
-    setManifestDownloading(true);
+    const requestId = ++manifestRequestIdRef.current;
+    setManifestDownloadingRunId(run.run_id);
     setManifestError('');
     try {
       const response = await fetch(
         `${baseUrl}/api/v1/runs/${encodeURIComponent(run.run_id)}/manifest`,
       );
+      if (requestId !== manifestRequestIdRef.current) return;
       if (!response.ok) {
         throw new Error(
           `Manifest download failed (${response.status}). Refresh the run and try again.`,
         );
       }
       const blob = await response.blob();
+      if (requestId !== manifestRequestIdRef.current) return;
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -137,13 +145,17 @@ export default function EvaluationPage() {
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (cause) {
-      setManifestError(
-        cause instanceof Error
-          ? cause.message
-          : 'The evaluation manifest could not be downloaded.',
-      );
+      if (requestId === manifestRequestIdRef.current) {
+        setManifestError(
+          cause instanceof Error
+            ? cause.message
+            : 'The evaluation manifest could not be downloaded.',
+        );
+      }
     } finally {
-      setManifestDownloading(false);
+      if (requestId === manifestRequestIdRef.current) {
+        setManifestDownloadingRunId(null);
+      }
     }
   }
 
@@ -261,11 +273,11 @@ export default function EvaluationPage() {
                 disabled={
                   selectedRun.status !== 'completed' ||
                   !selectedRun.result_manifest_sha256 ||
-                  manifestDownloading
+                  manifestDownloadingRunId === selectedRun.run_id
                 }
                 onClick={() => void downloadManifest(selectedRun)}
               >
-                {manifestDownloading
+                {manifestDownloadingRunId === selectedRun.run_id
                   ? 'Preparing download…'
                   : 'Download manifest'}
               </Button>
