@@ -1,3 +1,5 @@
+![FishEye logo](https://github.com/user-attachments/assets/62a16581-ddd0-41d7-9574-79b99dc0567c)
+
 # FishEye
 
 FishEye is a cybersecurity platform that helps banks detect suspicious employee activity while reducing unnecessary security alerts.
