@@ -64,6 +64,7 @@ class StoredAnalysisArtifacts:
     row_count: int
     employee_day_count: int
     prepared_at: datetime
+    artifact_uri: str = ""
 
 
 def prepare_dataset(
@@ -83,21 +84,26 @@ def prepare_dataset(
 
     source = read_dataset_source(record, artifact_root, encryption_key)
     cipher = _make_cipher(encryption_key)
-    artifact_rel = (Path(record.artifact_uri).parent / "analysis").as_posix()
+    artifact_base = (Path(record.artifact_uri).parent / "analysis").as_posix()
     store = as_artifact_store(artifact_root)
-    if store.exists(f"{artifact_rel}/manifest.json.enc"):
+    if record.preparation_status == "prepared":
+        artifact_rel = record.analysis_artifact_uri
+        if not artifact_rel:
+            raise RuntimeError("Prepared dataset analysis artifacts are missing.")
         prepared = _verify_existing_artifacts(
             store, artifact_rel, record, record.analysis_manifest_sha256, cipher
         )
+    elif store.exists(f"{artifact_base}/manifest.json.enc"):
+        # Continue to read artifacts written by the previous stable-prefix format.
+        artifact_rel = artifact_base
+        prepared = _verify_existing_artifacts(store, artifact_rel, record, None, cipher)
     else:
-        if record.preparation_status == "prepared":
-            raise RuntimeError("Prepared dataset analysis artifacts are missing.")
         validation = validate_events_csv(source)
         if not validation.valid or validation.schema_version != record.schema_version:
             raise ValueError("The stored source CSV failed its schema integrity check.")
-        prepared = _create_and_publish_artifacts(record, source, store, cipher, artifact_rel)
+        prepared = _create_and_publish_artifacts(record, source, store, cipher, artifact_base)
 
-    relative_uri = artifact_rel
+    relative_uri = prepared.artifact_uri or artifact_base
     persisted_record = get_dataset(session, record.id)
     if persisted_record is None or persisted_record.sha256 != record.sha256:
         raise RuntimeError("Dataset metadata changed during preparation.")
@@ -147,6 +153,15 @@ def _create_and_publish_artifacts(
         "partitions.parquet.enc": partition_bytes,
         "labels.parquet.enc": label_bytes,
     }
+    content_digest = hashlib.sha256()
+    for name, content in artifacts.items():
+        content_digest.update(name.encode("utf-8"))
+        content_digest.update(b"\0")
+        content_digest.update(content)
+    # If a worker dies before writing the manifest, a later build with different
+    # converter output publishes under a new prefix instead of colliding with the
+    # orphaned immutable objects.
+    artifact_prefix = f"{artifact_prefix.rstrip('/')}/{content_digest.hexdigest()}"
     manifest = {
         "manifest_schema_version": "fisheye.dataset-analysis-manifest.v1",
         "dataset_id": record.id,
@@ -177,7 +192,9 @@ def _create_and_publish_artifacts(
     winner = _publish_artifacts(store, artifact_prefix, artifacts, manifest_bytes, cipher, record)
     if winner is not None:
         return winner
-    return StoredAnalysisArtifacts(manifest_sha256, row_count, employee_day_count, prepared_at)
+    return StoredAnalysisArtifacts(
+        manifest_sha256, row_count, employee_day_count, prepared_at, artifact_prefix
+    )
 
 
 def _convert_csv_to_parquet(content: bytes) -> tuple[bytes, bytes, bytes, int, int]:
@@ -375,7 +392,9 @@ def _verify_existing_artifacts(
         if prepared_at.tzinfo is None:
             raise RuntimeError("Existing analysis manifest has an invalid preparation timestamp.")
         prepared_at = prepared_at.astimezone(UTC)
-        return StoredAnalysisArtifacts(manifest_sha256, row_count, employee_day_count, prepared_at)
+        return StoredAnalysisArtifacts(
+            manifest_sha256, row_count, employee_day_count, prepared_at, artifact_prefix
+        )
     except (OSError, InvalidToken, json.JSONDecodeError) as error:
         raise RuntimeError(
             "Existing analysis artifacts are missing or failed integrity checks."
