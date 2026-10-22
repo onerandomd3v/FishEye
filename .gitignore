@@ -4,6 +4,7 @@ dist/
 .astro/
 .turbo/
 coverage/
+apps/web/console/test-results/
 .env
 .env.*
 !.env.example

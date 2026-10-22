@@ -10,7 +10,7 @@ jobs:
   database-checks:
     name: database-checks
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     services:
       postgres:
         image: postgres:17-alpine
@@ -33,7 +33,24 @@ jobs:
           cache-dependency-glob: '**/uv.lock'
       - name: Install Python workspace
         run: uv sync --locked --all-packages --all-groups
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install web workspace
+        run: pnpm install --frozen-lockfile
       - name: Apply migration and verify rollback
         env:
           FISHEYE_TEST_DATABASE_URL: postgresql+psycopg://fisheye:fisheye_ci_only@localhost:5432/fisheye_test
         run: uv run --locked pytest -q -m integration apps/backend/api/tests
+      - name: Install Chromium
+        run: pnpm --filter @fisheye/console exec playwright install --with-deps chromium
+      - name: Exercise the synthetic run in the console
+        env:
+          FISHEYE_TEST_DATABASE_URL: postgresql+psycopg://fisheye:fisheye_ci_only@localhost:5432/fisheye_test
+          CI: 'true'
+        run: pnpm test:e2e
