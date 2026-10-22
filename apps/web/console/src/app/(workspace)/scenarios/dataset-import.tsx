@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Button } from '@fisheye/ui';
 import { createFishEyeApiClient, type components } from '@fisheye/api-client';
 
@@ -41,12 +41,26 @@ function isValidationResponse(value: unknown): value is ValidationResponse {
   );
 }
 
-export function DatasetImport() {
+export function DatasetImport({
+  initialCsv = null,
+  initialContextFile = null,
+  onWorkingChange,
+}: {
+  initialCsv?: File | null;
+  initialContextFile?: File | null;
+  onWorkingChange?: (working: boolean) => void;
+} = {}) {
   const idempotencyKeyRef = useRef<string | null>(null);
-  const [csv, setCsv] = useState<File | null>(null);
-  const [contextFile, setContextFile] = useState<File | null>(null);
+  const [csv, setCsv] = useState<File | null>(initialCsv);
+  const [contextFile, setContextFile] = useState<File | null>(
+    initialContextFile,
+  );
   const [confirmedSynthetic, setConfirmedSynthetic] = useState(false);
   const [state, setState] = useState<FlowState>({ status: 'idle' });
+
+  useEffect(() => {
+    onWorkingChange?.(state.status === 'working');
+  }, [onWorkingChange, state.status]);
 
   async function startEvaluation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

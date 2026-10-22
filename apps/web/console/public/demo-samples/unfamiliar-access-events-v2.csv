@@ -1,0 +1,8 @@
+event_id,employee_id,role_id,department_id,event_timestamp_utc,event_type,system,device_id,location_label,record_count,dataset_partition,ground_truth_label
+evt-ua-base-001,emp-access-demo,role-teller,branch,2026-02-02T09:00:00Z,sign_in,synthetic-core,device-branch,branch-office,1,baseline,
+evt-ua-base-002,emp-access-demo,role-teller,branch,2026-02-03T09:05:00Z,record_read,synthetic-core,device-branch,branch-office,10,baseline,
+evt-ua-base-003,emp-access-demo,role-teller,branch,2026-02-04T09:10:00Z,record_read,synthetic-core,device-branch,branch-office,12,baseline,
+evt-ua-cal-benign,emp-access-demo,role-teller,branch,2026-02-05T09:15:00Z,record_read,synthetic-core,device-branch,branch-office,11,calibration,benign_scenario
+evt-ua-cal-threat,emp-access-demo,role-teller,branch,2026-02-06T01:15:00Z,record_export,synthetic-core,device-new,unknown-location,480,calibration,threat_scenario
+evt-ua-eval-threat,emp-access-demo,role-teller,branch,2026-02-09T01:20:00Z,record_export,synthetic-core,device-new,unknown-location,520,evaluation,threat_scenario
+evt-ua-eval-benign,emp-access-demo,role-teller,branch,2026-02-10T09:15:00Z,record_read,synthetic-core,device-branch,branch-office,9,evaluation,benign_scenario

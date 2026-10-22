@@ -1,17 +1,14 @@
-import { FixtureNotice, PageHeading } from '../shared';
-import { ScenarioPicker } from './scenario-picker';
-import { DatasetImport } from './dataset-import';
+import { PageHeading } from '../shared';
+import { ScenarioLab } from './scenario-lab';
 
 export default function ScenariosPage() {
   return (
     <>
       <PageHeading
         title="Scenario lab"
-        description="Review versioned synthetic case definitions before an evaluation service is connected."
+        description="Run a bundled synthetic sample or upload your own synthetic dataset, then inspect the worker's actual results."
       />
-      <FixtureNotice />
-      <ScenarioPicker />
-      <DatasetImport />
+      <ScenarioLab />
     </>
   );
 }
