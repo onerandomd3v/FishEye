@@ -132,8 +132,7 @@ def test_prepare_dataset_writes_encrypted_label_isolated_parquet(imported_datase
     assert manifest["row_count"] == 3
     assert manifest["employee_day_count"] == 2
     assert manifest["ground_truth_usage"] == (
-        "calibration_for_threshold_selection; evaluation_for_metrics; "
-        "stored separately from detector inputs"
+        "evaluation_only; stored separately from detector inputs"
     )
 
     events = pl.read_parquet(

@@ -15,6 +15,7 @@ import polars as pl
 from fisheye_domain.context import SyntheticContext
 from fisheye_domain.evaluation import EmployeeDayKey, EmployeeDayTruth, GroundTruthLabel
 from fisheye_evaluation.metrics import (
+    MAX_RECALL_DROP,
     EvaluationReport,
     calibrate_threshold,
     compare_recall,
@@ -124,7 +125,7 @@ def evaluate_prepared_frames(
         key: score >= SIMPLE_ALERT_THRESHOLD for key, score in calibration_simple.items()
     }
     baseline_calibration = evaluate_employee_days(fixed_calibration_predictions, calibration_truth)
-    recall_floor = max(0.0, (baseline_calibration.metrics.recall.value or 0.0) - 0.05)
+    recall_floor = max(0.0, (baseline_calibration.metrics.recall.value or 0.0) - MAX_RECALL_DROP)
     tuned_threshold, _ = calibrate_threshold(
         calibration_simple, calibration_truth, minimum_recall=recall_floor
     )

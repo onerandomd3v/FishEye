@@ -75,6 +75,32 @@ def test_accepts_calibration_between_baseline_and_held_out_evaluation() -> None:
     assert result.employee_day_count == 3
 
 
+def test_rejects_v2_without_baseline_rows() -> None:
+    result = validate_events_csv(
+        make_csv(
+            calibration_row("evt-cal", "2026-01-02T09:00:00Z", "threat_scenario"),
+            evaluation_row("evt-eval", "2026-01-03T09:00:00Z", "benign_scenario"),
+        )
+    )
+
+    assert result.valid is False
+    assert result.schema_version == "fisheye.events.v2"
+    assert "V2 CSVs must contain at least one baseline row." in result.errors
+
+
+def test_rejects_v2_without_evaluation_rows() -> None:
+    result = validate_events_csv(
+        make_csv(
+            baseline_row("evt-base", "2026-01-01T09:00:00Z"),
+            calibration_row("evt-cal", "2026-01-02T09:00:00Z", "threat_scenario"),
+        )
+    )
+
+    assert result.valid is False
+    assert result.schema_version == "fisheye.events.v2"
+    assert "V2 CSVs must contain at least one evaluation row." in result.errors
+
+
 def test_rejects_calibration_after_held_out_evaluation() -> None:
     result = validate_events_csv(
         make_csv(

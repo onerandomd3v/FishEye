@@ -73,7 +73,9 @@ def validate_events_csv(content: bytes) -> CsvValidationResult:
         calibration_latest: datetime | None = None
         calibration_earliest: datetime | None = None
         evaluation_earliest: datetime | None = None
+        has_baseline = False
         has_calibration = False
+        has_evaluation = False
         row_count = 0
 
         for line_number, row in enumerate(reader, start=2):
@@ -138,6 +140,7 @@ def validate_events_csv(content: bytes) -> CsvValidationResult:
                 )
             if event_time is not None and partition in PARTITIONS:
                 if partition == "baseline":
+                    has_baseline = True
                     baseline_latest = (
                         max(baseline_latest, event_time) if baseline_latest else event_time
                     )
@@ -152,6 +155,7 @@ def validate_events_csv(content: bytes) -> CsvValidationResult:
                         max(calibration_latest, event_time) if calibration_latest else event_time
                     )
                 else:
+                    has_evaluation = True
                     evaluation_earliest = (
                         min(evaluation_earliest, event_time) if evaluation_earliest else event_time
                     )
@@ -162,6 +166,11 @@ def validate_events_csv(content: bytes) -> CsvValidationResult:
 
         if row_count == 0:
             add_error("CSV must contain at least one event row.")
+        if has_calibration:
+            if not has_baseline:
+                add_error("V2 CSVs must contain at least one baseline row.")
+            if not has_evaluation:
+                add_error("V2 CSVs must contain at least one evaluation row.")
         if baseline_latest and calibration_earliest and baseline_latest >= calibration_earliest:
             add_error("All baseline events must predate calibration events.")
         if calibration_latest and evaluation_earliest and calibration_latest >= evaluation_earliest:

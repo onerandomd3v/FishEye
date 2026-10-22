@@ -154,6 +154,8 @@ def _create_and_publish_artifacts(
         "ground_truth_usage": (
             "calibration_for_threshold_selection; evaluation_for_metrics; "
             "stored separately from detector inputs"
+            if record.schema_version == SCHEMA_VERSION
+            else "evaluation_only; stored separately from detector inputs"
         ),
         "prepared_at": prepared_at.isoformat(),
     }
