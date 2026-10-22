@@ -36,11 +36,10 @@ describe('environment-configured demo session', () => {
     expect(await verifyDemoSession(`${session}x`)).toBe(false);
   });
 
-  it('requires a long password and a strong signing secret', () => {
+  it('requires a long password and strong signing secret', () => {
     vi.stubEnv('FISHEYE_DEMO_EMAIL', 'analyst@example.test');
     vi.stubEnv('FISHEYE_DEMO_PASSWORD', 'short');
     vi.stubEnv('FISHEYE_SESSION_SECRET', 'too-short');
-
     expect(demoLoginConfigured()).toBe(false);
   });
 });

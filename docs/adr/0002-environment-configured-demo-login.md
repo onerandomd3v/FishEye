@@ -12,8 +12,9 @@ FishEye's first shared experience is a controlled, synthetic-data demo. A hosted
 
 - Configure one demo email and password as server-side environment secrets in the Next.js console.
 - The console verifies both credentials server-side and issues an eight-hour HS256 token with a fixed analyst role, issuer and API audience.
+- The console asks FastAPI to check and update PostgreSQL-backed, hashed login-failure windows. Five source failures or twenty account failures in fifteen minutes produce `429` with `Retry-After`; signed, time-limited requests keep the API from accepting forged counter updates. Passwords are never sent to the API.
 - The token is held only in an HttpOnly, SameSite=Lax cookie, marked Secure in production, and sent to FastAPI by the same-origin server-side API proxy.
-- The console and API share a randomly generated session-signing secret of at least 32 bytes. FastAPI independently verifies the signature, issuer, audience, expiry and analyst role.
+- The console and API share a randomly generated session-signing secret of at least 32 bytes. FastAPI independently verifies the token signature, issuer, audience, expiry and analyst role. The same secret signs short-lived throttle requests so the API can apply the source limit across serverless instances.
 - Keep the development-only unauthenticated API path restricted to `FISHEYE_ENV=development`.
 - Keep CSV import, run creation, and other development-only routes disabled outside local development. Login does not change their availability.
 - This single-account flow is only for synthetic demos. It does not provide individual analyst identity, invitation, password reset, multi-tenant isolation, or production identity management.
@@ -26,4 +27,4 @@ FishEye's first shared experience is a controlled, synthetic-data demo. A hosted
 
 ## Tradeoffs and rollout
 
-The approach has a small configuration footprint and keeps API authorization server-enforced. The shared signing key must be stored as a secret in both services and rotated together. A shared password does not establish individual analyst identity and needs protection from guessing; use a long unique password and keep this demo on synthetic data only. Replace this flow with a managed identity system before a real pilot or multi-user deployment.
+The approach has a small configuration footprint and keeps API authorization server-enforced. The API database must be migrated before throttled login is available. The shared signing key must be stored as a secret in both services and rotated together. A shared password does not establish individual analyst identity; use a long unique password and keep this demo on synthetic data only. Replace this flow with a managed identity system before a real pilot or multi-user deployment.

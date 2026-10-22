@@ -5,6 +5,45 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/v1/auth/login-throttle": {
+      "post": {
+        "summary": "Throttle Demo Login",
+        "description": "Enforce durable login throttling for signed console requests.",
+        "operationId": "throttle_demo_login_api_v1_auth_login_throttle_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoLoginThrottleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoLoginThrottleResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health/live": {
       "get": {
         "summary": "Liveness",
@@ -1214,6 +1253,52 @@
           "errors"
         ],
         "title": "DatasetValidationResponse"
+      },
+      "DemoLoginThrottleRequest": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["check", "failure", "success"],
+            "title": "Action"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 320,
+            "minLength": 1,
+            "title": "Email"
+          },
+          "client_ip": {
+            "type": "string",
+            "maxLength": 45,
+            "minLength": 1,
+            "title": "Client Ip"
+          },
+          "issued_at": {
+            "type": "integer",
+            "title": "Issued At"
+          },
+          "signature": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Signature"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["action", "email", "client_ip", "issued_at", "signature"],
+        "title": "DemoLoginThrottleRequest"
+      },
+      "DemoLoginThrottleResponse": {
+        "properties": {
+          "allowed": {
+            "type": "boolean",
+            "title": "Allowed",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "DemoLoginThrottleResponse"
       },
       "EvaluationRunCreateRequest": {
         "properties": {

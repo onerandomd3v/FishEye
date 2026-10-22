@@ -221,7 +221,7 @@ The main product experience should emphasize **three jobs**: prioritize, investi
 
 - All v1 employee/access data must be synthetic; reject uploads that purport to contain real personal/banking records until a separate reviewed policy permits them.
 - Analyst identities and authorization are real application security concerns even while event content is synthetic.
-- No credentials or raw tokens committed to repository or exposed in UI.
+- Demo email/password credentials are configured only in the console environment; the session-signing secret is shared by console and API. No credentials or raw tokens are committed to the repository or exposed in the UI.
 - Backend authorization applies to every protected read and write.
 - Dataset imports, if enabled, enforce format/schema/size constraints and safe error handling.
 - Raw synthetic events and completed experiment artifacts are immutable; revisions create new versions.

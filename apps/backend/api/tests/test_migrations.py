@@ -50,13 +50,14 @@ def test_initial_migration_and_rollback() -> None:
             assert inspect(connection).has_table("alembic_version")
             assert (
                 connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-                == "0005_finding_reviews"
+                == "0006_login_attempt_windows"
             )
             assert inspect(connection).get_table_names() == [
                 "alembic_version",
                 "datasets",
                 "evaluation_runs",
                 "finding_reviews",
+                "login_attempt_windows",
             ]
             dataset_columns = {
                 column["name"] for column in inspect(connection).get_columns("datasets")
@@ -110,6 +111,11 @@ def test_initial_migration_and_rollback() -> None:
                 index["name"] == "ix_finding_reviews_finding_created"
                 and index["column_names"] == ["run_id", "finding_id", "created_at"]
                 for index in inspect(connection).get_indexes("finding_reviews")
+            )
+            assert any(
+                index["name"] == "ix_login_attempt_windows_window_started_at"
+                and index["column_names"] == ["window_started_at"]
+                for index in inspect(connection).get_indexes("login_attempt_windows")
             )
 
         command.downgrade(config, "base")

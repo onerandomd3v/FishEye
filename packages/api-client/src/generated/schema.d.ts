@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+  '/api/v1/auth/login-throttle': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Throttle Demo Login
+     * @description Enforce durable login throttling for signed console requests.
+     */
+    post: operations['throttle_demo_login_api_v1_auth_login_throttle_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/health/live': {
     parameters: {
       query?: never;
@@ -361,6 +381,30 @@ export interface components {
        */
       run_created: boolean;
     };
+    /** DemoLoginThrottleRequest */
+    DemoLoginThrottleRequest: {
+      /**
+       * Action
+       * @enum {string}
+       */
+      action: 'check' | 'failure' | 'success';
+      /** Email */
+      email: string;
+      /** Client Ip */
+      client_ip: string;
+      /** Issued At */
+      issued_at: number;
+      /** Signature */
+      signature: string;
+    };
+    /** DemoLoginThrottleResponse */
+    DemoLoginThrottleResponse: {
+      /**
+       * Allowed
+       * @default true
+       */
+      allowed: boolean;
+    };
     /** EvaluationRunCreateRequest */
     EvaluationRunCreateRequest: {
       /** Dataset Id */
@@ -603,6 +647,39 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  throttle_demo_login_api_v1_auth_login_throttle_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DemoLoginThrottleRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DemoLoginThrottleResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
   liveness_health_live_get: {
     parameters: {
       query?: never;
