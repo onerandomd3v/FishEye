@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Button } from '@fisheye/ui';
 import { createFishEyeApiClient, type components } from '@fisheye/api-client';
 
@@ -42,6 +42,7 @@ function isValidationResponse(value: unknown): value is ValidationResponse {
 }
 
 export function DatasetImport() {
+  const idempotencyKeyRef = useRef<string | null>(null);
   const [csv, setCsv] = useState<File | null>(null);
   const [contextFile, setContextFile] = useState<File | null>(null);
   const [confirmedSynthetic, setConfirmedSynthetic] = useState(false);
@@ -131,7 +132,8 @@ export function DatasetImport() {
       if (!imported.response.ok || !imported.data)
         throw new Error(apiMessage(imported.error, imported.response.status));
 
-      const idempotencyKey = crypto.randomUUID();
+      const idempotencyKey = (idempotencyKeyRef.current ??=
+        crypto.randomUUID());
       setState({
         status: 'working',
         step: 'Creating a durable evaluation run…',
@@ -167,6 +169,12 @@ export function DatasetImport() {
           throw new Error(apiMessage(latest.error, latest.response.status));
         run = latest.data;
       }
+      if (run.status === 'queued' || run.status === 'running') {
+        throw new Error(
+          'This run is still processing. Retry with the same files to reconnect to it.',
+        );
+      }
+      idempotencyKeyRef.current = null;
       setState({
         status: 'completed',
         datasetId: imported.data.dataset_id,
@@ -217,6 +225,7 @@ export function DatasetImport() {
             disabled={state.status === 'working'}
             onChange={(event) => {
               setCsv(event.target.files?.[0] ?? null);
+              idempotencyKeyRef.current = null;
               setConfirmedSynthetic(false);
               setState({ status: 'idle' });
             }}
@@ -237,6 +246,7 @@ export function DatasetImport() {
             disabled={state.status === 'working'}
             onChange={(event) => {
               setContextFile(event.target.files?.[0] ?? null);
+              idempotencyKeyRef.current = null;
               setState({ status: 'idle' });
             }}
           />

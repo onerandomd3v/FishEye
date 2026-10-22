@@ -475,7 +475,11 @@ def get_evaluation_runs(
     )
 
 
-@app.get("/api/v1/runs/{run_id}", response_model=EvaluationRunResponse)
+@app.get(
+    "/api/v1/runs/{run_id}",
+    response_model=EvaluationRunResponse,
+    responses={status_code: {"model": ApiErrorResponse} for status_code in (404, 503)},
+)
 def get_evaluation_run(run_id: str) -> EvaluationRunResponse:
     database_url, _, _ = _require_dev_evaluation_runs()
     try:
