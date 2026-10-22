@@ -28,6 +28,11 @@
         "summary": "Validate Dataset Import",
         "description": "Development-only schema check; this endpoint does not import or score data.",
         "operationId": "validate_dataset_import_api_v1_datasets_imports_validate_post",
+        "security": [
+          {
+            "OIDCBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "X-FishEye-Synthetic-Data-Confirmed",
@@ -126,6 +131,11 @@
         "summary": "Import Synthetic Dataset",
         "description": "Persist a validated synthetic CSV as an immutable dev-only dataset artifact.",
         "operationId": "import_synthetic_dataset_api_v1_datasets_imports_post",
+        "security": [
+          {
+            "OIDCBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "X-FishEye-Synthetic-Data-Confirmed",
@@ -234,6 +244,11 @@
         "summary": "Get Datasets",
         "description": "Development-only, paginated listing of imported dataset metadata.",
         "operationId": "get_datasets_api_v1_datasets_get",
+        "security": [
+          {
+            "OIDCBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "limit",
@@ -299,6 +314,11 @@
         "summary": "Get Dataset Metadata",
         "description": "Development-only read of one dataset's provenance metadata.",
         "operationId": "get_dataset_metadata_api_v1_datasets__dataset_id__get",
+        "security": [
+          {
+            "OIDCBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "dataset_id",
@@ -359,6 +379,11 @@
         "summary": "Create Evaluation Run",
         "description": "Queue a development-only synthetic evaluation for a prepared-schema dataset.",
         "operationId": "create_evaluation_run_api_v1_runs_post",
+        "security": [
+          {
+            "OIDCBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "Idempotency-Key",
@@ -453,6 +478,11 @@
       "get": {
         "summary": "Get Evaluation Runs",
         "operationId": "get_evaluation_runs_api_v1_runs_get",
+        "security": [
+          {
+            "OIDCBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "limit",
@@ -507,6 +537,11 @@
       "get": {
         "summary": "Get Evaluation Run",
         "operationId": "get_evaluation_run_api_v1_runs__run_id__get",
+        "security": [
+          {
+            "OIDCBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "run_id",
@@ -567,6 +602,11 @@
         "summary": "Download Evaluation Manifest",
         "description": "Download verified provenance for a completed development evaluation.",
         "operationId": "download_evaluation_manifest_api_v1_runs__run_id__manifest_get",
+        "security": [
+          {
+            "OIDCBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "run_id",
@@ -636,6 +676,11 @@
       "get": {
         "summary": "Get Evaluation Findings",
         "operationId": "get_evaluation_findings_api_v1_runs__run_id__findings_get",
+        "security": [
+          {
+            "OIDCBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "run_id",
@@ -711,6 +756,11 @@
         "summary": "Get Finding Detail",
         "description": "Read a stored finding and only the synthetic source events it references.",
         "operationId": "get_finding_detail_api_v1_runs__run_id__findings__finding_id__get",
+        "security": [
+          {
+            "OIDCBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "run_id",
@@ -788,8 +838,13 @@
     "/api/v1/runs/{run_id}/findings/{finding_id}/reviews": {
       "post": {
         "summary": "Record Finding Review",
-        "description": "Append a local development review; this endpoint does not authenticate an analyst.",
+        "description": "Append a review attributed to the verified analyst subject or local dev actor.",
         "operationId": "record_finding_review_api_v1_runs__run_id__findings__finding_id__reviews_post",
+        "security": [
+          {
+            "OIDCBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "run_id",
@@ -1440,12 +1495,6 @@
             },
             "type": "array",
             "title": "Reviews"
-          },
-          "review_mode": {
-            "type": "string",
-            "const": "local_development_unauthenticated",
-            "title": "Review Mode",
-            "default": "local_development_unauthenticated"
           }
         },
         "type": "object",
@@ -1767,6 +1816,12 @@
         "type": "object",
         "required": ["loc", "msg", "type"],
         "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "OIDCBearer": {
+        "type": "http",
+        "scheme": "bearer"
       }
     }
   }

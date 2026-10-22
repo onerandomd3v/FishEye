@@ -1,14 +1,72 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { Suspense, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { BrandLogo, Button, Notice } from '@fisheye/ui';
 
 export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="login-page" aria-busy="true">
+          <section className="login-form-panel">Loading sign-in…</section>
+        </main>
+      }
+    >
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [message, setMessage] = useState('');
   const [pending, setPending] = useState(false);
+  const signInFailed = searchParams.get('error') === 'oidc';
+
+  if (process.env.NODE_ENV !== 'development') {
+    return (
+      <main className="login-page">
+        <section className="login-brand-panel">
+          <Link href="/" aria-label="FishEye home">
+            <BrandLogo />
+          </Link>
+          <div className="login-brand-copy">
+            <h1>
+              See the signal.
+              <br />
+              Ignore the noise.
+            </h1>
+            <p>Context-aware insider-risk triage for security analysts.</p>
+          </div>
+          <p className="login-foot">Synthetic research environment</p>
+        </section>
+        <section className="login-form-panel">
+          <div className="login-form">
+            <h2>Analyst sign in</h2>
+            <p>Sign in through your organization’s identity provider.</p>
+            {signInFailed && (
+              <div role="alert">
+                <Notice title="Sign-in could not be completed">
+                  Check your access with your administrator and try again.
+                </Notice>
+              </div>
+            )}
+            <a className="fe-button fe-button-primary" href="/api/auth/login">
+              Continue with secure sign-in <span aria-hidden="true">→</span>
+            </a>
+            <p className="login-disclaimer">
+              FishEye accepts analyst access tokens issued by the configured
+              OIDC provider. If sign-in fails, check access with your
+              administrator and try again.
+            </p>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

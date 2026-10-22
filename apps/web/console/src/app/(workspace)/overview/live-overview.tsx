@@ -26,17 +26,15 @@ export function LiveOverview() {
   const [run, setRun] = useState<Run | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [findingTotal, setFindingTotal] = useState(0);
-  const [loading, setLoading] = useState(Boolean(apiBaseUrl));
+  const [loading, setLoading] = useState(Boolean(apiBaseUrl()));
   const [error, setError] = useState(
-    apiBaseUrl
-      ? ''
-      : 'Set NEXT_PUBLIC_API_BASE_URL to connect the development API.',
+    apiBaseUrl() ? '' : 'The FishEye API is not configured.',
   );
   const [reload, setReload] = useState(0);
 
   useEffect(() => {
     let current = true;
-    if (!apiBaseUrl) return;
+    if (!apiBaseUrl()) return;
     void (async () => {
       try {
         let offset = 0;
@@ -101,8 +99,8 @@ export function LiveOverview() {
   }, [reload]);
 
   function retry() {
-    if (!apiBaseUrl) {
-      setError('Set NEXT_PUBLIC_API_BASE_URL to connect the development API.');
+    if (!apiBaseUrl()) {
+      setError('The FishEye API is not configured.');
       return;
     }
     setLoading(true);

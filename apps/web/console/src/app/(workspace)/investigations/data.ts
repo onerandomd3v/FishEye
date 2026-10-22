@@ -1,6 +1,10 @@
 import { createFishEyeApiClient } from '@fisheye/api-client';
 
-export const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
+export function apiBaseUrl(): string {
+  if (process.env.NODE_ENV === 'test')
+    return process.env.FISHEYE_TEST_API_URL ?? '';
+  return '/api/backend';
+}
 
 export function apiErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error) return error.message;
@@ -8,5 +12,5 @@ export function apiErrorMessage(error: unknown, fallback: string) {
 }
 
 export function investigationApi() {
-  return createFishEyeApiClient(apiBaseUrl);
+  return createFishEyeApiClient(apiBaseUrl());
 }

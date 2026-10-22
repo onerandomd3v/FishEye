@@ -162,7 +162,6 @@ def test_import_queue_process_and_read_real_synthetic_run(
     assert [item["decision"] for item in review_history] == ["escalated", "reviewed_benign"]
     assert refreshed.json()["finding"] == finding
     assert refreshed.json()["events"] == evidence
-    assert refreshed.json()["review_mode"] == "local_development_unauthenticated"
 
     missing_finding = client.get(
         f"/api/v1/runs/{result['run_id']}/findings/{result['run_id']}:contextual:unknown:2026-01-05"

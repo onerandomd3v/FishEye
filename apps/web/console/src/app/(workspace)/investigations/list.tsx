@@ -20,13 +20,11 @@ export function InvestigationList() {
   const [offset, setOffset] = useState(0);
   const [total, setTotal] = useState(0);
   const [runState, setRunState] = useState<RequestState>(
-    apiBaseUrl ? 'loading' : 'error',
+    apiBaseUrl() ? 'loading' : 'error',
   );
   const [findingsState, setFindingsState] = useState<RequestState>('loading');
   const [error, setError] = useState(
-    apiBaseUrl
-      ? ''
-      : 'Set NEXT_PUBLIC_API_BASE_URL to connect the development API.',
+    apiBaseUrl() ? '' : 'The FishEye API is not configured.',
   );
   const [reload, setReload] = useState(0);
   const limit = 50;
@@ -34,7 +32,7 @@ export function InvestigationList() {
 
   useEffect(() => {
     let current = true;
-    if (!apiBaseUrl) return;
+    if (!apiBaseUrl()) return;
     void (async () => {
       try {
         const {
@@ -127,9 +125,9 @@ export function InvestigationList() {
   );
 
   function retry() {
-    if (!apiBaseUrl) {
+    if (!apiBaseUrl()) {
       setRunState('error');
-      setError('Set NEXT_PUBLIC_API_BASE_URL to connect the development API.');
+      setError('The FishEye API is not configured.');
       return;
     }
     setRunState('loading');

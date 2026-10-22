@@ -19,19 +19,19 @@ dataset record. Import does not start a run or calculate risk.
 event_id,employee_id,role_id,department_id,event_timestamp_utc,event_type,system,device_id,location_label,record_count,dataset_partition,ground_truth_label
 ```
 
-| Field                 | Requirement and meaning                                                                          |
-| --------------------- | ------------------------------------------------------------------------------------------------ |
-| `event_id`            | Required, unique event identifier.                                                               |
-| `employee_id`         | Required fake employee identifier.                                                               |
-| `role_id`             | Required synthetic role identifier.                                                              |
-| `department_id`       | Required synthetic department identifier.                                                        |
-| `event_timestamp_utc` | Required ISO 8601 timestamp ending in `Z`.                                                       |
-| `event_type`          | Required enum: `sign_in`, `failed_sign_in`, `record_read`, `record_export`, `permission_change`. |
-| `system`              | Required synthetic target-system name.                                                           |
-| `device_id`           | Optional; blank means missing or unreported.                                                     |
-| `location_label`      | Optional; blank means missing or unreported.                                                     |
-| `record_count`        | Optional nonnegative signed 64-bit integer; blank means unknown or not applicable.                |
-| `dataset_partition`   | Required enum: `baseline`, `calibration`, or `evaluation`.                                       |
+| Field                 | Requirement and meaning                                                                             |
+| --------------------- | --------------------------------------------------------------------------------------------------- |
+| `event_id`            | Required, unique event identifier.                                                                  |
+| `employee_id`         | Required fake employee identifier.                                                                  |
+| `role_id`             | Required synthetic role identifier.                                                                 |
+| `department_id`       | Required synthetic department identifier.                                                           |
+| `event_timestamp_utc` | Required ISO 8601 timestamp ending in `Z`.                                                          |
+| `event_type`          | Required enum: `sign_in`, `failed_sign_in`, `record_read`, `record_export`, `permission_change`.    |
+| `system`              | Required synthetic target-system name.                                                              |
+| `device_id`           | Optional; blank means missing or unreported.                                                        |
+| `location_label`      | Optional; blank means missing or unreported.                                                        |
+| `record_count`        | Optional nonnegative signed 64-bit integer; blank means unknown or not applicable.                  |
+| `dataset_partition`   | Required enum: `baseline`, `calibration`, or `evaluation`.                                          |
 | `ground_truth_label`  | Blank on baseline rows. Calibration/evaluation rows require `threat_scenario` or `benign_scenario`. |
 
 ## Evaluation unit and validation
@@ -121,7 +121,7 @@ also set `FISHEYE_ENABLE_DEV_DATASET_READS=1`; to queue runs set
 with `uv run --package fisheye-persistence python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
 Keep it in your local environment, never commit it, and keep using the same key
 for existing artifacts. Then run `pnpm db:migrate`. Start the API with
-`pnpm dev:api`. Set `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000` in
+`pnpm dev:api`. Set `API_INTERNAL_URL=http://127.0.0.1:8000` in
 `apps/web/console/.env.local` and start the console with `pnpm dev:console`.
 Start the worker in another terminal using the command above. Keep every
 development flag off outside local development.

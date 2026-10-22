@@ -53,7 +53,7 @@ describe('development evaluation run flow', () => {
   });
 
   it('imports the validated data, creates a durable run, and displays worker metrics', async () => {
-    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://127.0.0.1:8000');
+    vi.stubEnv('FISHEYE_TEST_API_URL', 'http://127.0.0.1:8000');
     const run = {
       run_id: 'run-1',
       dataset_id: 'dataset-1',
@@ -150,7 +150,7 @@ describe('development evaluation run flow', () => {
   });
 
   it('reuses the run idempotency key when retrying the same submission after an uncertain response', async () => {
-    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://127.0.0.1:8000');
+    vi.stubEnv('FISHEYE_TEST_API_URL', 'http://127.0.0.1:8000');
     const terminalRun = {
       run_id: 'run-retried',
       dataset_id: 'dataset-1',
@@ -249,7 +249,7 @@ describe('development evaluation run flow', () => {
     );
     await waitFor(() =>
       expect(screen.getByRole('alert').textContent).toContain(
-        'Development API is not configured',
+        'FishEye API is not configured',
       ),
     );
   });

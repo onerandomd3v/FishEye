@@ -7,6 +7,7 @@ import {
   postCsv,
   type components,
 } from '@fisheye/api-client';
+import { apiBaseUrl } from '../investigations/data';
 
 type ValidationResponse = components['schemas']['DatasetValidationResponse'];
 type RunResponse = components['schemas']['EvaluationRunResponse'];
@@ -77,16 +78,14 @@ export function DatasetImport({
       });
       return;
     }
-    const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '');
+    const apiUrl = apiBaseUrl();
     if (!apiUrl) {
       setState({
         status: 'error',
-        message:
-          'Development API is not configured. Set NEXT_PUBLIC_API_BASE_URL.',
+        message: 'The FishEye API is not configured.',
       });
       return;
     }
-
     const client = createFishEyeApiClient(apiUrl);
     setState({
       status: 'working',

@@ -8,14 +8,13 @@ import {
   formatAlertsPer100EmployeeDays,
   formatMetricRatio,
 } from '../evaluation-format';
+import { apiBaseUrl } from '../investigations/data';
 
 type Run = components['schemas']['EvaluationRunResponse'];
 type Finding = components['schemas']['RunFindingResponse'];
 type Detector = components['schemas']['RunFindingResponse']['detector'];
 
 const detectors: Detector[] = ['simple_rule', 'tuned_rules', 'contextual'];
-const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '');
-
 export default function EvaluationPage() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [selectedRun, setSelectedRun] = useState<Run | null>(null);
@@ -32,10 +31,9 @@ export default function EvaluationPage() {
   const manifestRequestIdRef = useRef(0);
 
   const loadRuns = useCallback(async () => {
+    const baseUrl = apiBaseUrl();
     if (!baseUrl) {
-      setError(
-        'Development API is not configured. Set NEXT_PUBLIC_API_BASE_URL to load runs.',
-      );
+      setError('The FishEye API is not configured.');
       setLoading(false);
       return;
     }
@@ -73,6 +71,7 @@ export default function EvaluationPage() {
   }, [loadRuns]);
 
   async function loadFindings(run: Run, selectedDetector: Detector) {
+    const baseUrl = apiBaseUrl();
     if (!baseUrl || run.status !== 'completed') return;
     const requestId = ++findingsRequestIdRef.current;
     setSelectedRun(run);
@@ -120,6 +119,7 @@ export default function EvaluationPage() {
   }
 
   async function downloadManifest(run: Run) {
+    const baseUrl = apiBaseUrl();
     if (!baseUrl || !run.result_manifest_sha256) return;
     const requestId = ++manifestRequestIdRef.current;
     setManifestDownloadingRunId(run.run_id);

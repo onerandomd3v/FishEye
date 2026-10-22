@@ -19,7 +19,7 @@ afterEach(() => {
 
 describe('investigation list', () => {
   it('renders findings returned by a completed API run', async () => {
-    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://127.0.0.1:8000');
+    vi.stubEnv('FISHEYE_TEST_API_URL', 'http://127.0.0.1:8000');
     vi.resetModules();
     const { InvestigationList } = await import('./list');
     const fetchMock = vi.fn((input: Request | string) => {
@@ -78,12 +78,12 @@ describe('investigation list', () => {
   });
 
   it('explains the API configuration error and offers a retry', async () => {
-    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', '');
+    vi.stubEnv('FISHEYE_TEST_API_URL', '');
     vi.resetModules();
     const { InvestigationList } = await import('./list');
     render(<InvestigationList />);
     expect(await screen.findByRole('alert')).toBeTruthy();
-    expect(screen.getByText(/NEXT_PUBLIC_API_BASE_URL/)).toBeTruthy();
+    expect(screen.getByText(/FishEye API is not configured/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
   });
 });

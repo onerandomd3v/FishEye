@@ -23,12 +23,10 @@ const reasonDescriptions: Record<string, string> = {
 
 export function InvestigationDetail({ findingId }: { findingId: string }) {
   const [detail, setDetail] = useState<FindingDetail | null>(null);
-  const [loading, setLoading] = useState(Boolean(apiBaseUrl));
+  const [loading, setLoading] = useState(Boolean(apiBaseUrl()));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(
-    apiBaseUrl
-      ? ''
-      : 'Set NEXT_PUBLIC_API_BASE_URL to connect the development API.',
+    apiBaseUrl() ? '' : 'The FishEye API is not configured.',
   );
   const [decision, setDecision] = useState<ReviewDecision>('under_review');
   const [note, setNote] = useState('');
@@ -36,7 +34,7 @@ export function InvestigationDetail({ findingId }: { findingId: string }) {
   const runId = findingId.split(':', 1)[0] ?? '';
 
   const loadDetail = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!apiBaseUrl()) {
       return;
     }
     try {

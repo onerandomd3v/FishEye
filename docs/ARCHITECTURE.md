@@ -156,7 +156,7 @@ The root should be one Git repository. `apps/web` and `apps/backend` are organiz
 - `GET /events` (server-paginated, authorized)
 - `GET /scenarios`, `POST /runs`, `GET /runs/{id}`
 - `GET /runs/{id}/metrics`, `GET /runs/{id}/findings`
-- `GET /datasets` and `GET /datasets/{id}` (development-only, paginated metadata reads), `POST /datasets/imports/validate` (development-only schema validation), and `POST /datasets/imports` (development-only import of validated synthetic CSV into an immutable source artifact). `POST /runs` queues an idempotent development-only run using an encrypted context sidecar; `GET /runs`, `GET /runs/{id}`, and `GET /runs/{id}/findings` expose worker status and persisted outputs. `GET /runs/{id}/findings/{finding_id}` returns a stored finding and only its referenced source events; `POST /runs/{id}/findings/{finding_id}/reviews` appends a review record. The worker claims runs with expiring database leases, retries failures within a bound, prepares encrypted Parquet artifacts, evaluates the provisional policy, and publishes immutable encrypted results. These endpoints are unauthenticated and must remain disabled outside local development. Development review records explicitly identify the actor as unauthenticated local development; they are not production analyst audit records. See [DATASET-CSV.md](./DATASET-CSV.md). Production authentication/authorization remains future work.
+- `GET /datasets` and `GET /datasets/{id}` (development-only, paginated metadata reads), `POST /datasets/imports/validate` (development-only schema validation), and `POST /datasets/imports` (development-only import of validated synthetic CSV into an immutable source artifact). `POST /runs` queues an idempotent development-only run using an encrypted context sidecar; `GET /runs`, `GET /runs/{id}`, and `GET /runs/{id}/findings` expose worker status and persisted outputs. `GET /runs/{id}/findings/{finding_id}` returns a stored finding and only its referenced source events; `POST /runs/{id}/findings/{finding_id}/reviews` appends a review record. The worker claims runs with expiring database leases, retries failures within a bound, prepares encrypted Parquet artifacts, evaluates the provisional policy, and publishes immutable encrypted results. API routes require OIDC bearer tokens with verified issuer, audience, signature, expiry and an analyst/admin role outside local development. The CSV, dataset and evaluation routes remain development-only and disabled outside local development; adding authentication does not enable them in a shared deployment. Local development review records explicitly identify the actor as unauthenticated local development. See [DATASET-CSV.md](./DATASET-CSV.md) and [ADR 0001](./adr/0001-provider-neutral-oidc.md).
 
 Requests and responses require stable IDs, explicit timestamps/timezones, pagination contracts, error codes and a `schema_version` where appropriate. Document authorization rules per endpoint. Never let the browser trigger an arbitrary shell/script execution.
 
@@ -273,7 +273,7 @@ A PostgreSQL-backed queue is sufficient initially **if** implemented carefully:
 
 Although v1 contains synthetic events, build the platform with future sensitivity in mind.
 
-- Authenticated analyst console and backend-enforced role-based access control; use a mature identity provider/OIDC flow for any shared deployment.
+- Authenticated analyst console and backend-enforced role-based access control; use the provider-neutral OIDC authorization-code flow for shared deployments.
 - Distinguish public landing content from protected API/console resources.
 - HTTPS in deployed environments, strict CORS origins, secure sessions/tokens, rate limits, input limits and vulnerability scanning.
 - Separate runtime identities for API, worker and migrations; minimum required database/object-store permissions.
@@ -366,7 +366,7 @@ For growth, consider database partitioning and higher-volume ingestion only afte
 | No LLM required for the core score or evaluation | **Accepted** |
 | Synthetic data only for MVP v1 | **Accepted** |
 | Exact scoring formula, thresholds and calibration protocol | **Open — define before experiment freeze** |
-| Authentication/OIDC provider and hosted environments | **Open — select before shared deployment** |
+| Provider-neutral OIDC protocol and analyst/admin API roles | **Accepted; concrete provider and hosting remain open** |
 | Object storage vendor and hosting provider | **Open — choose by constraints, not brand** |
 | Final API schemas and PostgreSQL tables | **Open — establish with implementation PRs** |
 | Whether a bank will sponsor a future pilot | **Unverified — never assume** |

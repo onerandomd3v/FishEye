@@ -51,7 +51,7 @@ afterEach(() => {
 
 describe('investigation detail and review history', () => {
   it('loads stored evidence and appends a review without changing finding data', async () => {
-    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://127.0.0.1:8000');
+    vi.stubEnv('FISHEYE_TEST_API_URL', 'http://127.0.0.1:8000');
     vi.resetModules();
     const { InvestigationDetail } = await import('./detail');
     const reviews = [

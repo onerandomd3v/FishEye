@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from hashlib import sha256
 from uuid import uuid4
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, select
@@ -39,14 +40,18 @@ def create_finding_review(
     finding_id: str,
     decision: str,
     note: str | None,
+    reviewer_label: str = "Local development user (not authenticated)",
 ) -> FindingReviewRecord:
     """Append a review event without changing the run or its findings."""
+    if len(reviewer_label) > 128:
+        digest = sha256(reviewer_label.encode("utf-8")).hexdigest()[:12]
+        reviewer_label = f"{reviewer_label[:115]}:{digest}"
     record = FindingReviewRecord(
         run_id=run_id,
         finding_id=finding_id,
         decision=decision,
         note=note,
-        reviewer_label="Local development user (not authenticated)",
+        reviewer_label=reviewer_label,
         created_at=datetime.now(UTC),
     )
     session.add(record)

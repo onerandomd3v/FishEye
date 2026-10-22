@@ -207,7 +207,7 @@ export interface paths {
     put?: never;
     /**
      * Record Finding Review
-     * @description Append a local development review; this endpoint does not authenticate an analyst.
+     * @description Append a review attributed to the verified analyst subject or local dev actor.
      */
     post: operations['record_finding_review_api_v1_runs__run_id__findings__finding_id__reviews_post'];
     delete?: never;
@@ -475,12 +475,6 @@ export interface components {
       events: components['schemas']['FindingEvidenceEventResponse'][];
       /** Reviews */
       reviews: components['schemas']['FindingReviewResponse'][];
-      /**
-       * Review Mode
-       * @default local_development_unauthenticated
-       * @constant
-       */
-      review_mode: 'local_development_unauthenticated';
     };
     /** FindingEvidenceEventResponse */
     FindingEvidenceEventResponse: {
