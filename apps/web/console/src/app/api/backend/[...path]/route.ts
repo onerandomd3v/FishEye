@@ -9,6 +9,10 @@ import {
   LOCAL_SESSION_COOKIE,
   verifyLocalSession,
 } from '../../../../lib/local-auth';
+import {
+  PayloadTooLargeError,
+  readBodyWithinLimit,
+} from '../../../../lib/body-limits';
 
 type RouteContext = { params: Promise<{ path: string[] }> };
 const forwardedHeaders = [
@@ -90,7 +94,7 @@ async function proxy(request: Request, context: RouteContext) {
       headers,
       body: ['GET', 'HEAD'].includes(request.method)
         ? undefined
-        : await request.arrayBuffer(),
+        : await readBodyWithinLimit(request),
       cache: 'no-store',
       redirect: 'manual',
     });
@@ -107,7 +111,10 @@ async function proxy(request: Request, context: RouteContext) {
       status: response.status,
       headers: responseHeaders,
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof PayloadTooLargeError) {
+      return NextResponse.json({ detail: error.message }, { status: 413 });
+    }
     return NextResponse.json(
       { detail: 'The FishEye API could not be reached.' },
       { status: 503 },
