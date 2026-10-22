@@ -63,10 +63,18 @@ export function redirectUri(): string {
   return uri.href;
 }
 
-export function consoleOrigin(): string {
-  const value =
-    process.env.FISHEYE_CONSOLE_URL ?? new URL(redirectUri()).origin;
-  return new URL(value).origin;
+export function consoleOrigin(fallbackOrigin?: string): string {
+  const configured = process.env.FISHEYE_CONSOLE_URL;
+  if (configured) return new URL(configured).origin;
+  if (process.env.FISHEYE_OIDC_REDIRECT_URI) {
+    return new URL(process.env.FISHEYE_OIDC_REDIRECT_URI).origin;
+  }
+  if (process.env.NODE_ENV === 'development') {
+    return fallbackOrigin ?? 'http://127.0.0.1:3000';
+  }
+  throw new Error(
+    'FISHEYE_CONSOLE_URL must be configured outside local development.',
+  );
 }
 
 function encryptionKey(): Uint8Array {
