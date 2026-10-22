@@ -3,7 +3,9 @@
 import asyncio
 import csv
 import hashlib
+import hmac
 import io
+import ipaddress
 import json
 import os
 from datetime import UTC, datetime
@@ -26,6 +28,12 @@ from fisheye_persistence.datasets import (
     import_dataset,
     list_datasets,
     read_dataset_source,
+)
+from fisheye_persistence.login_attempts import (
+    clear_login_failures,
+    login_blocked_until,
+    prune_login_attempts,
+    record_login_failure,
 )
 from fisheye_persistence.reviews import (
     FindingReviewRecord,
@@ -61,6 +69,20 @@ MAX_CSV_BYTES = 10 * 1024 * 1024
 class HealthResponse(BaseModel):
     status: str
     synthetic_only: bool
+
+
+class DemoLoginThrottleRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    action: Literal["check", "failure", "success"]
+    email: str = Field(min_length=1, max_length=320)
+    client_ip: str = Field(min_length=1, max_length=45)
+    issued_at: int
+    signature: str = Field(min_length=64, max_length=64)
+
+
+class DemoLoginThrottleResponse(BaseModel):
+    allowed: bool = True
 
 
 class DatasetValidationResponse(BaseModel):
@@ -243,6 +265,80 @@ class FindingReviewCreateRequest(BaseModel):
 @lru_cache(maxsize=4)
 def _session_factory(database_url: str) -> sessionmaker[Session]:
     return create_session_factory(database_url)
+
+
+def _login_rate_key(secret: str, value: str) -> str:
+    return hmac.new(secret.encode("utf-8"), value.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _login_throttle_message(payload: DemoLoginThrottleRequest) -> bytes:
+    return (
+        f"fisheye-login-throttle:v1|{payload.action}|{payload.client_ip}|"
+        f"{payload.email.strip().lower()}|{payload.issued_at}"
+    ).encode()
+
+
+@app.post(
+    "/api/v1/auth/login-throttle",
+    response_model=DemoLoginThrottleResponse,
+)
+def throttle_demo_login(payload: DemoLoginThrottleRequest) -> DemoLoginThrottleResponse:
+    """Enforce durable login throttling for signed console requests."""
+    secret = os.getenv("FISHEYE_SESSION_SECRET", "").strip()
+    database_url = os.getenv("DATABASE_URL")
+    now = int(datetime.now(UTC).timestamp())
+    if len(secret.encode("utf-8")) < 32 or not database_url:
+        raise HTTPException(status_code=503, detail="Demo sign-in is not configured.")
+
+    try:
+        client_ip = str(ipaddress.ip_address(payload.client_ip))
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid login-throttle signature.") from None
+    if abs(now - payload.issued_at) > 60:
+        raise HTTPException(status_code=401, detail="Expired login-throttle signature.")
+    expected_signature = hmac.new(
+        secret.encode("utf-8"), _login_throttle_message(payload), hashlib.sha256
+    ).hexdigest()
+    if not hmac.compare_digest(expected_signature, payload.signature):
+        raise HTTPException(status_code=401, detail="Invalid login-throttle signature.")
+
+    source_key = _login_rate_key(secret, f"source:{client_ip}")
+    account_key = _login_rate_key(secret, f"account:{payload.email.strip().lower()}")
+    try:
+        factory = _session_factory(database_url)
+        with factory() as session:
+            prune_login_attempts(session, now=now)
+            blocked_until = max(
+                login_blocked_until(session, source_key, now=now),
+                login_blocked_until(session, account_key, now=now),
+            )
+            if blocked_until > now:
+                raise HTTPException(
+                    status_code=429,
+                    detail="Too many sign-in attempts. Try again later.",
+                    headers={"Retry-After": str(blocked_until - now)},
+                )
+            if payload.action == "failure":
+                source_block = record_login_failure(session, source_key, now=now, max_failures=5)
+                account_block = record_login_failure(session, account_key, now=now, max_failures=20)
+                blocked_until = max(source_block, account_block)
+                if blocked_until > now:
+                    raise HTTPException(
+                        status_code=429,
+                        detail="Too many sign-in attempts. Try again later.",
+                        headers={"Retry-After": str(blocked_until - now)},
+                    )
+            elif payload.action == "success":
+                clear_login_failures(session, [source_key])
+    except HTTPException:
+        raise
+    except SQLAlchemyError:
+        raise HTTPException(
+            status_code=503,
+            detail="Demo sign-in is temporarily unavailable.",
+        ) from None
+
+    return DemoLoginThrottleResponse()
 
 
 @app.get("/health/live", response_model=HealthResponse)

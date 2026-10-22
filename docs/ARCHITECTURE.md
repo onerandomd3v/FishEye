@@ -70,12 +70,12 @@ Shared importable Python domain/features/detector/evaluation libraries
 
 **Deployable applications, v1:**
 
-| Unit | Responsibility | Independently deploy? |
-| --- | --- | --- |
-| `apps/web/landing` | Public marketing site, product explanation, research disclaimer | Yes — static |
-| `apps/web/console` | Authenticated triage, findings, investigation and experiment UI | Yes — Next.js server runtime |
-| `apps/backend/api` | API, access control, transactional state and job submission | Yes — container |
-| `apps/backend/worker` | Synthetic generation, features, scoring and evaluation | Yes — separate container/process |
+| Unit                  | Responsibility                                                  | Independently deploy?            |
+| --------------------- | --------------------------------------------------------------- | -------------------------------- |
+| `apps/web/landing`    | Public marketing site, product explanation, research disclaimer | Yes — static                     |
+| `apps/web/console`    | Authenticated triage, findings, investigation and experiment UI | Yes — Next.js server runtime     |
+| `apps/backend/api`    | API, access control, transactional state and job submission     | Yes — container                  |
+| `apps/backend/worker` | Synthetic generation, features, scoring and evaluation          | Yes — separate container/process |
 
 **Not separate microservices in v1:** detectors, feature engineering, simulation, evaluation and persistence are importable Python packages. Keeping them local avoids unnecessary distributed transactions, network dependencies and duplicated schema logic.
 
@@ -124,43 +124,46 @@ The root should be one Git repository. `apps/web` and `apps/backend` are organiz
 
 ## 5. Technology decisions and rationale
 
-| Layer | Initial decision | Why | Deliberately rejected for v1 |
-| --- | --- | --- | --- |
-| Landing | Astro + optional React islands | Mostly static content, minimal JS | Always-on SSR server |
-| Analyst console | Next.js App Router, React, TypeScript | API-driven, interaction-heavy SPA | SSR as a default requirement |
-| UI | Tailwind CSS + shared tokens/components | Consistent system across web apps | Separate design systems |
-| API state | TanStack Query | Server-state caching, error/loading, invalidation | Generic global state store for server data |
-| Event tables | TanStack Table | Explicit pagination/sort/filter | Rendering all rows client-side |
-| Charts | Recharts | Sufficient research metrics visualizations | Full BI platform |
-| Backend/API | Python + FastAPI + Pydantic | Close to scientific detector code, typed schema and OpenAPI | NestJS gateway without proven extra work |
-| Persistence | PostgreSQL, SQLAlchemy 2, Alembic | Relational transactional records/migrations | Event lake embedded in app tables |
-| Data transformation | Polars and NumPy | Columnar feature extraction and numeric routines | Streaming cluster |
-| Detectors | Explicit rules/statistics, scikit-learn only when validated | Interpretable baselines and swappable challenger models | LLM as risk-score generator |
-| Analytics/artifacts | DuckDB + immutable Parquet | Local/offline analytical queries, efficient experimental artifacts | Standalone data warehouse |
-| Background work | Separate Python worker + PostgreSQL job table | Durable jobs with minimal infrastructure | Redis/Kafka/Temporal from day one |
-| Tooling | pnpm + Turborepo (web), uv (Python) | Independent language-native dependency systems | Forcing Python into JS task/dependency semantics |
-| Local runtime | Docker Compose | Reproducible integration testing | Kubernetes before demand |
-| CI | GitHub Actions | Verify changed apps, migrations and experiment checks | Deployment without automated validation |
+| Layer               | Initial decision                                            | Why                                                                | Deliberately rejected for v1                     |
+| ------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------ |
+| Landing             | Astro + optional React islands                              | Mostly static content, minimal JS                                  | Always-on SSR server                             |
+| Analyst console     | Next.js App Router, React, TypeScript                       | API-driven, interaction-heavy SPA                                  | SSR as a default requirement                     |
+| UI                  | Tailwind CSS + shared tokens/components                     | Consistent system across web apps                                  | Separate design systems                          |
+| API state           | TanStack Query                                              | Server-state caching, error/loading, invalidation                  | Generic global state store for server data       |
+| Event tables        | TanStack Table                                              | Explicit pagination/sort/filter                                    | Rendering all rows client-side                   |
+| Charts              | Recharts                                                    | Sufficient research metrics visualizations                         | Full BI platform                                 |
+| Backend/API         | Python + FastAPI + Pydantic                                 | Close to scientific detector code, typed schema and OpenAPI        | NestJS gateway without proven extra work         |
+| Persistence         | PostgreSQL, SQLAlchemy 2, Alembic                           | Relational transactional records/migrations                        | Event lake embedded in app tables                |
+| Data transformation | Polars and NumPy                                            | Columnar feature extraction and numeric routines                   | Streaming cluster                                |
+| Detectors           | Explicit rules/statistics, scikit-learn only when validated | Interpretable baselines and swappable challenger models            | LLM as risk-score generator                      |
+| Analytics/artifacts | DuckDB + immutable Parquet                                  | Local/offline analytical queries, efficient experimental artifacts | Standalone data warehouse                        |
+| Background work     | Separate Python worker + PostgreSQL job table               | Durable jobs with minimal infrastructure                           | Redis/Kafka/Temporal from day one                |
+| Tooling             | pnpm + Turborepo (web), uv (Python)                         | Independent language-native dependency systems                     | Forcing Python into JS task/dependency semantics |
+| Local runtime       | Docker Compose                                              | Reproducible integration testing                                   | Kubernetes before demand                         |
+| CI                  | GitHub Actions                                              | Verify changed apps, migrations and experiment checks              | Deployment without automated validation          |
 
 **Package boundaries:** `packages/ui` must not import backend internals; Python domain logic must not import FastAPI. The worker and API import shared Python libraries. Generate `packages/api-client` from version-controlled OpenAPI contracts and check schema compatibility in CI.
 
 ## 6. MVP modules and API responsibilities
 
 ### Web routes (subject to product review)
+
 - Landing: `/`, `/research` (optional).
 - Console: `/login`, `/overview`, `/investigations`, `/investigations/:id`, `/evaluation`, `/scenarios`.
 
 ### API resources (suggested `/api/v1` contract)
+
 - `GET /health/live` and `GET /health/ready`
 - `GET /findings`, `GET /findings/{id}`, `POST /findings/{id}/reviews`
 - `GET /events` (server-paginated, authorized)
 - `GET /scenarios`, `POST /runs`, `GET /runs/{id}`
 - `GET /runs/{id}/metrics`, `GET /runs/{id}/findings`
-- `GET /datasets` and `GET /datasets/{id}` (development-only, paginated metadata reads), `POST /datasets/imports/validate` (development-only schema validation), and `POST /datasets/imports` (development-only import of validated synthetic CSV into an immutable source artifact). `POST /runs` queues an idempotent development-only run using an encrypted context sidecar; `GET /runs`, `GET /runs/{id}`, and `GET /runs/{id}/findings` expose worker status and persisted outputs. `GET /runs/{id}/findings/{finding_id}` returns a stored finding and only its referenced source events; `POST /runs/{id}/findings/{finding_id}/reviews` appends a review record. The worker claims runs with expiring database leases, retries failures within a bound, prepares encrypted Parquet artifacts, evaluates the provisional policy, and publishes immutable encrypted results. The console verifies the environment-configured demo credentials and issues a short-lived signed analyst token; FastAPI verifies its signature, issuer, audience, expiry and analyst role. CSV, dataset and evaluation routes remain development-only and disabled outside local development; authentication does not enable them in a shared deployment. Local development review records explicitly identify the actor as unauthenticated local development. See [DATASET-CSV.md](./DATASET-CSV.md) and [ADR 0002](./adr/0002-environment-configured-demo-login.md).
+- `GET /datasets` and `GET /datasets/{id}` (development-only, paginated metadata reads), `POST /datasets/imports/validate` (development-only schema validation), and `POST /datasets/imports` (development-only import of validated synthetic CSV into an immutable source artifact). `POST /runs` queues an idempotent development-only run using an encrypted context sidecar; `GET /runs`, `GET /runs/{id}`, and `GET /runs/{id}/findings` expose worker status and persisted outputs. `GET /runs/{id}/findings/{finding_id}` returns a stored finding and only its referenced source events; `POST /runs/{id}/findings/{finding_id}/reviews` appends a review record. The worker claims runs with expiring database leases, retries failures within a bound, prepares encrypted Parquet artifacts, evaluates the provisional policy, and publishes immutable encrypted results. The console verifies the environment-configured demo credentials and issues a short-lived signed analyst token. FastAPI applies PostgreSQL-backed source/account login throttling and verifies token signature, issuer, audience, expiry and analyst role. Passwords are not sent to the API. CSV, dataset and evaluation routes remain development-only and disabled outside local development; authentication does not enable them in a shared deployment. Local development review records explicitly identify the actor as unauthenticated local development. See [DATASET-CSV.md](./DATASET-CSV.md) and [ADR 0002](./adr/0002-environment-configured-demo-login.md).
 
 Requests and responses require stable IDs, explicit timestamps/timezones, pagination contracts, error codes and a `schema_version` where appropriate. Document authorization rules per endpoint. Never let the browser trigger an arbitrary shell/script execution.
 
 ### Application responsibilities
+
 - **API:** Authorize actors, validate schemas, manage uploaded dataset references, persist experiment/job state, expose findings and immutable result links.
 - **Worker:** Prepare imported CSVs as encrypted, immutable Parquet artifacts with ground truth stored separately from detector event inputs. The development worker claims durable runs, loads versioned artifacts, executes provisional comparators on identical splits, atomically publishes outcomes, and records failure metadata.
 - **UI:** Render honest simulation provenance and investigation evidence; distinguish observed event, anomaly reason and inferred severity.
@@ -169,19 +172,19 @@ Requests and responses require stable IDs, explicit timestamps/timezones, pagina
 
 Core entities (conceptual, not finalized SQL schema):
 
-| Entity | Representative fields |
-| --- | --- |
-| `analyst_user` | id, organization_id, auth_subject, role, status |
-| `synthetic_employee` | id, dataset_id, role_id, department_id, baseline metadata |
-| `synthetic_event` | id, dataset_id, employee_id, event_time_utc, event_type, system, device_id, location_label, volume |
-| `scenario` | id, version, description, ground_truth_conditions |
-| `dataset` | id, version, sha256, schema_version, seed, created_at, artifact_uri |
-| `detector_version` | id, method, config_hash, code_revision, parameters |
-| `experiment_run` | id, dataset_id, detector_version, baseline_versions, seed, status, timestamps, manifest |
-| `finding` | id, run_id, employee_id, score, tier, reason_codes, evidence_event_ids |
-| `review` | id, finding_id, analyst_id, decision, note, timestamp |
-| `job` | id, type, status, lease_owner, lease_until, attempts, idempotency_key |
-| `audit_record` | id, actor, action, target, time, result |
+| Entity               | Representative fields                                                                              |
+| -------------------- | -------------------------------------------------------------------------------------------------- |
+| `analyst_user`       | id, organization_id, auth_subject, role, status                                                    |
+| `synthetic_employee` | id, dataset_id, role_id, department_id, baseline metadata                                          |
+| `synthetic_event`    | id, dataset_id, employee_id, event_time_utc, event_type, system, device_id, location_label, volume |
+| `scenario`           | id, version, description, ground_truth_conditions                                                  |
+| `dataset`            | id, version, sha256, schema_version, seed, created_at, artifact_uri                                |
+| `detector_version`   | id, method, config_hash, code_revision, parameters                                                 |
+| `experiment_run`     | id, dataset_id, detector_version, baseline_versions, seed, status, timestamps, manifest            |
+| `finding`            | id, run_id, employee_id, score, tier, reason_codes, evidence_event_ids                             |
+| `review`             | id, finding_id, analyst_id, decision, note, timestamp                                              |
+| `job`                | id, type, status, lease_owner, lease_until, attempts, idempotency_key                              |
+| `audit_record`       | id, actor, action, target, time, result                                                            |
 
 Only necessary metadata and indexable views need PostgreSQL rows. Large event collections, feature matrices and scored outputs are immutable Parquet artifacts referenced via manifests.
 
@@ -202,6 +205,7 @@ class Detector(Protocol):
 ```
 
 The exact typed signatures will be specified in code. Every emitted finding must provide:
+
 - score `0..100`, tier, rule/model version and thresholds;
 - relevant signals (e.g., unseen device, unusual location, out-of-role system, changed access volume);
 - baseline context used, with a reference to its training window;
@@ -209,12 +213,13 @@ The exact typed signatures will be specified in code. Every emitted finding must
 - guardrail decisions.
 
 **Initially implement:**
+
 1. **Simple-rule baseline** (clear and defensible thresholds).
 2. **Tuned-rule baseline** (calibrated using development data only).
 3. **FishEye contextual scorer** (individual/role baselines and interpretable signal combinations).
 4. **Optional challenger** such as Isolation Forest **only if** data and evaluation justify it.
 
-**Safeguards:** Unusual hours alone must not produce a High tier; out-of-role access cannot rank below Medium in the research policy. Treat these as *product research policies*, not universal regulatory mandates. Train reference behaviour only on approved history; evaluate separately on held-out data to avoid leakage. Newly hired employees and changed roles need explicit cold-start behavior.
+**Safeguards:** Unusual hours alone must not produce a High tier; out-of-role access cannot rank below Medium in the research policy. Treat these as _product research policies_, not universal regulatory mandates. Train reference behaviour only on approved history; evaluate separately on held-out data to avoid leakage. Newly hired employees and changed roles need explicit cold-start behavior.
 
 **Response policy for v1:** Observe → Flag → Recommend verification → Escalate to analyst. The console simulates verification/escalation and records review decisions; it does not reset passwords, suspend accounts, send real MFA challenges or contact actual employees.
 
@@ -223,6 +228,7 @@ The exact typed signatures will be specified in code. Every emitted finding must
 Ground truth is defined by scenario metadata and never exposed to scoring logic.
 
 **Required scenario families:**
+
 - Routine working-hour activity.
 - Legitimate overnight shift/overtime.
 - Legitimate travel and newly assigned equipment.
@@ -232,6 +238,7 @@ Ground truth is defined by scenario metadata and never exposed to scoring logic.
 - Low-volume repeated anomalous access (challenge case).
 
 **Evaluation rules:**
+
 - Use the same immutable dataset and splits for all compared detectors.
 - Separate data generation, tuning/calibration and final held-out testing.
 - Use distinct seeds and, where appropriate, temporal splits; document dependence among repeated events from a user.
@@ -289,6 +296,7 @@ Although v1 contains synthetic events, build the platform with future sensitivit
 ## 12. User experience and visual contract
 
 The source-of-truth brand is **FishEye** (not the previous Sentinel concepts):
+
 - Inter typeface throughout.
 - White/light mode only; black, white and neutral grays. No purple and no dark mode.
 - Maintain one shared design token set and reusable UI primitives across landing and console.
@@ -313,6 +321,7 @@ Use the connected Figma FishEye MVP frames for implementation reference, followe
 ## 14. Testing and CI gates
 
 **Each pull request should run, as relevant:**
+
 1. Web lint/type-check, UI tests and production builds.
 2. Python format/lint/type checks, unit tests for score guardrails and contract schemas.
 3. PostgreSQL integration tests for migrations, data authorization and job lease/recovery logic.
@@ -326,6 +335,7 @@ Use the connected Figma FishEye MVP frames for implementation reference, followe
 ## 15. Nonfunctional targets and scale strategy
 
 Do **not** invent SLA, throughput or latency numbers before benchmarking. Instead instrument:
+
 - API p50/p95 latency at expected request sizes.
 - worker runtime and peak memory by dataset size;
 - queue age, completion/failure/retry rates;
@@ -337,6 +347,7 @@ For growth, consider database partitioning and higher-volume ingestion only afte
 ## 16. Roadmap
 
 **MVP v1 — now**
+
 1. Set up monorepo, pinned tooling, CI and Docker Compose.
 2. Implement schemas, PostgreSQL migrations and secure analyst access.
 3. Build synthetic scenario/data generation and immutable artifact manifests.
@@ -346,6 +357,7 @@ For growth, consider database partitioning and higher-volume ingestion only afte
 7. Document experimental results, limitations and failure cases.
 
 **Pilot readiness — conditional, not MVP scope**
+
 - Expert interviews and written pilot success criteria.
 - Legal/privacy assessment and documented monitoring safeguards.
 - A bank-approved log/data contract, permission model and threat model.
@@ -354,22 +366,23 @@ For growth, consider database partitioning and higher-volume ingestion only afte
 - Measured costs, scalability, auditability and incident-response integration.
 
 **Future — only with evidence**
+
 - Broader correlation, additional supervised/unsupervised challengers, optional evidence-linked AI summaries, real-time queues or SIEM/DAM connectors. None is a prerequisite to proving the v1 hypothesis.
 
 ## 17. Explicit decisions and open questions
 
-| Decision | State |
-| --- | --- |
-| One Git monorepo with `apps/web` and `apps/backend` | **Accepted** |
-| Landing, console, API and worker separately deployable | **Accepted** |
-| Python scoring stack and independently versioned experiment artifacts | **Accepted** |
-| No LLM required for the core score or evaluation | **Accepted** |
-| Synthetic data only for MVP v1 | **Accepted** |
-| Exact scoring formula, thresholds and calibration protocol | **Open — define before experiment freeze** |
+| Decision                                                                                                | State                                          |
+| ------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| One Git monorepo with `apps/web` and `apps/backend`                                                     | **Accepted**                                   |
+| Landing, console, API and worker separately deployable                                                  | **Accepted**                                   |
+| Python scoring stack and independently versioned experiment artifacts                                   | **Accepted**                                   |
+| No LLM required for the core score or evaluation                                                        | **Accepted**                                   |
+| Synthetic data only for MVP v1                                                                          | **Accepted**                                   |
+| Exact scoring formula, thresholds and calibration protocol                                              | **Open — define before experiment freeze**     |
 | One environment-configured analyst login and API-verified signed sessions for the shared synthetic demo | **Accepted; not a multi-user identity system** |
-| Object storage vendor and hosting provider | **Open — choose by constraints, not brand** |
-| Final API schemas and PostgreSQL tables | **Open — establish with implementation PRs** |
-| Whether a bank will sponsor a future pilot | **Unverified — never assume** |
+| Object storage vendor and hosting provider                                                              | **Open — choose by constraints, not brand**    |
+| Final API schemas and PostgreSQL tables                                                                 | **Open — establish with implementation PRs**   |
+| Whether a bank will sponsor a future pilot                                                              | **Unverified — never assume**                  |
 
 **Architecture evolution rule:** Changes to deployable boundaries, detection methodology, data provenance or security assumptions require a dated Architecture Decision Record (ADR) in `docs/adr/`, including alternatives considered and migration impact.
 

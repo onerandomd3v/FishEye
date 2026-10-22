@@ -29,11 +29,11 @@ pnpm dev:api      # FastAPI at http://127.0.0.1:8000
 uv run --package fisheye-worker fisheye-worker work  # Polls for durable development runs
 ```
 
-For the local landing page and console, copy each app's `.env.example` to `.env.local`. The landing app's `PUBLIC_CONSOLE_URL` points its buttons to the separate console origin (`http://127.0.0.1:3000/login`). Set `FISHEYE_DEMO_EMAIL`, `FISHEYE_DEMO_PASSWORD`, and a random `FISHEYE_SESSION_SECRET` of at least 32 bytes in the console environment. Use the same session secret for the API. Restart both dev servers after changing environment files. The console proxies API requests from its server, so configure `API_INTERNAL_URL` there; browser code never receives the signing secret, API token, or API's private address.
+For the local landing page and console, copy each app's `.env.example` to `.env.local`. The landing app's `PUBLIC_CONSOLE_URL` points its buttons to the separate console origin (`http://127.0.0.1:3000/login`). Set `FISHEYE_DEMO_EMAIL`, `FISHEYE_DEMO_PASSWORD` (at least 12 bytes), and a random `FISHEYE_SESSION_SECRET` of at least 32 bytes in the console environment. Use the same session secret for the API. Set `API_INTERNAL_URL` in the console `.env.local`; the console proxies API requests from its server, so browser code never receives the signing secret, API token, or API's private address.
 
-The same email/password login works in local and shared synthetic-demo deployments. The console issues a short-lived signed analyst token in an HttpOnly cookie; FastAPI independently verifies it using the shared session secret. Keep all values server-only and keep `.env.local` files untracked. This is one shared demo account, not a multi-user identity system.
+The same email/password login works in local and shared synthetic-demo deployments. The console checks credentials and issues a short-lived signed analyst token in an HttpOnly cookie; FastAPI verifies the token on protected calls. FastAPI applies shared PostgreSQL-backed rate limits to signed throttle requests; passwords are never sent to the API. Keep all values server-only and keep `.env.local` files untracked. This is one shared demo account, not a multi-user identity system.
 
-Copy `.env.example` to `.env` for local API configuration. Set the same `FISHEYE_SESSION_SECRET` used by the console. Enable `FISHEYE_ENABLE_DEV_CSV_VALIDATION`, `FISHEYE_ENABLE_DEV_CSV_IMPORT`, `FISHEYE_ENABLE_DEV_DATASET_READS`, and `FISHEYE_ENABLE_DEV_EVALUATION_RUNS` only for local development. Set an artifact encryption key, run `pnpm db:migrate`, and use the same database, artifact directory, and key for the API and worker. Set `API_INTERNAL_URL=http://127.0.0.1:8000` in the console `.env.local`. Run the worker command above in a separate terminal. These data endpoints remain development-only and must be disabled outside local development. In a shared synthetic demo, configure the same demo login and session secret in the console and API environment stores. The API checks the signed token and analyst role; missing configuration returns 503 and invalid tokens return 401/403. See [ADR 0002](adr/0002-environment-configured-demo-login.md).
+Copy `.env.example` to `.env` for local API configuration. Set the same `FISHEYE_SESSION_SECRET` used by the console in the API environment. Enable `FISHEYE_ENABLE_DEV_CSV_VALIDATION`, `FISHEYE_ENABLE_DEV_CSV_IMPORT`, `FISHEYE_ENABLE_DEV_DATASET_READS`, and `FISHEYE_ENABLE_DEV_EVALUATION_RUNS` only for local development. Set an artifact encryption key, run `pnpm db:migrate`, and use the same database, artifact directory, and key for the API and worker. Set `API_INTERNAL_URL=http://127.0.0.1:8000` in the console `.env.local`. Run the worker command above in a separate terminal. These data endpoints remain development-only and must be disabled outside local development. In a shared synthetic demo, configure the same session secret in the console and API. The API checks the signed token and analyst role; missing configuration returns 503, invalid tokens return 401/403, and throttled logins return 429 with `Retry-After`. See [ADR 0002](adr/0002-environment-configured-demo-login.md).
 
 Completed development runs populate the overview and investigation pages from stored API results. Console review actions carry the signed demo email to FastAPI; direct unauthenticated requests in local development retain the explicit label `Local development user (not authenticated)`. The demo login is shared and does not establish individual analyst identity. Do not expose the development API or review writes to shared or production environments.
 
@@ -52,11 +52,13 @@ uv run --package fisheye-persistence python -c 'from cryptography.fernet import 
 
 Put the generated value in `.env` as `FISHEYE_ARTIFACT_ENCRYPTION_KEY`. Keep this file local and do not reuse this key in another environment. Then start the API and worker with database migrations:
 
+Before starting the application profile, generate a session secret with `openssl rand -base64 32` and set it as `FISHEYE_SESSION_SECRET` in `.env`. Compose passes this same secret to the console and API; configure the demo email and password for the console in the same file.
+
 ```sh
 docker compose -f infra/compose.yaml --profile application up --build -d
 ```
 
-The API is available at `http://127.0.0.1:8000/health/live`. API and worker use the same database URL, artifact volume and encryption key. Stop the stack with:
+The API is available at `http://127.0.0.1:8000/health/live`. API and worker use the same database URL, artifact volume and encryption key. The console receives the demo credentials; the API receives only the shared session secret and uses the database for throttle state. Stop the stack with:
 
 ```sh
 docker compose -f infra/compose.yaml --profile application down
