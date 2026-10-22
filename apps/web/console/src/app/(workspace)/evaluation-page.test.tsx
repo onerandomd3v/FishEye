@@ -95,7 +95,31 @@ describe('evaluation findings requests', () => {
                     denominator: 2,
                   },
                 },
-                by_scenario: [],
+                by_scenario: [
+                  {
+                    scenario_id: 'no_positive_predictions',
+                    metrics: {
+                      unit_count: 1,
+                      precision: {
+                        value: null,
+                        numerator: 0,
+                        denominator: 0,
+                        undefined_reason:
+                          'No employee-days were predicted positive.',
+                      },
+                      recall: {
+                        value: 1,
+                        numerator: 1,
+                        denominator: 1,
+                      },
+                      false_positive_rate: {
+                        value: 0,
+                        numerator: 0,
+                        denominator: 1,
+                      },
+                    },
+                  },
+                ],
               },
             },
           },
@@ -185,10 +209,12 @@ describe('evaluation findings requests', () => {
     expect(screen.getByText('True positives')).toBeTruthy();
     expect(screen.getByText('Alert threshold')).toBeTruthy();
     expect(screen.getByText('65')).toBeTruthy();
-    expect(screen.getAllByText('100.0% (1/1)')).toHaveLength(2);
+    expect(screen.getAllByText('100.0% (1/1)')).toHaveLength(3);
     expect(screen.getByText('50.0 (1/2)')).toBeTruthy();
     expect(
-      screen.getByText('Scenario-level results are unavailable for this run.'),
+      screen.getByText(
+        /Not defined — No employee-days were predicted positive\. \(0\/0\)/,
+      ),
     ).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'View run' }));

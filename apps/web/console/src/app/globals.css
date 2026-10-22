@@ -691,6 +691,26 @@
   margin: 6px 0 0;
   color: var(--fe-text-secondary);
 }
+.dataset-import-details {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+}
+.dataset-import-details > div {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.3fr) minmax(0, 1fr);
+  gap: 12px;
+}
+.dataset-import-details dt {
+  color: var(--fe-text-secondary);
+  font-weight: 600;
+}
+.dataset-import-details dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
 .import-state-error {
   border-color: var(--fe-border-strong);
 }
@@ -961,6 +981,10 @@
   }
   .dataset-import-heading {
     display: grid;
+  }
+  .dataset-import-details > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
   }
   .login-page {
     grid-template-columns: 1fr;
