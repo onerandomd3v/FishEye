@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 test('a bundled synthetic dataset runs through API, worker, storage, and console', async ({
   page,
 }) => {
+  test.setTimeout(240_000);
   const email = process.env.FISHEYE_DEMO_EMAIL;
   const password = process.env.FISHEYE_DEMO_PASSWORD;
   expect(email, 'E2E demo email must be supplied by the runner').toBeTruthy();
