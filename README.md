@@ -109,6 +109,7 @@ For component boundaries, security decisions and implementation details, see [Sy
 - [Architecture](docs/ARCHITECTURE.md)
 - [Design](docs/DESIGN.md)
 - [Brand](docs/BRAND.md)
+- [How I used AI to build FishEye](docs/AI_USAGE.md)
 
 ## Run locally
 
