@@ -63,14 +63,55 @@ Sign in using your locally configured demo credentials, then open **Scenario lab
 
 For detailed environment setup, troubleshooting and tests, see [Development](docs/DEVELOPMENT.md).
 
-## Technology
+## How the system works
 
-- **Frontend:** Astro landing site; Next.js, React and TypeScript analyst console
-- **Backend:** FastAPI and Python evaluation worker
-- **Data:** PostgreSQL and encrypted synthetic-data artifacts
-- **Development:** Docker Compose, pnpm, uv
+```mermaid
+flowchart TD
+    Visitor[Public visitor] --> Landing[Astro landing]
+    Analyst[Analyst] --> Console[Next.js console]
+    Console -->|Authenticated requests| API[FastAPI API]
+    API <--> DB[(PostgreSQL)]
+    Worker[Python evaluation worker] <--> DB
+    API -->|Dataset and run metadata| Artifacts[(Encrypted synthetic artifacts)]
+    Worker <--> Artifacts
+    Worker -->|Findings and metrics| DB
+    DB -->|Stored results| API
+```
 
-See [Architecture](docs/ARCHITECTURE.md) for the full system design.
+The **API** validates inputs, manages access and records evaluation jobs. The separate **worker** processes synthetic datasets, scores activity and stores findings and evaluation results. The **console** displays that evidence and lets analysts review findings. The frontend does not calculate risk scores.
+
+### Detection and evaluation
+
+```mermaid
+flowchart LR
+    Data[Synthetic access events] --> Context[Role, schedule and historical context]
+    Context --> Rules[Simple and tuned rules]
+    Context --> Scorer[Contextual scorer]
+    Rules --> Compare[Compare results on the same test data]
+    Scorer --> Compare
+    Compare --> Output[False alarms, missed threats and recall]
+```
+
+FishEye currently uses **explainable, deterministic rules and statistical baselines**, not a trained AI model. It considers signals such as out-of-role access, unfamiliar devices, unusual access volume and activity outside declared working hours. Results show the reasons and events behind findings.
+
+We compare FishEye's contextual scoring with simple and tuned rule-based approaches on the same labelled synthetic data. **Reducing alerts only counts as improvement if genuine threats are still detected.** The current evaluation does not report detection delay.
+
+## Technology and why we chose it
+
+| Technology | Purpose | Why it fits |
+| --- | --- | --- |
+| **Astro** | Public landing site | Lightweight pages without an unnecessary app runtime |
+| **Next.js + React + TypeScript** | Analyst console | Interactive investigation views and typed frontend code |
+| **FastAPI + Pydantic** | Backend API | Typed validation and API contracts alongside the Python analysis code |
+| **Python + Polars** | Detection and evaluation worker | Efficient processing of synthetic event data and reproducible scoring |
+| **PostgreSQL + SQLAlchemy/Alembic** | Run, job and review records | Transactional data, durable job state and versioned migrations |
+| **Encrypted Parquet artifacts** | Synthetic datasets and results | Keeps larger analytical data separate from transactional records |
+| **Docker Compose** | Local integration | Runs connected services consistently for development and testing |
+| **pnpm + Turborepo / uv** | Monorepo tooling | Manages web and Python dependencies in their own ecosystems |
+
+The API and worker are separate processes so longer-running evaluations do not have to execute inside web requests. They share Python libraries rather than introducing separate services for every detector or feature.
+
+For component boundaries, security decisions and implementation details, see [System architecture](docs/ARCHITECTURE.md).
 
 ## Documentation
 
