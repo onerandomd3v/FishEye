@@ -5,11 +5,17 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import type { components } from '@fisheye/api-client';
 import { Button, Notice } from '@fisheye/ui';
 import { EmptyState } from '../shared';
-import { apiBaseUrl, apiErrorMessage, investigationApi } from './data';
+import {
+  apiBaseUrl,
+  apiErrorMessage,
+  investigationApi,
+  normalizeFindingRouteId,
+  reviewStatusLabel,
+} from './data';
 
 type FindingDetail = components['schemas']['FindingDetailResponse'];
-type ReviewDecision =
-  components['schemas']['FindingReviewCreateRequest']['decision'];
+type ReviewStatus = FindingDetail['finding']['review_status'];
+type ReviewDecision = Exclude<ReviewStatus, 'unreviewed'>;
 
 const reasonDescriptions: Record<string, string> = {
   out_of_role_access: 'Access to a system outside the employee role context',
@@ -21,17 +27,26 @@ const reasonDescriptions: Record<string, string> = {
   outside_declared_work_schedule: 'Activity outside the declared work schedule',
 };
 
-export function InvestigationDetail({ findingId }: { findingId: string }) {
+export function InvestigationDetail({
+  findingId,
+  queueHref = '/investigations',
+  historyHref,
+}: {
+  findingId: string;
+  queueHref?: string;
+  historyHref?: string;
+}) {
+  const normalizedFindingId = normalizeFindingRouteId(findingId);
   const [detail, setDetail] = useState<FindingDetail | null>(null);
   const [loading, setLoading] = useState(Boolean(apiBaseUrl()));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(
     apiBaseUrl() ? '' : 'The FishEye API is not configured.',
   );
-  const [decision, setDecision] = useState<ReviewDecision>('under_review');
+  const [decision, setDecision] = useState<ReviewDecision | ''>('');
   const [note, setNote] = useState('');
   const [message, setMessage] = useState('');
-  const runId = findingId.split(':', 1)[0] ?? '';
+  const runId = normalizedFindingId.split(':', 1)[0] ?? '';
 
   const loadDetail = useCallback(async () => {
     if (!apiBaseUrl()) {
@@ -44,7 +59,11 @@ export function InvestigationDetail({ findingId }: { findingId: string }) {
         response,
       } = await investigationApi().GET(
         '/api/v1/runs/{run_id}/findings/{finding_id}',
-        { params: { path: { run_id: runId, finding_id: findingId } } },
+        {
+          params: {
+            path: { run_id: runId, finding_id: normalizedFindingId },
+          },
+        },
       );
       if (!response.ok || !data)
         throw new Error(
@@ -53,13 +72,25 @@ export function InvestigationDetail({ findingId }: { findingId: string }) {
             : `Finding evidence could not be loaded (${response.status}).`,
         );
       setDetail(data);
+      setDecision(
+        data.finding.review_status === 'unreviewed'
+          ? ''
+          : data.finding.review_status,
+      );
     } catch (cause) {
       setDetail(null);
       setError(apiErrorMessage(cause, 'Finding evidence could not be loaded.'));
     } finally {
       setLoading(false);
     }
-  }, [findingId, runId]);
+  }, [
+    normalizedFindingId,
+    runId,
+    setDetail,
+    setDecision,
+    setError,
+    setLoading,
+  ]);
 
   useEffect(() => {
     void Promise.resolve().then(loadDetail);
@@ -73,6 +104,14 @@ export function InvestigationDetail({ findingId }: { findingId: string }) {
 
   async function submitReview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!decision) {
+      setError('Choose an investigation status before saving.');
+      return;
+    }
+    if (!note.trim()) {
+      setError('Add a short note about what you checked or learned.');
+      return;
+    }
     setSaving(true);
     setError('');
     setMessage('');
@@ -84,7 +123,9 @@ export function InvestigationDetail({ findingId }: { findingId: string }) {
       } = await investigationApi().POST(
         '/api/v1/runs/{run_id}/findings/{finding_id}/reviews',
         {
-          params: { path: { run_id: runId, finding_id: findingId } },
+          params: {
+            path: { run_id: runId, finding_id: normalizedFindingId },
+          },
           body: { decision, note: note.trim() || null },
         },
       );
@@ -94,7 +135,7 @@ export function InvestigationDetail({ findingId }: { findingId: string }) {
             ? apiError.detail
             : `Review could not be saved (${response.status}).`,
         );
-      setMessage(`Review recorded as ${data.decision}.`);
+      setMessage(`Saved as ${reviewStatusLabel(data.decision)}.`);
       setNote('');
       await loadDetail();
     } catch (cause) {
@@ -134,9 +175,7 @@ export function InvestigationDetail({ findingId }: { findingId: string }) {
   return (
     <>
       <div className="detail-meta">
-        <span className="fixture-tag">
-          Synthetic · run {finding.run_id.slice(0, 8)}
-        </span>
+        <span className="fixture-tag">Run {finding.run_id.slice(0, 8)}</span>
         <span className="fixture-tag">
           {finding.detector.replaceAll('_', ' ')}
         </span>
@@ -151,8 +190,11 @@ export function InvestigationDetail({ findingId }: { findingId: string }) {
         This demo uses one configured analyst login. Review records are saved to
         the synthetic run and do not change its evidence or scores.
       </Notice>
-      <div className="two-column">
-        <section className="card card-pad" aria-labelledby="signals-title">
+      <div className="investigation-layout">
+        <section
+          className="card investigation-card"
+          aria-labelledby="signals-title"
+        >
           <h2 id="signals-title">Detector reasons</h2>
           <p className="card-intro">
             These reason codes and scores are stored outputs from the selected
@@ -182,56 +224,60 @@ export function InvestigationDetail({ findingId }: { findingId: string }) {
           {detail.events.length === 0 ? (
             <p>No source event references are available for this finding.</p>
           ) : (
-            <div className="table-wrap" id="event-table">
-              <table className="data-table">
-                <caption className="visually-hidden">
-                  Synthetic source events supporting finding{' '}
-                  {finding.finding_id}
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Event ID</th>
-                    <th scope="col">UTC timestamp</th>
-                    <th scope="col">Event</th>
-                    <th scope="col">Role context</th>
-                    <th scope="col">System</th>
-                    <th scope="col">Device / location</th>
-                    <th scope="col">Records</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.events.map((event) => (
-                    <tr key={event.event_id}>
-                      <td>{event.event_id}</td>
-                      <td>{event.event_timestamp_utc}</td>
-                      <td>{event.event_type}</td>
-                      <td>
+            <div className="source-event-list" aria-label="Source events">
+              {detail.events.map((event) => (
+                <article className="source-event" key={event.event_id}>
+                  <h4 className="visually-hidden">Event {event.event_id}</h4>
+                  <dl className="source-event-grid">
+                    <div>
+                      <dt>Event ID</dt>
+                      <dd>{event.event_id}</dd>
+                    </div>
+                    <div>
+                      <dt>Time (UTC)</dt>
+                      <dd>{event.event_timestamp_utc}</dd>
+                    </div>
+                    <div>
+                      <dt>Event</dt>
+                      <dd>{event.event_type}</dd>
+                    </div>
+                    <div>
+                      <dt>Role and team</dt>
+                      <dd>
                         {event.role_id} · {event.department_id}
-                      </td>
-                      <td>{event.system}</td>
-                      <td>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>System</dt>
+                      <dd>{event.system}</dd>
+                    </div>
+                    <div>
+                      <dt>Device and location</dt>
+                      <dd>
                         {[event.device_id, event.location_label]
                           .filter(Boolean)
                           .join(' · ') || 'Not provided'}
-                      </td>
-                      <td>{event.record_count ?? 'Not provided'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Records</dt>
+                      <dd>{event.record_count ?? 'Not provided'}</dd>
+                    </div>
+                  </dl>
+                </article>
+              ))}
             </div>
           )}
           <p className="below-table-note">
-            Evidence comes from the imported synthetic CSV. Ground-truth labels
-            are excluded from this view and are never detector evidence.
+            Ground-truth labels are hidden here and are never detector evidence.
           </p>
         </section>
 
-        <aside className="card context-card" aria-label="Human review">
+        <aside className="card investigation-card" aria-label="Human review">
           <h2>Human review</h2>
           <p className="card-intro">
-            A review adds an assessment to the history. It does not change the
-            run, score or source events.
+            Record progress and what you learned. Review status does not change
+            employee access.
           </p>
           {error && (
             <p role="alert" className="form-error">
@@ -245,7 +291,7 @@ export function InvestigationDetail({ findingId }: { findingId: string }) {
           )}
           <form className="review-form" onSubmit={submitReview}>
             <div className="field">
-              <label htmlFor="review-decision">Review decision</label>
+              <label htmlFor="review-decision">Investigation status</label>
               <select
                 id="review-decision"
                 value={decision}
@@ -254,47 +300,50 @@ export function InvestigationDetail({ findingId }: { findingId: string }) {
                   setDecision(event.target.value as ReviewDecision)
                 }
               >
+                <option value="" disabled>
+                  Choose a status
+                </option>
                 <option value="under_review">Under review</option>
-                <option value="reviewed_benign">Reviewed as benign</option>
-                <option value="escalated">Escalated for investigation</option>
+                <option value="reviewed_benign">
+                  Resolved — activity expected
+                </option>
+                <option value="escalated">Escalated — needs follow-up</option>
               </select>
             </div>
             <div className="field">
-              <label htmlFor="review-note">Note (optional)</label>
+              <label htmlFor="review-note">What did you check or learn?</label>
               <textarea
                 id="review-note"
                 maxLength={1000}
+                required
                 value={note}
                 disabled={saving}
                 onChange={(event) => setNote(event.target.value)}
-                placeholder="Record a concise evidence-based note"
+                placeholder="Record what you checked, asked, or learned"
               />
             </div>
-            <Button type="submit" disabled={saving}>
-              {saving ? 'Saving review…' : 'Record review'}
+            <Button
+              type="submit"
+              disabled={saving || !decision || !note.trim()}
+            >
+              {saving ? 'Saving…' : 'Save review update'}
             </Button>
           </form>
 
-          <h3 className="subheading">Review history</h3>
-          {detail.reviews.length === 0 ? (
-            <p>No reviews have been recorded for this finding.</p>
-          ) : (
-            <ol className="review-history">
-              {detail.reviews.map((review) => (
-                <li key={review.review_id}>
-                  <strong>{review.decision.replaceAll('_', ' ')}</strong>
-                  <span>{review.created_at}</span>
-                  <span>{review.reviewer_label}</span>
-                  {review.note && <p>{review.note}</p>}
-                </li>
-              ))}
-            </ol>
-          )}
+          <Link
+            className="review-history-link"
+            href={
+              historyHref ??
+              `/investigations/${encodeURIComponent(findingId)}/history`
+            }
+          >
+            View review history ({detail.reviews.length})
+          </Link>
         </aside>
       </div>
       <div className="table-actions">
-        <Link className="fe-button fe-button-secondary" href="/investigations">
-          Back to findings
+        <Link className="fe-button fe-button-secondary" href={queueHref}>
+          Back to queue
         </Link>
       </div>
     </>

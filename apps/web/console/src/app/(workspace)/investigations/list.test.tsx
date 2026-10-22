@@ -1,4 +1,10 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 function response(status: number, body: unknown) {
@@ -18,7 +24,7 @@ afterEach(() => {
 });
 
 describe('investigation list', () => {
-  it('renders findings returned by a completed API run', async () => {
+  it('shows saved review status and filters the review queue', async () => {
     vi.stubEnv('FISHEYE_TEST_API_URL', 'http://127.0.0.1:8000');
     vi.resetModules();
     const { InvestigationList } = await import('./list');
@@ -55,6 +61,19 @@ describe('investigation list', () => {
             severity: 'Medium',
             reason_codes: ['new_device'],
             evidence_event_ids: ['event-synth-1'],
+            review_status: 'unreviewed',
+          },
+          {
+            finding_id: 'run-real:contextual:emp-synth-2:2026-01-03',
+            run_id: 'run-real',
+            employee_id: 'emp-synth-2',
+            employee_day_utc: '2026-01-03',
+            detector: 'contextual',
+            score: 55,
+            severity: 'Medium',
+            reason_codes: ['high_access_volume'],
+            evidence_event_ids: ['event-synth-2'],
+            review_status: 'under_review',
           },
         ],
         detector: 'contextual',
@@ -73,6 +92,17 @@ describe('investigation list', () => {
       await screen.findByRole('link', { name: 'emp-synth-1' }),
     ).toBeTruthy();
     expect(screen.getByText('new_device')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Review queue' })).toBeTruthy();
+    expect(screen.getByRole('cell', { name: 'Needs review' })).toBeTruthy();
+    expect(screen.getByRole('cell', { name: 'Under review' })).toBeTruthy();
+    const findingLink = screen.getByRole('link', { name: 'emp-synth-1' });
+    expect(findingLink.getAttribute('href')).toContain('run_id=run-real');
+    expect(findingLink.getAttribute('href')).toContain('detector=contextual');
+    fireEvent.change(screen.getByLabelText('Review status'), {
+      target: { value: 'under_review' },
+    });
+    expect(screen.queryByRole('link', { name: 'emp-synth-1' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'emp-synth-2' })).toBeTruthy();
     expect(screen.getByText(/Run run-real/)).toBeTruthy();
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
   });

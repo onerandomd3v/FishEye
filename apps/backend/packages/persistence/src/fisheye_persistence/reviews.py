@@ -73,3 +73,23 @@ def list_finding_reviews(
             .order_by(FindingReviewRecord.created_at, FindingReviewRecord.id)
         )
     )
+
+
+def list_latest_finding_reviews(
+    session: Session, *, run_id: str, finding_ids: list[str]
+) -> dict[str, FindingReviewRecord]:
+    """Return the newest review event for each finding in one run."""
+    if not finding_ids:
+        return {}
+    reviews = session.scalars(
+        select(FindingReviewRecord)
+        .where(
+            FindingReviewRecord.run_id == run_id,
+            FindingReviewRecord.finding_id.in_(finding_ids),
+        )
+        .order_by(FindingReviewRecord.created_at, FindingReviewRecord.id)
+    )
+    latest: dict[str, FindingReviewRecord] = {}
+    for review in reviews:
+        latest[review.finding_id] = review
+    return latest

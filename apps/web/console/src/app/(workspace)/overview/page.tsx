@@ -6,7 +6,7 @@ export default function OverviewPage() {
     <>
       <PageHeading
         title="Risk overview"
-        description="Review actual results from completed synthetic evaluation runs."
+        description="See the latest results and findings from completed runs."
       />
       <LiveOverview />
     </>

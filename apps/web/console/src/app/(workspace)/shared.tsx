@@ -26,13 +26,9 @@ export function PageHeading({
 
 export function FixtureNotice() {
   return (
-    <Notice
-      title="Development preview — not detector output"
-      className="fixture-notice"
-    >
-      Scenario examples are development fixtures for layout testing. CSV schema
-      validation is available in development, but no dataset is saved, no risk
-      scores are calculated and no completed runs are connected.
+    <Notice title="Sample preview" className="fixture-notice">
+      These examples are for preview only. No data is saved and no scores are
+      calculated.
     </Notice>
   );
 }
