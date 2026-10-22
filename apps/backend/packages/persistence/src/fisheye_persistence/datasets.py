@@ -4,9 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
-import shutil
-import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
@@ -25,6 +22,12 @@ from sqlalchemy import (
 )
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+
+from fisheye_persistence.artifacts import (
+    ArtifactStore,
+    as_artifact_store,
+    write_encrypted_immutable,
+)
 
 
 class Base(DeclarativeBase):
@@ -70,7 +73,7 @@ def import_dataset(
     schema_version: str,
     row_count: int,
     employee_day_count: int,
-    artifact_root: Path,
+    artifact_root: Path | ArtifactStore,
     encryption_key: bytes,
 ) -> tuple[DatasetRecord, bool]:
     """Persist a validated upload once, keyed by its exact source-byte hash."""
@@ -113,9 +116,11 @@ def import_dataset(
     manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
     manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
 
+    store = as_artifact_store(artifact_root)
     _publish_artifacts(
-        artifact_root,
-        relative_dir,
+        store,
+        artifact_uri,
+        manifest_uri,
         cipher.encrypt(content),
         cipher.encrypt(manifest_bytes),
         source_sha256,
@@ -168,7 +173,9 @@ def get_dataset(session: Session, dataset_id: str) -> DatasetRecord | None:
     return session.get(DatasetRecord, dataset_id)
 
 
-def read_dataset_source(record: DatasetRecord, artifact_root: Path, encryption_key: bytes) -> bytes:
+def read_dataset_source(
+    record: DatasetRecord, artifact_root: Path | ArtifactStore, encryption_key: bytes
+) -> bytes:
     """Decrypt and verify the immutable source CSV for internal worker processing."""
     try:
         cipher = Fernet(encryption_key)
@@ -178,60 +185,36 @@ def read_dataset_source(record: DatasetRecord, artifact_root: Path, encryption_k
 
 
 def _publish_artifacts(
-    root: Path,
-    relative_dir: Path,
+    store: ArtifactStore,
+    source_uri: str,
+    manifest_uri: str,
     encrypted_source: bytes,
     encrypted_manifest: bytes,
     source_sha256: str,
     manifest_sha256: str,
     cipher: Fernet,
 ) -> None:
-    """Publish source and manifest together into a content-addressed directory."""
-    destination = root / relative_dir
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    if destination.exists():
-        _verify_artifact(
-            root,
-            (relative_dir / "source.csv.enc").as_posix(),
-            source_sha256,
-            cipher,
-        )
-        _verify_artifact(
-            root,
-            (relative_dir / "manifest.json.enc").as_posix(),
-            manifest_sha256,
-            cipher,
-        )
-        return
-
-    temporary = Path(tempfile.mkdtemp(prefix=".dataset-import-", dir=destination.parent))
-    try:
-        (temporary / "source.csv.enc").write_bytes(encrypted_source)
-        (temporary / "manifest.json.enc").write_bytes(encrypted_manifest)
-        try:
-            os.rename(temporary, destination)
-        except OSError:
-            if not destination.is_dir():
-                raise
-            _verify_artifact(
-                root,
-                (relative_dir / "source.csv.enc").as_posix(),
-                source_sha256,
-                cipher,
-            )
-            _verify_artifact(
-                root,
-                (relative_dir / "manifest.json.enc").as_posix(),
-                manifest_sha256,
-                cipher,
-            )
-    finally:
-        if temporary.exists():
-            shutil.rmtree(temporary)
+    """Publish immutable encrypted objects, with the manifest uploaded last."""
+    write_encrypted_immutable(
+        store,
+        source_uri,
+        cipher.decrypt(encrypted_source),
+        encrypt=cipher.encrypt,
+        decrypt=cipher.decrypt,
+    )
+    _verify_artifact(store, source_uri, source_sha256, cipher)
+    write_encrypted_immutable(
+        store,
+        manifest_uri,
+        cipher.decrypt(encrypted_manifest),
+        encrypt=cipher.encrypt,
+        decrypt=cipher.decrypt,
+    )
+    _verify_artifact(store, manifest_uri, manifest_sha256, cipher)
 
 
 def _verify_artifact(
-    root: Path,
+    root: Path | ArtifactStore,
     relative_uri: str,
     expected_sha256: str,
     cipher: Fernet,
@@ -240,18 +223,14 @@ def _verify_artifact(
 
 
 def _read_artifact(
-    root: Path,
+    root: Path | ArtifactStore,
     relative_uri: str,
     expected_sha256: str,
     cipher: Fernet,
 ) -> bytes:
-    path = (root / relative_uri).resolve()
+    store = as_artifact_store(root)
     try:
-        path.relative_to(root.resolve())
-    except ValueError:
-        raise RuntimeError("A dataset artifact path is invalid.") from None
-    try:
-        plaintext = cipher.decrypt(path.read_bytes())
+        plaintext = cipher.decrypt(store.read(relative_uri))
     except (OSError, InvalidToken) as error:
         raise RuntimeError(
             "A previously imported dataset artifact is missing or failed decryption."

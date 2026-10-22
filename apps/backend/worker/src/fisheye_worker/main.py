@@ -5,8 +5,8 @@ import logging
 import os
 import time
 from collections.abc import Sequence
-from pathlib import Path
 
+from fisheye_persistence.artifacts import artifact_store_from_environment
 from fisheye_persistence.datasets import create_session_factory
 
 from fisheye_worker.run_processing import process_next_run
@@ -38,9 +38,12 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     if args.command in {"run-once", "work"}:
         database_url = os.getenv("DATABASE_URL")
-        artifact_root = os.getenv("FISHEYE_ARTIFACT_DIR")
         encryption_key = os.getenv("FISHEYE_ARTIFACT_ENCRYPTION_KEY")
-        if not database_url or not artifact_root or not encryption_key:
+        try:
+            artifact_store = artifact_store_from_environment()
+        except RuntimeError:
+            artifact_store = None
+        if not database_url or artifact_store is None or not encryption_key:
             parser.error("run processing requires DATABASE_URL and encrypted artifact settings")
         if args.command == "work" and args.poll_seconds <= 0:
             parser.error("--poll-seconds must be greater than zero")
@@ -49,7 +52,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         if args.command == "run-once":
             processed = process_next_run(
                 factory,
-                artifact_root=Path(artifact_root),
+                artifact_root=artifact_store,
                 encryption_key=encryption_key.encode("utf-8"),
                 worker_id=worker_id,
             )
@@ -59,7 +62,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         while True:
             processed = process_next_run(
                 factory,
-                artifact_root=Path(artifact_root),
+                artifact_root=artifact_store,
                 encryption_key=encryption_key.encode("utf-8"),
                 worker_id=worker_id,
             )

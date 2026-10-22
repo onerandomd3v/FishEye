@@ -7,8 +7,6 @@ import hashlib
 import io
 import json
 import os
-import shutil
-import tempfile
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -17,6 +15,13 @@ import polars as pl
 from cryptography.fernet import Fernet, InvalidToken
 from fisheye_domain.csv_schema import CSV_HEADERS, SCHEMA_VERSION, SCHEMA_VERSION_V1
 from fisheye_domain.csv_validation import validate_events_csv
+from fisheye_persistence.artifacts import (
+    ArtifactStore,
+    LocalArtifactStore,
+    artifact_store_from_environment,
+    as_artifact_store,
+    write_encrypted_immutable,
+)
 from fisheye_persistence.datasets import DatasetRecord, get_dataset, read_dataset_source
 from sqlalchemy.orm import Session
 
@@ -64,7 +69,7 @@ class StoredAnalysisArtifacts:
 def prepare_dataset(
     session: Session,
     dataset_id: str,
-    artifact_root: Path,
+    artifact_root: Path | ArtifactStore,
     encryption_key: bytes,
 ) -> PreparationResult:
     """Convert one imported CSV exactly once and persist preparation metadata."""
@@ -78,11 +83,11 @@ def prepare_dataset(
 
     source = read_dataset_source(record, artifact_root, encryption_key)
     cipher = _make_cipher(encryption_key)
-    artifact_rel = Path(record.artifact_uri).parent / "analysis"
-    destination = _safe_path(artifact_root, artifact_rel)
-    if destination.exists():
+    artifact_rel = (Path(record.artifact_uri).parent / "analysis").as_posix()
+    store = as_artifact_store(artifact_root)
+    if store.exists(f"{artifact_rel}/manifest.json.enc"):
         prepared = _verify_existing_artifacts(
-            destination, record, record.analysis_manifest_sha256, cipher
+            store, artifact_rel, record, record.analysis_manifest_sha256, cipher
         )
     else:
         if record.preparation_status == "prepared":
@@ -90,9 +95,9 @@ def prepare_dataset(
         validation = validate_events_csv(source)
         if not validation.valid or validation.schema_version != record.schema_version:
             raise ValueError("The stored source CSV failed its schema integrity check.")
-        prepared = _create_and_publish_artifacts(record, source, destination, cipher)
+        prepared = _create_and_publish_artifacts(record, source, store, cipher, artifact_rel)
 
-    relative_uri = artifact_rel.as_posix()
+    relative_uri = artifact_rel
     persisted_record = get_dataset(session, record.id)
     if persisted_record is None or persisted_record.sha256 != record.sha256:
         raise RuntimeError("Dataset metadata changed during preparation.")
@@ -122,9 +127,17 @@ def prepare_dataset(
 def _create_and_publish_artifacts(
     record: DatasetRecord,
     source: bytes,
-    destination: Path,
+    destination: Path | ArtifactStore,
     cipher: Fernet,
+    artifact_prefix: str | None = None,
 ) -> StoredAnalysisArtifacts:
+    if isinstance(destination, Path):
+        store: ArtifactStore = LocalArtifactStore(destination.parent)
+        artifact_prefix = destination.name
+    else:
+        store = destination
+    if not artifact_prefix:
+        raise ValueError("Artifact storage prefix is required.")
     event_bytes, partition_bytes, label_bytes, row_count, employee_day_count = (
         _convert_csv_to_parquet(source)
     )
@@ -161,7 +174,7 @@ def _create_and_publish_artifacts(
     }
     manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
     manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
-    winner = _publish_artifacts(destination, artifacts, manifest_bytes, cipher, record)
+    winner = _publish_artifacts(store, artifact_prefix, artifacts, manifest_bytes, cipher, record)
     if winner is not None:
         return winner
     return StoredAnalysisArtifacts(manifest_sha256, row_count, employee_day_count, prepared_at)
@@ -261,42 +274,48 @@ def _make_cipher(encryption_key: bytes) -> Fernet:
         raise RuntimeError("Dataset artifact encryption is not configured correctly.") from None
 
 
-def _safe_path(root: Path, relative_path: Path) -> Path:
-    destination = (root / relative_path).resolve()
-    try:
-        destination.relative_to(root.resolve())
-    except ValueError:
-        raise RuntimeError("A dataset analysis artifact path is invalid.") from None
-    return destination
-
-
 def _publish_artifacts(
-    destination: Path,
+    store: ArtifactStore,
+    artifact_prefix: str,
     artifacts: dict[str, bytes],
     manifest_bytes: bytes,
     cipher: Fernet,
     record: DatasetRecord,
 ) -> StoredAnalysisArtifacts | None:
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    temporary = Path(tempfile.mkdtemp(prefix=".analysis-prepare-", dir=destination.parent))
+    manifest_uri = f"{artifact_prefix}/manifest.json.enc"
+    if store.exists(manifest_uri):
+        return _verify_existing_artifacts(store, artifact_prefix, record, None, cipher)
+    for name, content in artifacts.items():
+        write_encrypted_immutable(
+            store,
+            f"{artifact_prefix}/{name}",
+            content,
+            encrypt=cipher.encrypt,
+            decrypt=cipher.decrypt,
+        )
+    # The manifest is the publication marker and must be written after all artifacts.
     try:
-        for name, content in artifacts.items():
-            (temporary / name).write_bytes(cipher.encrypt(content))
-        (temporary / "manifest.json.enc").write_bytes(cipher.encrypt(manifest_bytes))
-        try:
-            os.rename(temporary, destination)
-        except OSError:
-            if not destination.is_dir():
-                raise
-            return _verify_existing_artifacts(destination, record, None, cipher)
-        return None
-    finally:
-        if temporary.exists():
-            shutil.rmtree(temporary)
+        write_encrypted_immutable(
+            store,
+            manifest_uri,
+            manifest_bytes,
+            encrypt=cipher.encrypt,
+            decrypt=cipher.decrypt,
+        )
+    except RuntimeError:
+        if not store.exists(manifest_uri):
+            raise
+        return _verify_existing_artifacts(store, artifact_prefix, record, None, cipher)
+    if not store.read(f"{artifact_prefix}/manifest.json.enc"):
+        raise RuntimeError("Dataset analysis manifest was not published.")
+    return _verify_existing_artifacts(
+        store, artifact_prefix, record, None, cipher, expected_manifest_bytes=manifest_bytes
+    )
 
 
 def _verify_existing_artifacts(
-    directory: Path,
+    store: ArtifactStore,
+    artifact_prefix: str,
     record: DatasetRecord,
     expected_manifest_sha256: str | None,
     cipher: Fernet,
@@ -304,7 +323,7 @@ def _verify_existing_artifacts(
     expected_manifest_bytes: bytes | None = None,
 ) -> StoredAnalysisArtifacts:
     try:
-        manifest_bytes = cipher.decrypt((directory / "manifest.json.enc").read_bytes())
+        manifest_bytes = cipher.decrypt(store.read(f"{artifact_prefix}/manifest.json.enc"))
         manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
         if expected_manifest_sha256 and manifest_sha256 != expected_manifest_sha256:
             raise RuntimeError(
@@ -338,7 +357,7 @@ def _verify_existing_artifacts(
         for name, expected_sha256 in artifacts.items():
             if not isinstance(expected_sha256, str) or len(expected_sha256) != 64:
                 raise RuntimeError("Existing analysis manifest has an invalid artifact checksum.")
-            content = cipher.decrypt((directory / name).read_bytes())
+            content = cipher.decrypt(store.read(f"{artifact_prefix}/{name}"))
             if hashlib.sha256(content).hexdigest() != expected_sha256:
                 raise RuntimeError(
                     "Existing analysis artifact checksum does not match its manifest."
@@ -385,15 +404,18 @@ def prepare_dataset_from_environment(dataset_id: str) -> PreparationResult:
     from fisheye_persistence.datasets import create_session_factory
 
     database_url = os.getenv("DATABASE_URL")
-    artifact_dir = os.getenv("FISHEYE_ARTIFACT_DIR")
     encryption_key = os.getenv("FISHEYE_ARTIFACT_ENCRYPTION_KEY")
-    if not database_url or not artifact_dir or not encryption_key:
+    try:
+        artifact_store = artifact_store_from_environment()
+    except RuntimeError:
+        artifact_store = None
+    if not database_url or artifact_store is None or not encryption_key:
         raise RuntimeError("Dataset preparation requires database and encrypted artifact settings.")
     factory = create_session_factory(database_url)
     with factory() as session:
         return prepare_dataset(
             session,
             dataset_id,
-            Path(artifact_dir),
+            artifact_store,
             encryption_key.encode("utf-8"),
         )

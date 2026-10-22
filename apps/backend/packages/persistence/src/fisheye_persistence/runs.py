@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import os
-import shutil
-import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -29,6 +26,11 @@ from sqlalchemy import (
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
+from fisheye_persistence.artifacts import (
+    ArtifactStore,
+    as_artifact_store,
+    write_encrypted_immutable,
+)
 from fisheye_persistence.datasets import Base, DatasetRecord
 
 MAX_RUN_ATTEMPTS = 3
@@ -86,42 +88,31 @@ class RunLease:
 
 def store_context_artifact(
     content: bytes,
-    artifact_root: Path,
+    artifact_root: Path | ArtifactStore,
     encryption_key: bytes,
 ) -> tuple[str, str]:
     """Encrypt and publish a content-addressed context sidecar."""
     sha256 = hashlib.sha256(content).hexdigest()
     relative_uri = (Path("run-inputs") / sha256[:2] / f"{sha256}.json.enc").as_posix()
-    destination = _safe_path(artifact_root, relative_uri)
+    store = as_artifact_store(artifact_root)
     cipher = _cipher(encryption_key)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    if destination.exists():
-        if cipher.decrypt(destination.read_bytes()) != content:
-            raise RuntimeError("Stored run context failed its integrity check.")
-        return relative_uri, sha256
-
-    temporary = Path(tempfile.mkdtemp(prefix=".run-input-", dir=destination.parent))
-    try:
-        (temporary / destination.name).write_bytes(cipher.encrypt(content))
-        try:
-            os.rename(temporary / destination.name, destination)
-        except FileExistsError:
-            if cipher.decrypt(destination.read_bytes()) != content:
-                raise RuntimeError("Stored run context failed its integrity check.") from None
-    finally:
-        shutil.rmtree(temporary, ignore_errors=True)
+    write_encrypted_immutable(
+        store, relative_uri, content, encrypt=cipher.encrypt, decrypt=cipher.decrypt
+    )
+    if cipher.decrypt(store.read(relative_uri)) != content:
+        raise RuntimeError("Stored run context failed its integrity check.")
     return relative_uri, sha256
 
 
 def read_context_artifact(
     relative_uri: str,
     expected_sha256: str,
-    artifact_root: Path,
+    artifact_root: Path | ArtifactStore,
     encryption_key: bytes,
 ) -> bytes:
-    path = _safe_path(artifact_root, relative_uri)
+    store = as_artifact_store(artifact_root)
     try:
-        content = _cipher(encryption_key).decrypt(path.read_bytes())
+        content = _cipher(encryption_key).decrypt(store.read(relative_uri))
     except (OSError, InvalidToken) as error:
         raise RuntimeError("Stored run context is unavailable or cannot be decrypted.") from error
     if hashlib.sha256(content).hexdigest() != expected_sha256:

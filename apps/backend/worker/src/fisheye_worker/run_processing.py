@@ -7,8 +7,6 @@ import io
 import json
 import logging
 import os
-import shutil
-import tempfile
 import threading
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
@@ -22,6 +20,11 @@ import polars as pl
 from cryptography.fernet import Fernet, InvalidToken
 from fisheye_domain.context import parse_synthetic_context
 from fisheye_evaluation.methodology import METHODOLOGY_CONFIG_SHA256
+from fisheye_persistence.artifacts import (
+    ArtifactStore,
+    as_artifact_store,
+    write_encrypted_immutable,
+)
 from fisheye_persistence.datasets import DatasetRecord, get_dataset
 from fisheye_persistence.runs import (
     RunLease,
@@ -48,7 +51,7 @@ LEASE_HEARTBEAT_INTERVAL_SECONDS = 60
 def process_next_run(
     factory: sessionmaker[Session],
     *,
-    artifact_root: Path,
+    artifact_root: Path | ArtifactStore,
     encryption_key: bytes,
     worker_id: str,
     heartbeat_interval_seconds: float = LEASE_HEARTBEAT_INTERVAL_SECONDS,
@@ -124,7 +127,7 @@ def execute_run(
     factory: sessionmaker[Session],
     lease: RunLease,
     *,
-    artifact_root: Path,
+    artifact_root: Path | ArtifactStore,
     encryption_key: bytes,
     assert_lease_active: Callable[[], None] = lambda: None,
 ) -> PublishedRunResult:
@@ -166,15 +169,16 @@ def execute_run(
 
 def _load_prepared_frames(
     record: DatasetRecord,
-    artifact_root: Path,
+    artifact_root: Path | ArtifactStore,
     encryption_key: bytes,
 ) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
     if record.preparation_status != "prepared" or not record.analysis_artifact_uri:
         raise RuntimeError("Dataset analysis artifacts are unavailable.")
-    directory = _safe_path(artifact_root, record.analysis_artifact_uri)
+    store = as_artifact_store(artifact_root)
+    prefix = record.analysis_artifact_uri
     cipher = _cipher(encryption_key)
     try:
-        manifest_bytes = cipher.decrypt((directory / "manifest.json.enc").read_bytes())
+        manifest_bytes = cipher.decrypt(store.read(f"{prefix}/manifest.json.enc"))
         if hashlib.sha256(manifest_bytes).hexdigest() != record.analysis_manifest_sha256:
             raise RuntimeError("Dataset analysis manifest failed its integrity check.")
         manifest = json.loads(manifest_bytes)
@@ -189,7 +193,7 @@ def _load_prepared_frames(
             ("partitions.parquet.enc", "partition_artifact_sha256"),
             ("labels.parquet.enc", "label_artifact_sha256"),
         ):
-            content = cipher.decrypt((directory / name).read_bytes())
+            content = cipher.decrypt(store.read(f"{prefix}/{name}"))
             if hashlib.sha256(content).hexdigest() != manifest.get(field):
                 raise RuntimeError("Dataset analysis artifact failed its integrity check.")
             frames.append(pl.read_parquet(io.BytesIO(content)))
@@ -267,7 +271,7 @@ def _publish_result_artifact(
     analysis_manifest_sha256: str,
     scores: pl.DataFrame,
     metrics: dict[str, object],
-    artifact_root: Path,
+    artifact_root: Path | ArtifactStore,
     encryption_key: bytes,
     assert_lease_active: Callable[[], None] = lambda: None,
 ) -> tuple[str, str]:
@@ -298,12 +302,12 @@ def _publish_result_artifact(
     }
     manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode()
     relative_uri = (Path("runs") / lease.run_id / result_sha256 / "analysis").as_posix()
-    destination = _safe_path(artifact_root, relative_uri)
-    if destination.exists():
+    store = as_artifact_store(artifact_root)
+    manifest_uri = f"{relative_uri}/manifest.json.enc"
+    scores_uri = f"{relative_uri}/scores.parquet.enc"
+    if store.exists(manifest_uri):
         try:
-            existing = _cipher(encryption_key).decrypt(
-                (destination / "manifest.json.enc").read_bytes()
-            )
+            existing = _cipher(encryption_key).decrypt(store.read(manifest_uri))
             existing_manifest = json.loads(existing)
             if any(
                 existing_manifest.get(key) != value
@@ -313,9 +317,7 @@ def _publish_result_artifact(
                 raise RuntimeError("Existing run result artifacts do not match this run.")
             if not isinstance(existing_manifest.get("worker_build_revision"), str):
                 raise RuntimeError("Existing run manifest is missing its worker revision.")
-            existing_result = _cipher(encryption_key).decrypt(
-                (destination / "scores.parquet.enc").read_bytes()
-            )
+            existing_result = _cipher(encryption_key).decrypt(store.read(scores_uri))
             if hashlib.sha256(existing_result).hexdigest() != result_sha256:
                 raise RuntimeError("Existing run scores failed their integrity check.")
             assert_lease_active()
@@ -323,29 +325,26 @@ def _publish_result_artifact(
         except (OSError, json.JSONDecodeError, InvalidToken) as error:
             raise RuntimeError("Existing run result artifacts are unreadable.") from error
     cipher = _cipher(encryption_key)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    temporary = Path(tempfile.mkdtemp(prefix=".run-result-", dir=destination.parent))
-    try:
-        (temporary / "scores.parquet.enc").write_bytes(cipher.encrypt(result_bytes))
-        (temporary / "manifest.json.enc").write_bytes(cipher.encrypt(manifest_bytes))
-        assert_lease_active()
-        try:
-            os.rename(temporary, destination)
-        except OSError:
-            if not destination.is_dir():
-                raise
-            return _publish_result_artifact(
-                lease,
-                dataset,
-                analysis_manifest_sha256,
-                scores,
-                metrics,
-                artifact_root,
-                encryption_key,
-                assert_lease_active,
-            )
-    finally:
-        shutil.rmtree(temporary, ignore_errors=True)
+    # Publish the immutable score object before the manifest commit marker.
+    write_encrypted_immutable(
+        store,
+        scores_uri,
+        result_bytes,
+        encrypt=cipher.encrypt,
+        decrypt=cipher.decrypt,
+    )
+    assert_lease_active()
+    write_encrypted_immutable(
+        store,
+        manifest_uri,
+        manifest_bytes,
+        encrypt=cipher.encrypt,
+        decrypt=cipher.decrypt,
+    )
+    # Verify through the same interface used by readers before marking the run complete.
+    published = cipher.decrypt(store.read(manifest_uri))
+    if hashlib.sha256(published).hexdigest() != hashlib.sha256(manifest_bytes).hexdigest():
+        raise RuntimeError("Published run manifest failed its integrity check.")
     return relative_uri, hashlib.sha256(manifest_bytes).hexdigest()
 
 
@@ -387,15 +386,6 @@ def _parquet_bytes(frame: pl.DataFrame) -> bytes:
     output = io.BytesIO()
     frame.write_parquet(output, compression="zstd", statistics=True)
     return output.getvalue()
-
-
-def _safe_path(root: Path, relative_uri: str) -> Path:
-    path = (root / relative_uri).resolve()
-    try:
-        path.relative_to(root.resolve())
-    except ValueError:
-        raise RuntimeError("A run artifact path is invalid.") from None
-    return path
 
 
 def _cipher(key: bytes) -> Fernet:
