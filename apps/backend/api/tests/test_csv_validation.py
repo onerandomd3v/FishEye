@@ -41,6 +41,10 @@ def evaluation_row(event_id: str, event_time: str, label: str) -> tuple[str, ...
     )
 
 
+def calibration_row(event_id: str, event_time: str, label: str) -> tuple[str, ...]:
+    return (*evaluation_row(event_id, event_time, label)[:10], "calibration", label)
+
+
 def test_accepts_valid_baseline_and_employee_day_evaluation_rows() -> None:
     result = validate_events_csv(
         make_csv(
@@ -55,6 +59,59 @@ def test_accepts_valid_baseline_and_employee_day_evaluation_rows() -> None:
     assert result.row_count == 3
     assert result.employee_day_count == 2
     assert result.errors == ()
+
+
+def test_accepts_calibration_between_baseline_and_held_out_evaluation() -> None:
+    result = validate_events_csv(
+        make_csv(
+            baseline_row("evt-base", "2026-01-01T09:00:00Z"),
+            calibration_row("evt-cal", "2026-01-02T09:00:00Z", "threat_scenario"),
+            evaluation_row("evt-eval", "2026-01-03T09:00:00Z", "benign_scenario"),
+        )
+    )
+
+    assert result.valid is True
+    assert result.schema_version == "fisheye.events.v2"
+    assert result.employee_day_count == 3
+
+
+def test_rejects_v2_without_baseline_rows() -> None:
+    result = validate_events_csv(
+        make_csv(
+            calibration_row("evt-cal", "2026-01-02T09:00:00Z", "threat_scenario"),
+            evaluation_row("evt-eval", "2026-01-03T09:00:00Z", "benign_scenario"),
+        )
+    )
+
+    assert result.valid is False
+    assert result.schema_version == "fisheye.events.v2"
+    assert "V2 CSVs must contain at least one baseline row." in result.errors
+
+
+def test_rejects_v2_without_evaluation_rows() -> None:
+    result = validate_events_csv(
+        make_csv(
+            baseline_row("evt-base", "2026-01-01T09:00:00Z"),
+            calibration_row("evt-cal", "2026-01-02T09:00:00Z", "threat_scenario"),
+        )
+    )
+
+    assert result.valid is False
+    assert result.schema_version == "fisheye.events.v2"
+    assert "V2 CSVs must contain at least one evaluation row." in result.errors
+
+
+def test_rejects_calibration_after_held_out_evaluation() -> None:
+    result = validate_events_csv(
+        make_csv(
+            baseline_row("evt-base", "2026-01-01T09:00:00Z"),
+            evaluation_row("evt-eval", "2026-01-02T09:00:00Z", "benign_scenario"),
+            calibration_row("evt-cal", "2026-01-03T09:00:00Z", "threat_scenario"),
+        )
+    )
+
+    assert result.valid is False
+    assert any("calibration events must predate evaluation" in error for error in result.errors)
 
 
 def test_rejects_timestamp_without_time_component() -> None:

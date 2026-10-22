@@ -161,7 +161,7 @@ Every synthetic access event needs:
 - Role permission context for out-of-role signals.
 - Dataset/schema version and reproducible generation seed.
 
-**Ground truth is for evaluation only.** Scenario labels must not be available to the scoring model as features.
+**Ground truth is for calibration or evaluation only.** Calibration labels may select thresholds; held-out evaluation labels are joined only after predictions are frozen. Labels must never be available to the scoring model as features.
 
 ### Initial scenario families
 
@@ -241,7 +241,7 @@ The main product experience should emphasize **three jobs**: prioritize, investi
 - Alert rate = alerts per 100 employee-days (define aggregation)
 - Detection delay = first qualifying alert time minus injected onset
 
-Metrics must use the **same unit of analysis**, ideally account-time windows for the initial detector, and document grouping of multiple events into findings. User-level correlations and time windows must not artificially inflate the number of independent samples.
+Metrics must use the **same unit of analysis**. The agreed initial unit is an employee-day, grouped by employee ID and UTC calendar date, with multiple events aggregated into at most one finding per employee-day per detector. User-level correlations and time windows must not artificially inflate the number of independent samples.
 
 An evaluation report must include:
 - Dataset composition (benign/malicious counts; key scenarios).

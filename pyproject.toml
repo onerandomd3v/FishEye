@@ -22,6 +22,7 @@ members = [
   "apps/backend/api",
   "apps/backend/worker",
   "apps/backend/packages/domain",
+  "apps/backend/packages/evaluation",
   "apps/backend/packages/persistence",
 ]
 
@@ -39,6 +40,7 @@ files = [
   "apps/backend/api/src",
   "apps/backend/worker/src",
   "apps/backend/packages/domain/src",
+  "apps/backend/packages/evaluation/src",
   "apps/backend/packages/persistence/src",
 ]
 

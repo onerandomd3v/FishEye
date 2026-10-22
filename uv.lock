@@ -6,6 +6,7 @@ requires-python = "==3.12.*"
 members = [
     "fisheye-api",
     "fisheye-domain",
+    "fisheye-evaluation",
     "fisheye-persistence",
     "fisheye-worker",
     "fisheye-workspace",
@@ -308,6 +309,17 @@ version = "0.1.0"
 source = { editable = "apps/backend/packages/domain" }
 
 [[package]]
+name = "fisheye-evaluation"
+version = "0.1.0"
+source = { editable = "apps/backend/packages/evaluation" }
+dependencies = [
+    { name = "fisheye-domain" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "fisheye-domain", editable = "apps/backend/packages/domain" }]
+
+[[package]]
 name = "fisheye-persistence"
 version = "0.1.0"
 source = { editable = "apps/backend/packages/persistence" }
@@ -328,6 +340,7 @@ version = "0.1.0"
 source = { editable = "apps/backend/worker" }
 dependencies = [
     { name = "fisheye-domain" },
+    { name = "fisheye-evaluation" },
     { name = "fisheye-persistence" },
     { name = "polars" },
 ]
@@ -335,6 +348,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fisheye-domain", editable = "apps/backend/packages/domain" },
+    { name = "fisheye-evaluation", editable = "apps/backend/packages/evaluation" },
     { name = "fisheye-persistence", editable = "apps/backend/packages/persistence" },
     { name = "polars", specifier = ">=1.30,<2" },
 ]

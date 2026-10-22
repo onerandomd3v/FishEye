@@ -4,6 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "fisheye-domain",
+  "fisheye-evaluation",
   "fisheye-persistence",
   "polars>=1.30,<2",
 ]
@@ -20,4 +21,5 @@ packages = ["src/fisheye_worker"]
 
 [tool.uv.sources]
 fisheye-domain = { workspace = true }
+fisheye-evaluation = { workspace = true }
 fisheye-persistence = { workspace = true }

@@ -209,7 +209,7 @@ export interface components {
       evaluation_status: string;
       /**
        * Ground Truth Usage
-       * @default evaluation_only
+       * @default calibration_for_threshold_selection; evaluation_for_metrics; never_a_detector_feature
        */
       ground_truth_usage: string;
       /**

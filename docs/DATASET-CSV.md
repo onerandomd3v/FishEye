@@ -1,4 +1,4 @@
-# FishEye synthetic event CSV — v1
+# FishEye synthetic event CSV — v1 and v2
 
 This file defines the first user-supplied synthetic dataset format. The API has
 a development-only validation endpoint and a separate development-only import
@@ -31,19 +31,25 @@ event_id,employee_id,role_id,department_id,event_timestamp_utc,event_type,system
 | `device_id`           | Optional; blank means missing or unreported.                                                     |
 | `location_label`      | Optional; blank means missing or unreported.                                                     |
 | `record_count`        | Optional nonnegative signed 64-bit integer; blank means unknown or not applicable.                |
-| `dataset_partition`   | Required enum: `baseline` or `evaluation`.                                                       |
-| `ground_truth_label`  | Blank on baseline rows. Evaluation rows require `threat_scenario` or `benign_scenario`.          |
+| `dataset_partition`   | Required enum: `baseline`, `calibration`, or `evaluation`.                                       |
+| `ground_truth_label`  | Blank on baseline rows. Calibration/evaluation rows require `threat_scenario` or `benign_scenario`. |
 
 ## Evaluation unit and validation
 
 The evaluation unit is an employee-day: rows are grouped by `employee_id` and
-the UTC calendar date of `event_timestamp_utc`. The evaluation label applies to
-the whole employee-day and must be consistent across its evaluation rows. All
-events for an employee-day must belong to one partition; an employee-day cannot
-be split between baseline and evaluation. All baseline events must precede
-evaluation events. Ground-truth labels are reserved for evaluation and must
-never become detector features. Validation returns at most 99 row-level errors
-plus an omitted-error count to keep responses bounded.
+the UTC calendar date of `event_timestamp_utc`. A label applies to the whole
+employee-day and must be consistent across its calibration/evaluation rows. All
+events for an employee-day must belong to one partition. Baseline events must
+precede calibration events, which must precede evaluation events. Baseline rows
+have no labels; calibration and evaluation labels are stored separately from
+detector inputs. Calibration labels may select thresholds; evaluation labels
+are held out and may only be joined after predictions are frozen.
+
+The original `fisheye.events.v1` contract accepts `baseline` and `evaluation`
+only. Files containing `calibration` use `fisheye.events.v2`. V1 imports remain
+readable and preparable, but the research comparison requires the v2 three-way
+split. Validation returns at most 99 row-level errors plus an omitted-error
+count to keep responses bounded.
 
 The validation endpoint is `POST /api/v1/datasets/imports/validate` with
 `Content-Type: text/csv` and
@@ -79,9 +85,10 @@ After running migrations, a local developer can prepare an imported dataset
 using `uv run --package fisheye-worker fisheye-worker prepare-dataset
 --dataset-id <dataset-id>`. The worker verifies/decrypts the source and writes
 encrypted Parquet files for event features, employee-day split membership and
-evaluation labels under the dataset's immutable analysis artifact directory.
+calibration/evaluation labels under the dataset's immutable analysis artifact directory.
 Event feature rows contain neither split membership nor ground-truth labels;
-labels are stored separately and remain evaluation-only. The dataset metadata
+labels are stored separately from detector inputs. Calibration labels are for
+threshold selection; evaluation labels remain held out for metrics. Dataset metadata
 changes from `preparation_status=source_only` to `prepared` only after the
 artifacts are published and checksummed. Repeating preparation verifies and
 reuses the existing artifacts. This command creates no evaluation run and

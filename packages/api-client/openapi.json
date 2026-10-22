@@ -568,7 +568,7 @@
           "ground_truth_usage": {
             "type": "string",
             "title": "Ground Truth Usage",
-            "default": "evaluation_only"
+            "default": "calibration_for_threshold_selection; evaluation_for_metrics; never_a_detector_feature"
           },
           "run_created": {
             "type": "boolean",
