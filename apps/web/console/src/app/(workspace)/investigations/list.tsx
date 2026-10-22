@@ -183,8 +183,8 @@ export function InvestigationList() {
         <span className="fixture-tag">Synthetic data</span>
       </div>
       <Notice title="Development data">
-        The current API and local demo session are for development only. Reviews
-        are recorded as unauthenticated local-development activity.
+        The current API and demo review records are for development only.
+        Reviews are recorded as unauthenticated local-development activity.
       </Notice>
       <div className="filters">
         <div className="field">

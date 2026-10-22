@@ -25,4 +25,4 @@ For database checks, start a disposable PostgreSQL test database and set `FISHEY
 - [Brand](docs/BRAND.md)
 - [Design](docs/DESIGN.md)
 
-FishEye is a synthetic-data research MVP, not a bank deployment. The local API and worker can process development evaluation runs; CSV and run routes remain disabled outside local development. Shared console authentication requires a configured OIDC provider. See [PRD](docs/PRD.md), [Architecture](docs/ARCHITECTURE.md), and [Development](docs/DEVELOPMENT.md) for current capabilities and boundaries.
+FishEye is a synthetic-data research MVP, not a bank deployment. The API and worker can process development evaluation runs; CSV and run routes remain disabled outside local development. The shared demo uses one environment-configured analyst login, not an external identity provider. See [PRD](docs/PRD.md), [Architecture](docs/ARCHITECTURE.md), and [Development](docs/DEVELOPMENT.md) for current capabilities and boundaries.

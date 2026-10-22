@@ -1,13 +1,13 @@
 # ADR 0001: Provider-neutral OIDC authentication
 
-- **Status:** Accepted for implementation; provider selection remains open
+- **Status:** Superseded by [ADR 0002](./0002-environment-configured-demo-login.md)
 - **Date:** 2026-10-22
 
 ## Context
 
 The console's local demo session did not authenticate FastAPI requests. Shared console/API access needs a standard identity flow and server-side authorization without choosing a vendor before hosting is selected. FishEye v1 remains synthetic-data-only, and the current CSV and evaluation APIs remain disabled outside local development.
 
-## Decision
+## Decision (superseded)
 
 - Use OIDC authorization-code flow with PKCE, state and nonce in the Next.js console.
 - Keep the provider access token in an authenticated, encrypted, HttpOnly session cookie. Proxy console API requests server-side; never expose the token or API origin to browser JavaScript.

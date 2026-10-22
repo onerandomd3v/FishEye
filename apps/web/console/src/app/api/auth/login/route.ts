@@ -1,56 +1,97 @@
-import * as oidc from 'openid-client';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { oidcAuthorizationParameters } from '../../../../lib/oidc-authorization-parameters';
 import {
-  oidcClient,
-  oidcEnabled,
-  OIDC_NONCE_COOKIE,
-  OIDC_STATE_COOKIE,
-  OIDC_VERIFIER_COOKIE,
-  redirectUri,
-} from '../../../../lib/oidc';
+  consoleOrigin,
+  createDemoSession,
+  DEMO_SESSION_COOKIE,
+  demoLoginConfigured,
+  DEMO_SESSION_LIFETIME_SECONDS,
+  secureStringEquals,
+} from '../../../../lib/demo-auth';
 
-export async function GET() {
-  if (!oidcEnabled())
-    return NextResponse.json(
-      { error: 'OIDC sign-in is not configured for this deployment.' },
-      { status: 503 },
-    );
+export async function POST(request: Request) {
+  const origin = request.headers.get('origin');
   try {
-    const config = await oidcClient();
-    const state = oidc.randomState();
-    const nonce = oidc.randomNonce();
-    const verifier = oidc.randomPKCECodeVerifier();
-    const parameters: Record<string, string> = {
-      redirect_uri: redirectUri(),
-      scope: process.env.FISHEYE_OIDC_SCOPES?.trim() || 'openid profile email',
-      state,
-      nonce,
-      code_challenge: await oidc.calculatePKCECodeChallenge(verifier),
-      code_challenge_method: 'S256',
-    };
-    Object.assign(parameters, oidcAuthorizationParameters());
-    const response = NextResponse.redirect(
-      oidc.buildAuthorizationUrl(config, parameters),
-    );
-    const options = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      path: '/',
-      maxAge: 600,
-    };
-    response.cookies.set(OIDC_STATE_COOKIE, state, options);
-    response.cookies.set(OIDC_NONCE_COOKIE, nonce, options);
-    response.cookies.set(OIDC_VERIFIER_COOKIE, verifier, options);
-    return response;
+    if (!origin && process.env.NODE_ENV !== 'development') {
+      return NextResponse.json(
+        { error: 'Cross-origin sign-in blocked.' },
+        { status: 403 },
+      );
+    }
+    if (origin && new URL(origin).origin !== consoleOrigin(request)) {
+      return NextResponse.json(
+        { error: 'Cross-origin sign-in blocked.' },
+        { status: 403 },
+      );
+    }
   } catch {
     return NextResponse.json(
-      {
-        error:
-          'OIDC sign-in could not be started. Check the server configuration.',
-      },
+      { error: 'Sign-in is not configured for this deployment.' },
       { status: 503 },
     );
   }
+
+  if (!demoLoginConfigured()) {
+    return NextResponse.json(
+      { error: 'Demo sign-in is not configured for this deployment.' },
+      { status: 503 },
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: 'Enter your demo email and password.' },
+      { status: 400 },
+    );
+  }
+  if (!body || typeof body !== 'object') {
+    return NextResponse.json(
+      { error: 'Enter your demo email and password.' },
+      { status: 400 },
+    );
+  }
+
+  const { email, password } = body as { email?: unknown; password?: unknown };
+  if (typeof email !== 'string' || typeof password !== 'string') {
+    return NextResponse.json(
+      { error: 'Enter your demo email and password.' },
+      { status: 400 },
+    );
+  }
+
+  const expectedEmail = process.env.FISHEYE_DEMO_EMAIL!;
+  const expectedPassword = process.env.FISHEYE_DEMO_PASSWORD!;
+  const [emailMatches, passwordMatches] = await Promise.all([
+    secureStringEquals(
+      email.trim().toLowerCase(),
+      expectedEmail.trim().toLowerCase(),
+    ),
+    secureStringEquals(password, expectedPassword),
+  ]);
+  if (!emailMatches || !passwordMatches) {
+    return NextResponse.json(
+      { error: 'Email or password is incorrect.' },
+      { status: 401 },
+    );
+  }
+
+  const session = await createDemoSession(expectedEmail);
+  if (!session) {
+    return NextResponse.json(
+      { error: 'Demo sign-in is not configured for this deployment.' },
+      { status: 503 },
+    );
+  }
+  const cookieStore = await cookies();
+  cookieStore.set(DEMO_SESSION_COOKIE, session, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: DEMO_SESSION_LIFETIME_SECONDS,
+  });
+  return NextResponse.json({ ok: true });
 }

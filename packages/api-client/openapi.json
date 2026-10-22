@@ -30,7 +30,7 @@
         "operationId": "validate_dataset_import_api_v1_datasets_imports_validate_post",
         "security": [
           {
-            "OIDCBearer": []
+            "FishEyeDemoBearer": []
           }
         ],
         "parameters": [
@@ -133,7 +133,7 @@
         "operationId": "import_synthetic_dataset_api_v1_datasets_imports_post",
         "security": [
           {
-            "OIDCBearer": []
+            "FishEyeDemoBearer": []
           }
         ],
         "parameters": [
@@ -246,7 +246,7 @@
         "operationId": "get_datasets_api_v1_datasets_get",
         "security": [
           {
-            "OIDCBearer": []
+            "FishEyeDemoBearer": []
           }
         ],
         "parameters": [
@@ -316,7 +316,7 @@
         "operationId": "get_dataset_metadata_api_v1_datasets__dataset_id__get",
         "security": [
           {
-            "OIDCBearer": []
+            "FishEyeDemoBearer": []
           }
         ],
         "parameters": [
@@ -381,7 +381,7 @@
         "operationId": "create_evaluation_run_api_v1_runs_post",
         "security": [
           {
-            "OIDCBearer": []
+            "FishEyeDemoBearer": []
           }
         ],
         "parameters": [
@@ -480,7 +480,7 @@
         "operationId": "get_evaluation_runs_api_v1_runs_get",
         "security": [
           {
-            "OIDCBearer": []
+            "FishEyeDemoBearer": []
           }
         ],
         "parameters": [
@@ -539,7 +539,7 @@
         "operationId": "get_evaluation_run_api_v1_runs__run_id__get",
         "security": [
           {
-            "OIDCBearer": []
+            "FishEyeDemoBearer": []
           }
         ],
         "parameters": [
@@ -604,7 +604,7 @@
         "operationId": "download_evaluation_manifest_api_v1_runs__run_id__manifest_get",
         "security": [
           {
-            "OIDCBearer": []
+            "FishEyeDemoBearer": []
           }
         ],
         "parameters": [
@@ -678,7 +678,7 @@
         "operationId": "get_evaluation_findings_api_v1_runs__run_id__findings_get",
         "security": [
           {
-            "OIDCBearer": []
+            "FishEyeDemoBearer": []
           }
         ],
         "parameters": [
@@ -758,7 +758,7 @@
         "operationId": "get_finding_detail_api_v1_runs__run_id__findings__finding_id__get",
         "security": [
           {
-            "OIDCBearer": []
+            "FishEyeDemoBearer": []
           }
         ],
         "parameters": [
@@ -842,7 +842,7 @@
         "operationId": "record_finding_review_api_v1_runs__run_id__findings__finding_id__reviews_post",
         "security": [
           {
-            "OIDCBearer": []
+            "FishEyeDemoBearer": []
           }
         ],
         "parameters": [
@@ -1819,7 +1819,7 @@
       }
     },
     "securitySchemes": {
-      "OIDCBearer": {
+      "FishEyeDemoBearer": {
         "type": "http",
         "scheme": "bearer"
       }
