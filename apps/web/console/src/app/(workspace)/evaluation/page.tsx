@@ -24,7 +24,12 @@ export default function EvaluationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [findingsLoading, setFindingsLoading] = useState(false);
+  const [manifestDownloadingRunId, setManifestDownloadingRunId] = useState<
+    string | null
+  >(null);
+  const [manifestError, setManifestError] = useState('');
   const findingsRequestIdRef = useRef(0);
+  const manifestRequestIdRef = useRef(0);
 
   const loadRuns = useCallback(async () => {
     if (!baseUrl) {
@@ -101,13 +106,56 @@ export default function EvaluationPage() {
   }
 
   function selectRun(run: Run) {
+    manifestRequestIdRef.current += 1;
+    setManifestDownloadingRunId(null);
     setSelectedRun(run);
     setFindings([]);
+    setManifestError('');
     if (run.status === 'completed') {
       void loadFindings(run, detector);
     } else {
       findingsRequestIdRef.current += 1;
       setFindingsLoading(false);
+    }
+  }
+
+  async function downloadManifest(run: Run) {
+    if (!baseUrl || !run.result_manifest_sha256) return;
+    const requestId = ++manifestRequestIdRef.current;
+    setManifestDownloadingRunId(run.run_id);
+    setManifestError('');
+    try {
+      const response = await fetch(
+        `${baseUrl}/api/v1/runs/${encodeURIComponent(run.run_id)}/manifest`,
+      );
+      if (requestId !== manifestRequestIdRef.current) return;
+      if (!response.ok) {
+        throw new Error(
+          `Manifest download failed (${response.status}). Refresh the run and try again.`,
+        );
+      }
+      const blob = await response.blob();
+      if (requestId !== manifestRequestIdRef.current) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `fisheye-run-${run.run_id}-manifest.json`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (cause) {
+      if (requestId === manifestRequestIdRef.current) {
+        setManifestError(
+          cause instanceof Error
+            ? cause.message
+            : 'The evaluation manifest could not be downloaded.',
+        );
+      }
+    } finally {
+      if (requestId === manifestRequestIdRef.current) {
+        setManifestDownloadingRunId(null);
+      }
     }
   }
 
@@ -207,6 +255,48 @@ export default function EvaluationPage() {
               }
             />
             <Metric label="Claim status" value={selectedRun.claim_status} />
+          </section>
+          <section
+            className="card section-card"
+            aria-labelledby="provenance-title"
+          >
+            <div className="section-title-row">
+              <div>
+                <h2 id="provenance-title">Evaluation provenance</h2>
+                <p className="card-intro">
+                  Download the verified development manifest with dataset,
+                  configuration, methodology, and artifact checksums.
+                </p>
+              </div>
+              <Button
+                type="button"
+                disabled={
+                  selectedRun.status !== 'completed' ||
+                  !selectedRun.result_manifest_sha256 ||
+                  manifestDownloadingRunId === selectedRun.run_id
+                }
+                onClick={() => void downloadManifest(selectedRun)}
+              >
+                {manifestDownloadingRunId === selectedRun.run_id
+                  ? 'Preparing download…'
+                  : 'Download manifest'}
+              </Button>
+            </div>
+            {selectedRun.result_manifest_sha256 ? (
+              <p className="field-help">
+                Manifest SHA-256:{' '}
+                <code>{selectedRun.result_manifest_sha256}</code>
+              </p>
+            ) : (
+              <p className="empty-state">
+                Manifest becomes available after a run completes successfully.
+              </p>
+            )}
+            {manifestError ? (
+              <p className="import-state import-state-error" role="alert">
+                {manifestError}
+              </p>
+            ) : null}
           </section>
           <section
             className="card section-card"

@@ -151,6 +151,29 @@ class EvaluationRunResponse(BaseModel):
     synthetic_only: bool = True
 
 
+class EvaluationRunManifestResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    manifest_schema_version: Literal["fisheye.evaluation-run-manifest.v1"]
+    run_id: str
+    dataset_id: str
+    dataset_sha256: str
+    dataset_schema_version: str
+    analysis_manifest_sha256: str
+    context_sha256: str
+    methodology_version: str
+    config_sha256: str
+    worker_build_revision: str
+    evaluation_unit: Literal["employee_day_utc"]
+    ground_truth_usage: str
+    result_artifact: Literal["scores.parquet.enc"]
+    result_artifact_sha256: str
+    result_row_count: int
+    metrics_sha256: str
+    claim_status: str
+    completed_at: str
+
+
 class EvaluationRunListResponse(BaseModel):
     items: list[EvaluationRunResponse]
     limit: int
@@ -534,6 +557,48 @@ def get_evaluation_run(run_id: str) -> EvaluationRunResponse:
     if record is None:
         raise HTTPException(status_code=404, detail="Evaluation run was not found.")
     return _evaluation_run_response(record)
+
+
+@app.get(
+    "/api/v1/runs/{run_id}/manifest",
+    response_model=EvaluationRunManifestResponse,
+    responses={status_code: {"model": ApiErrorResponse} for status_code in (404, 409, 503)},
+)
+def download_evaluation_manifest(run_id: str) -> Response:
+    """Download verified provenance for a completed development evaluation."""
+    database_url, artifact_root, encryption_key = _require_dev_evaluation_runs()
+    try:
+        factory = _session_factory(database_url)
+        with factory() as session:
+            record = get_run(session, run_id)
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail="Evaluation run could not be read.") from None
+    if record is None:
+        raise HTTPException(status_code=404, detail="Evaluation run was not found.")
+    if record.status != "completed" or not record.result_artifact_uri:
+        raise HTTPException(
+            status_code=409,
+            detail="The evaluation manifest is available after a run completes.",
+        )
+    try:
+        manifest_bytes = _read_run_manifest(
+            record.result_artifact_uri,
+            record.result_manifest_sha256 or "",
+            run_id,
+            artifact_root,
+            encryption_key,
+        )
+    except (OSError, RuntimeError, ValueError):
+        raise HTTPException(
+            status_code=503, detail="The evaluation manifest could not be verified."
+        ) from None
+    return Response(
+        content=manifest_bytes,
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f'attachment; filename="fisheye-run-{run_id}-manifest.json"'
+        },
+    )
 
 
 @app.get("/api/v1/runs/{run_id}/findings", response_model=RunFindingsResponse)
@@ -921,6 +986,37 @@ def _read_findings_frame(
         return pl.read_parquet(io.BytesIO(result_bytes))
     except (OSError, InvalidToken, json.JSONDecodeError) as error:
         raise RuntimeError("Run findings are unavailable or unreadable.") from error
+
+
+def _read_run_manifest(
+    relative_uri: str,
+    expected_manifest_sha256: str,
+    run_id: str,
+    artifact_root: Path,
+    encryption_key: bytes,
+) -> bytes:
+    directory = (artifact_root / relative_uri).resolve()
+    try:
+        directory.relative_to(artifact_root.resolve())
+    except ValueError:
+        raise RuntimeError("A run artifact path is invalid.") from None
+    try:
+        manifest_bytes = Fernet(encryption_key).decrypt(
+            (directory / "manifest.json.enc").read_bytes()
+        )
+        if hashlib.sha256(manifest_bytes).hexdigest() != expected_manifest_sha256:
+            raise RuntimeError("Run manifest failed its integrity check.")
+        manifest = json.loads(manifest_bytes)
+        if not isinstance(manifest, dict):
+            raise RuntimeError("Run manifest does not match the requested evaluation.")
+        parsed_manifest = EvaluationRunManifestResponse.model_validate(manifest)
+        if parsed_manifest.run_id != run_id:
+            raise RuntimeError("Run manifest does not match the requested evaluation.")
+        return manifest_bytes
+    except ValueError as error:
+        raise RuntimeError("Run manifest does not match its documented schema.") from error
+    except (OSError, InvalidToken, json.JSONDecodeError) as error:
+        raise RuntimeError("Run manifest is unavailable or unreadable.") from error
 
 
 async def _read_csv_body(request: Request) -> bytes:
