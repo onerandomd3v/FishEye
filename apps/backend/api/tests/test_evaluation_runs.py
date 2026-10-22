@@ -140,6 +140,43 @@ def test_import_queue_process_and_read_real_synthetic_run(tmp_path, monkeypatch)
     finding_items = findings.json()["items"]
     assert any("evt-eval-threat" in item["evidence_event_ids"] for item in finding_items)
     assert all("ground_truth_label" not in item for item in finding_items)
+    finding = next(
+        item for item in finding_items if "evt-eval-threat" in item["evidence_event_ids"]
+    )
+
+    detail_url = f"/api/v1/runs/{result['run_id']}/findings/{finding['finding_id']}"
+    detail = client.get(detail_url)
+    assert detail.status_code == 200
+    assert detail.json()["finding"] == finding
+    evidence = detail.json()["events"]
+    assert [event["event_id"] for event in evidence] == ["evt-eval-threat"]
+    assert "ground_truth_label" not in evidence[0]
+
+    review = client.post(
+        f"{detail_url}/reviews",
+        json={"decision": "escalated", "note": "Check source event context."},
+    )
+    assert review.status_code == 201
+    assert review.json()["reviewer_label"] == "Local development user (not authenticated)"
+    assert review.json()["decision"] == "escalated"
+
+    follow_up = client.post(
+        f"{detail_url}/reviews",
+        json={"decision": "reviewed_benign", "note": "Synthetic fixture follow-up."},
+    )
+    assert follow_up.status_code == 201
+    refreshed = client.get(detail_url)
+    assert refreshed.status_code == 200
+    review_history = refreshed.json()["reviews"]
+    assert [item["decision"] for item in review_history] == ["escalated", "reviewed_benign"]
+    assert refreshed.json()["finding"] == finding
+    assert refreshed.json()["events"] == evidence
+    assert refreshed.json()["review_mode"] == "local_development_unauthenticated"
+
+    missing_finding = client.get(
+        f"/api/v1/runs/{result['run_id']}/findings/{result['run_id']}:contextual:unknown:2026-01-05"
+    )
+    assert missing_finding.status_code == 404
 
     with Session(create_engine(database_url)) as session:
         record = session.scalar(

@@ -635,6 +635,174 @@
           }
         }
       }
+    },
+    "/api/v1/runs/{run_id}/findings/{finding_id}": {
+      "get": {
+        "summary": "Get Finding Detail",
+        "description": "Read a stored finding and only the synthetic source events it references.",
+        "operationId": "get_finding_detail_api_v1_runs__run_id__findings__finding_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "finding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Finding Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/findings/{finding_id}/reviews": {
+      "post": {
+        "summary": "Record Finding Review",
+        "description": "Append a local development review; this endpoint does not authenticate an analyst.",
+        "operationId": "record_finding_review_api_v1_runs__run_id__findings__finding_id__reviews_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "finding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Finding Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindingReviewCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingReviewResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1081,6 +1249,181 @@
           "created_at"
         ],
         "title": "EvaluationRunResponse"
+      },
+      "FindingDetailResponse": {
+        "properties": {
+          "finding": {
+            "$ref": "#/components/schemas/RunFindingResponse"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/FindingEvidenceEventResponse"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "reviews": {
+            "items": {
+              "$ref": "#/components/schemas/FindingReviewResponse"
+            },
+            "type": "array",
+            "title": "Reviews"
+          },
+          "review_mode": {
+            "type": "string",
+            "const": "local_development_unauthenticated",
+            "title": "Review Mode",
+            "default": "local_development_unauthenticated"
+          }
+        },
+        "type": "object",
+        "required": ["finding", "events", "reviews"],
+        "title": "FindingDetailResponse"
+      },
+      "FindingEvidenceEventResponse": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "title": "Event Id"
+          },
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "role_id": {
+            "type": "string",
+            "title": "Role Id"
+          },
+          "department_id": {
+            "type": "string",
+            "title": "Department Id"
+          },
+          "event_timestamp_utc": {
+            "type": "string",
+            "title": "Event Timestamp Utc"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "system": {
+            "type": "string",
+            "title": "System"
+          },
+          "device_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Id"
+          },
+          "location_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Label"
+          },
+          "record_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_id",
+          "employee_id",
+          "role_id",
+          "department_id",
+          "event_timestamp_utc",
+          "event_type",
+          "system",
+          "device_id",
+          "location_label",
+          "record_count"
+        ],
+        "title": "FindingEvidenceEventResponse"
+      },
+      "FindingReviewCreateRequest": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": ["under_review", "reviewed_benign", "escalated"],
+            "title": "Decision"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["decision"],
+        "title": "FindingReviewCreateRequest"
+      },
+      "FindingReviewResponse": {
+        "properties": {
+          "review_id": {
+            "type": "string",
+            "title": "Review Id"
+          },
+          "decision": {
+            "type": "string",
+            "enum": ["under_review", "reviewed_benign", "escalated"],
+            "title": "Decision"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "reviewer_label": {
+            "type": "string",
+            "title": "Reviewer Label"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "review_id",
+          "decision",
+          "note",
+          "reviewer_label",
+          "created_at"
+        ],
+        "title": "FindingReviewResponse"
       },
       "HTTPValidationError": {
         "properties": {
