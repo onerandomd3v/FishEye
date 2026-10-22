@@ -156,7 +156,9 @@ def _create_and_publish_artifacts(
     }
     manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
     manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
-    _publish_artifacts(destination, artifacts, manifest_bytes, cipher, record)
+    winner = _publish_artifacts(destination, artifacts, manifest_bytes, cipher, record)
+    if winner is not None:
+        return winner
     return StoredAnalysisArtifacts(manifest_sha256, row_count, employee_day_count, prepared_at)
 
 
@@ -269,7 +271,7 @@ def _publish_artifacts(
     manifest_bytes: bytes,
     cipher: Fernet,
     record: DatasetRecord,
-) -> None:
+) -> StoredAnalysisArtifacts | None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = Path(tempfile.mkdtemp(prefix=".analysis-prepare-", dir=destination.parent))
     try:
@@ -281,13 +283,8 @@ def _publish_artifacts(
         except OSError:
             if not destination.is_dir():
                 raise
-            _verify_existing_artifacts(
-                destination,
-                record,
-                hashlib.sha256(manifest_bytes).hexdigest(),
-                cipher,
-                expected_manifest_bytes=manifest_bytes,
-            )
+            return _verify_existing_artifacts(destination, record, None, cipher)
+        return None
     finally:
         if temporary.exists():
             shutil.rmtree(temporary)

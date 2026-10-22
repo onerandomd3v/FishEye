@@ -156,7 +156,7 @@ The root should be one Git repository. `apps/web` and `apps/backend` are organiz
 - `GET /events` (server-paginated, authorized)
 - `GET /scenarios`, `POST /runs`, `GET /runs/{id}`
 - `GET /runs/{id}/metrics`, `GET /runs/{id}/findings`
-- `GET /datasets` and `GET /datasets/{id}` (development-only, paginated metadata reads), `POST /datasets/imports/validate` (development-only schema validation), and `POST /datasets/imports` (development-only import of validated synthetic CSV into a dataset record and immutable source artifact; no run is created). Reads expose provenance metadata only, not CSV contents, artifact paths or ground-truth labels. See [DATASET-CSV.md](./DATASET-CSV.md). Production authentication/authorization and worker-side analytical artifact conversion remain future work.
+- `GET /datasets` and `GET /datasets/{id}` (development-only, paginated metadata reads), `POST /datasets/imports/validate` (development-only schema validation), and `POST /datasets/imports` (development-only import of validated synthetic CSV into a dataset record and immutable source artifact; no run is created). Reads expose provenance metadata only, not CSV contents, artifact paths or ground-truth labels. Imported datasets can be prepared as encrypted Parquet artifacts with the local worker `prepare-dataset` command; preparation does not create a run. See [DATASET-CSV.md](./DATASET-CSV.md). Production authentication/authorization remains future work.
 
 Requests and responses require stable IDs, explicit timestamps/timezones, pagination contracts, error codes and a `schema_version` where appropriate. Document authorization rules per endpoint. Never let the browser trigger an arbitrary shell/script execution.
 

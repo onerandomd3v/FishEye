@@ -4,6 +4,7 @@ import io
 import json
 import logging
 from datetime import UTC, datetime
+from pathlib import Path
 
 import polars as pl
 import pytest
@@ -12,7 +13,11 @@ from fisheye_domain.csv_schema import CSV_HEADERS
 from fisheye_domain.csv_validation import validate_events_csv
 from fisheye_persistence.datasets import Base, DatasetRecord, create_session_factory, import_dataset
 from fisheye_worker import dataset_preparation
-from fisheye_worker.dataset_preparation import prepare_dataset
+from fisheye_worker.dataset_preparation import (
+    _create_and_publish_artifacts,
+    _make_cipher,
+    prepare_dataset,
+)
 from fisheye_worker.main import main
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
@@ -200,6 +205,30 @@ def test_retry_verifies_artifacts_without_reconverting_after_worker_upgrade(
     after = {path.name: path.read_bytes() for path in artifact_dir.iterdir()}
     assert second == first
     assert after == before
+
+
+def test_losing_publisher_reuses_the_winning_artifacts(imported_dataset) -> None:
+    database_url, artifact_root, encryption_key, dataset_id, source = imported_dataset
+    factory = create_session_factory(database_url)
+
+    with factory() as session:
+        record = session.get(DatasetRecord, dataset_id)
+        assert record is not None
+        destination = artifact_root / Path(record.artifact_uri).parent / "analysis"
+        session.expunge(record)
+        cipher = _make_cipher(encryption_key)
+
+        winner = _create_and_publish_artifacts(record, source, destination, cipher)
+        loser = _create_and_publish_artifacts(record, source, destination, cipher)
+
+        assert loser == winner
+        prepared = prepare_dataset(session, dataset_id, artifact_root, encryption_key)
+        persisted = session.get(DatasetRecord, dataset_id)
+        assert persisted is not None
+        assert persisted.preparation_status == "prepared"
+        assert persisted.analysis_manifest_sha256 == winner.manifest_sha256
+        assert persisted.prepared_at.replace(tzinfo=UTC) == winner.prepared_at
+        assert prepared.analysis_manifest_sha256 == winner.manifest_sha256
 
 
 def test_prepare_dataset_rejects_unknown_dataset(imported_dataset) -> None:
