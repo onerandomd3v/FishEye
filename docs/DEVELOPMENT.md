@@ -37,6 +37,8 @@ Copy `.env.example` to `.env` for local API configuration. Enable `FISHEYE_ENABL
 
 Completed development runs populate the overview and investigation pages from stored API results. Finding review actions append local development records labeled `Local development user (not authenticated)`; the signed console preview does not authenticate requests to FastAPI. Do not expose the development API or review writes to shared or production environments.
 
+The Scenario lab offers two bundled synthetic CSV/context pairs for repeatable local demos. Selecting a sample only preloads those files; the console still requires the synthetic-data confirmation and sends them through the same API validation, import, durable-run, and worker processing path as manually selected files. Ground-truth labels are evaluation-only and are not sent to detector feature construction. Both sample pairs are checked against the current CSV and context contracts in backend tests.
+
 ## Checks
 
 ```sh

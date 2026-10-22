@@ -41,10 +41,18 @@ function isValidationResponse(value: unknown): value is ValidationResponse {
   );
 }
 
-export function DatasetImport() {
+export function DatasetImport({
+  initialCsv = null,
+  initialContextFile = null,
+}: {
+  initialCsv?: File | null;
+  initialContextFile?: File | null;
+} = {}) {
   const idempotencyKeyRef = useRef<string | null>(null);
-  const [csv, setCsv] = useState<File | null>(null);
-  const [contextFile, setContextFile] = useState<File | null>(null);
+  const [csv, setCsv] = useState<File | null>(initialCsv);
+  const [contextFile, setContextFile] = useState<File | null>(
+    initialContextFile,
+  );
   const [confirmedSynthetic, setConfirmedSynthetic] = useState(false);
   const [state, setState] = useState<FlowState>({ status: 'idle' });
 

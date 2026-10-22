@@ -1,90 +1,88 @@
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@fisheye/ui';
-import { scenarioFixtures } from '../fixtures';
+import { scenarioPacks } from './packs';
 
-export function ScenarioPicker() {
-  const [selected, setSelected] = useState(scenarioFixtures[0]?.id ?? '');
-  const [message, setMessage] = useState('');
-  const scenario = scenarioFixtures.find((item) => item.id === selected);
+export type ScenarioPack = (typeof scenarioPacks)[number];
 
+export function ScenarioPicker({
+  selectedId,
+  loadingId,
+  error,
+  onSelect,
+}: {
+  selectedId: string | null;
+  loadingId: string | null;
+  error: string;
+  onSelect: (scenario: ScenarioPack) => void;
+}) {
   return (
-    <div className="scenario-grid">
-      <section className="card card-pad" aria-labelledby="scenario-title">
-        <h2 id="scenario-title">Select a synthetic case</h2>
-        <div
-          className="scenario-list"
-          role="group"
-          aria-label="Synthetic scenarios"
-        >
-          {scenarioFixtures.map((item) => (
-            <button
-              className="scenario-option"
-              type="button"
-              key={item.id}
-              aria-pressed={selected === item.id}
-              onClick={() => {
-                setSelected(item.id);
-                setMessage('');
-              }}
-            >
-              <strong>
-                {item.id} · {item.name}
-              </strong>
-              <span>{item.description}</span>
-            </button>
-          ))}
-        </div>
-        <div className="button-stack">
-          <Button
-            type="button"
-            onClick={() =>
-              setMessage(
-                'The evaluation service is not connected. No run was started and no result was created.',
-              )
-            }
-          >
-            Start evaluation <span aria-hidden="true">→</span>
-          </Button>
-        </div>
-        {message && (
-          <p className="local-confirmation" role="status">
-            {message}
+    <section className="card section-card" aria-labelledby="scenario-title">
+      <div className="section-title-row">
+        <div>
+          <p className="metric-label">DEVELOPMENT · SYNTHETIC DATA ONLY</p>
+          <h2 id="scenario-title">Choose a sample dataset</h2>
+          <p className="card-intro">
+            Each sample includes an events CSV and matching context file. It
+            uses the same validation and worker flow as your own synthetic data.
           </p>
-        )}
-      </section>
-      <section
-        className="card card-pad scenario-result"
-        aria-labelledby="scenario-preview-title"
+        </div>
+        <a
+          className="template-link"
+          href="/templates/fisheye-events-v2.csv"
+          download
+        >
+          Download events v2 template
+        </a>
+      </div>
+      <div
+        className="scenario-list"
+        role="list"
+        aria-label="Synthetic sample datasets"
       >
-        <span className="fixture-tag">
-          Scenario definition · no run created
-        </span>
-        {scenario ? (
-          <div className="result-empty">
-            <p className="metric-label">
-              SELECTED SYNTHETIC CASE / {scenario.id}
-            </p>
-            <h2 id="scenario-preview-title">{scenario.name}</h2>
-            <p className="scenario-description">{scenario.description}</p>
-            <div className="context-block">
-              <span className="context-label">Scoring result</span>
-              <strong>Not available</strong>
-              <p>
-                No scoring engine or evaluation job is connected to this
-                interface.
-              </p>
+        {scenarioPacks.map((scenario) => (
+          <article
+            className="scenario-option"
+            key={scenario.id}
+            role="listitem"
+          >
+            <div>
+              <strong>{scenario.name}</strong>
+              <span>{scenario.description}</span>
             </div>
-            <h3 className="subheading">Scenario constraints</h3>
-            <ul className="plain-list">
-              <li>Scenario text describes a synthetic test condition.</li>
-              <li>Ground-truth labels must remain outside detector inputs.</li>
-              <li>No score, priority or successful run is fabricated.</li>
-            </ul>
-          </div>
-        ) : null}
-      </section>
-    </div>
+            <Button
+              type="button"
+              variant={selectedId === scenario.id ? 'secondary' : 'primary'}
+              aria-pressed={selectedId === scenario.id}
+              disabled={loadingId !== null}
+              onClick={() => onSelect(scenario)}
+            >
+              {loadingId === scenario.id
+                ? 'Loading sample…'
+                : selectedId === scenario.id
+                  ? 'Selected'
+                  : 'Use sample'}
+            </Button>
+            <div className="sample-downloads">
+              <a href={scenario.csv} download className="sample-download">
+                Download CSV
+              </a>
+              <a href={scenario.context} download className="sample-download">
+                Download context
+              </a>
+            </div>
+          </article>
+        ))}
+      </div>
+      {error ? (
+        <p className="import-state import-state-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <p className="below-table-note">
+        Samples are illustrative synthetic inputs. FishEye does not claim these
+        results represent real employees, banks, or production performance.
+      </p>
+    </section>
   );
 }
