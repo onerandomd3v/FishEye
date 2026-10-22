@@ -148,7 +148,9 @@ export function EvaluationComparison({
                       <td>{formatMetricRatioWithCount(metrics.precision)}</td>
                       <td>{formatMetricRatioWithCount(metrics.recall)}</td>
                       <td>
-                        {formatMetricRatioWithCount(metrics.false_positive_rate)}
+                        {formatMetricRatioWithCount(
+                          metrics.false_positive_rate,
+                        )}
                       </td>
                     </tr>
                   ))}

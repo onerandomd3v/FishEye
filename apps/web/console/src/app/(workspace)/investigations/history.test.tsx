@@ -67,7 +67,10 @@ describe('investigation review history page', () => {
         'Recorded by Local development user (not authenticated)',
       ),
     ).toBeTruthy();
-    expect(screen.getByText(/22 Oct 2026/)).toBeTruthy();
+    expect(screen.getByText(/\(local time\)$/)).toBeTruthy();
+    expect(document.querySelector('time')?.getAttribute('datetime')).toBe(
+      '2026-10-22T14:44:55.445275+00:00',
+    );
     expect(screen.getByRole('link', { name: 'Back to finding' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back to queue' })).toBeTruthy();
   });

@@ -148,9 +148,7 @@ describe('investigation detail and review history', () => {
     expect(
       await screen.findByRole('link', { name: 'View review history (1)' }),
     ).toBeTruthy();
-    expect(
-      screen.getByLabelText('Investigation status'),
-    ).toBeTruthy();
+    expect(screen.getByLabelText('Investigation status')).toBeTruthy();
     expect(screen.getByText('evt-1')).toBeTruthy();
   });
 });

@@ -332,7 +332,7 @@ export function InvestigationList({
                   <tr key={finding.finding_id}>
                     <td>
                       <Link
-                        href={`/investigations/${encodeURIComponent(finding.finding_id)}?run_id=${encodeURIComponent(selectedRun.run_id)}&detector=${detector}`}
+                        href={`/investigations/${encodeURIComponent(finding.finding_id)}?run_id=${encodeURIComponent(selectedRun.run_id)}&detector=${encodeURIComponent(detector)}`}
                       >
                         {finding.employee_id}
                       </Link>

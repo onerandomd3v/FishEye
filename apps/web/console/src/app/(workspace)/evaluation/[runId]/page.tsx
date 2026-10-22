@@ -204,7 +204,7 @@ export default function EvaluationRunPage() {
               <dd>
                 {unit === 'employee_day_utc'
                   ? 'One person per day'
-                  : stringValue(unit) ?? 'Pending'}
+                  : (stringValue(unit) ?? 'Pending')}
               </dd>
             </div>
             <div>
@@ -272,7 +272,10 @@ export default function EvaluationRunPage() {
 
           {run.status === 'completed' ? (
             <>
-              <section className="run-results-section" aria-labelledby="comparison-title">
+              <section
+                className="run-results-section"
+                aria-labelledby="comparison-title"
+              >
                 <div className="run-section-heading">
                   <h2 id="comparison-title">Compare methods</h2>
                 </div>
@@ -285,7 +288,10 @@ export default function EvaluationRunPage() {
                 )}
               </section>
 
-              <section className="run-results-section" aria-labelledby="findings-title">
+              <section
+                className="run-results-section"
+                aria-labelledby="findings-title"
+              >
                 <div className="run-section-heading">
                   <div>
                     <h2 id="findings-title">Findings</h2>
@@ -366,7 +372,6 @@ export default function EvaluationRunPage() {
               </section>
             </>
           ) : null}
-
         </>
       ) : null}
     </>

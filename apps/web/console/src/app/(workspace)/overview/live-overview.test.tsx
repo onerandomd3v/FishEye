@@ -72,9 +72,7 @@ describe('live overview', () => {
 
     render(<LiveOverview />);
 
-    expect(
-      await screen.findByText('Findings from run complete.'),
-    ).toBeTruthy();
+    expect(await screen.findByText('Findings from run complete.')).toBeTruthy();
     expect(screen.queryByText(/not been benchmarked/)).toBeNull();
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
   });

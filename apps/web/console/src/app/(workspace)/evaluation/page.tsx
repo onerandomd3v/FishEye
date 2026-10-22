@@ -29,7 +29,9 @@ export default function EvaluationPage() {
         params: { query: { limit: 50, offset: 0 } },
       });
       if (!result.response.ok || !result.data) {
-        throw new Error(`Run history could not be loaded (${result.response.status}).`);
+        throw new Error(
+          `Run history could not be loaded (${result.response.status}).`,
+        );
       }
       setRuns(result.data.items);
     } catch (cause) {
@@ -58,7 +60,11 @@ export default function EvaluationPage() {
             <Link className="inline-guide-link" href="/guide#results">
               How to read results
             </Link>
-            <Button type="button" onClick={() => void loadRuns()} disabled={loading}>
+            <Button
+              type="button"
+              onClick={() => void loadRuns()}
+              disabled={loading}
+            >
               {loading ? 'Refreshing…' : 'Refresh'}
             </Button>
           </div>

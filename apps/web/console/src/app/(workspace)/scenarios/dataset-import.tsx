@@ -241,9 +241,7 @@ export function DatasetImport({
           </p>
         </div>
         <div className="field">
-          <label htmlFor="synthetic-context">
-            Roles and schedules (JSON)
-          </label>
+          <label htmlFor="synthetic-context">Roles and schedules (JSON)</label>
           <input
             id="synthetic-context"
             type="file"
@@ -256,8 +254,8 @@ export function DatasetImport({
             }}
           />
           <p className="field-help">
-            List each role&apos;s allowed systems and each employee&apos;s work hours.
-            {' '}
+            List each role&apos;s allowed systems and each employee&apos;s work
+            hours.{' '}
             <a href="/templates/fisheye-context-v1.json" download>
               Download context template
             </a>
@@ -287,9 +285,7 @@ export function DatasetImport({
               state.status === 'working'
             }
           >
-            {state.status === 'working'
-              ? 'Processing…'
-              : 'Run evaluation'}
+            {state.status === 'working' ? 'Processing…' : 'Run evaluation'}
           </Button>
           {csv ? (
             <span className="selected-file">

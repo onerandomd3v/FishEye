@@ -61,12 +61,16 @@ export function ScenarioLab() {
 
   return (
     <>
-      <div className="scenario-mode" role="group" aria-label="Choose how to start">
+      <div
+        className="scenario-mode"
+        role="group"
+        aria-label="Choose how to start"
+      >
         <Button
           type="button"
           variant={inputMode === 'sample' ? 'primary' : 'secondary'}
           aria-pressed={inputMode === 'sample'}
-          disabled={runWorking}
+          disabled={runWorking || loadingId !== null}
           onClick={() => {
             if (inputMode === 'upload') {
               setSelected(null);
@@ -81,7 +85,7 @@ export function ScenarioLab() {
           type="button"
           variant={inputMode === 'upload' ? 'primary' : 'secondary'}
           aria-pressed={inputMode === 'upload'}
-          disabled={runWorking}
+          disabled={runWorking || loadingId !== null}
           onClick={() => {
             setInputMode('upload');
             setSelected(null);

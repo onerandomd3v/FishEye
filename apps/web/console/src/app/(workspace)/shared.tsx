@@ -26,10 +26,7 @@ export function PageHeading({
 
 export function FixtureNotice() {
   return (
-    <Notice
-      title="Sample preview"
-      className="fixture-notice"
-    >
+    <Notice title="Sample preview" className="fixture-notice">
       These examples are for preview only. No data is saved and no scores are
       calculated.
     </Notice>

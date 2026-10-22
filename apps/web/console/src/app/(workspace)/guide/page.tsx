@@ -33,8 +33,7 @@ const metrics = [
   },
   {
     term: 'False alarm rate',
-    definition:
-      'Of the benign days, how many were flagged by mistake.',
+    definition: 'Of the benign days, how many were flagged by mistake.',
   },
   {
     term: 'Alerts per 100 person-days',

@@ -121,20 +121,16 @@ describe('development evaluation run flow', () => {
       target: { files: [file('context.json', context, 'application/json')] },
     });
     fireEvent.click(screen.getByLabelText(/I confirm both files/i));
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Run evaluation' }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Run evaluation' }));
 
     expect(
-      await screen.findByText(
-        'Evaluation complete',
-        {},
-        { timeout: 5000 },
-      ),
+      await screen.findByText('Evaluation complete', {}, { timeout: 5000 }),
     ).toBeTruthy();
     expect(screen.getByText('50.0%')).toBeTruthy();
     expect(
-      screen.getByRole('link', { name: 'About evaluation results' }).getAttribute('href'),
+      screen
+        .getByRole('link', { name: 'About evaluation results' })
+        .getAttribute('href'),
     ).toBe('/guide#results');
     expect(fetchMock).toHaveBeenCalledTimes(4);
     const createRequest = fetchMock.mock.calls[2]?.[0] as Request;
@@ -246,9 +242,7 @@ describe('development evaluation run flow', () => {
       target: { files: [file('context.json', context, 'application/json')] },
     });
     fireEvent.click(screen.getByLabelText(/I confirm both files/i));
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Run evaluation' }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Run evaluation' }));
     await waitFor(() =>
       expect(screen.getByRole('alert').textContent).toContain(
         'FishEye API is not configured',

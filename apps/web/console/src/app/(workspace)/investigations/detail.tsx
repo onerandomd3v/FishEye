@@ -83,7 +83,14 @@ export function InvestigationDetail({
     } finally {
       setLoading(false);
     }
-  }, [normalizedFindingId, runId]);
+  }, [
+    normalizedFindingId,
+    runId,
+    setDetail,
+    setDecision,
+    setError,
+    setLoading,
+  ]);
 
   useEffect(() => {
     void Promise.resolve().then(loadDetail);

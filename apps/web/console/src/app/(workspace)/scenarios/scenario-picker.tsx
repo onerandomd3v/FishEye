@@ -23,9 +23,7 @@ export function ScenarioPicker({
       <div className="section-title-row">
         <div>
           <h2 id="scenario-title">Choose a sample dataset</h2>
-          <p className="card-intro">
-            Start with a ready-to-run example.
-          </p>
+          <p className="card-intro">Start with a ready-to-run example.</p>
         </div>
         <a
           className="template-link"
@@ -66,12 +64,12 @@ export function ScenarioPicker({
             <details className="sample-downloads">
               <summary>Download files</summary>
               <div>
-              <a href={scenario.csv} download className="sample-download">
-                Download CSV
-              </a>
-              <a href={scenario.context} download className="sample-download">
-                Download context
-              </a>
+                <a href={scenario.csv} download className="sample-download">
+                  Download CSV
+                </a>
+                <a href={scenario.context} download className="sample-download">
+                  Download context
+                </a>
               </div>
             </details>
           </article>
