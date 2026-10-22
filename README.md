@@ -1,10 +1,10 @@
 # FishEye
 
-FishEye is a context-aware insider-risk triage research MVP. Version 1 uses synthetic data only. The repository contains the Astro landing site, Next.js console shell, FastAPI API, Python worker scaffold, and local PostgreSQL configuration.
+FishEye is a context-aware insider-risk triage research MVP. Version 1 uses synthetic data only. The repository contains the Astro landing site, Next.js console, FastAPI API, Python evaluation worker and local PostgreSQL configuration.
 
 ## Quick start
 
-Install Node.js 22.22.0 or newer, pnpm 11.25.0, Python 3.12, uv, and Docker Compose. Then run:
+Install Node.js 22.22.0 or newer, pnpm 11.25.0, Python 3.12, uv, and Docker Compose. For the containerized API and worker stack, follow [Local Compose stack](docs/DEVELOPMENT.md#local-compose-stack). To run the web apps directly, install dependencies and run:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -25,4 +25,4 @@ For database checks, start a disposable PostgreSQL test database and set `FISHEY
 - [Brand](docs/BRAND.md)
 - [Design](docs/DESIGN.md)
 
-The UI shells and API health endpoint are foundations only. Authentication, detection, evaluation, persistence models, and product workflows are not implemented.
+FishEye is a synthetic-data research MVP, not a bank deployment. The local API and worker can process development evaluation runs; CSV and run routes remain disabled outside local development. Shared console authentication requires a configured OIDC provider. See [PRD](docs/PRD.md), [Architecture](docs/ARCHITECTURE.md), and [Development](docs/DEVELOPMENT.md) for current capabilities and boundaries.
