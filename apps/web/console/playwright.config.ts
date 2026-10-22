@@ -28,8 +28,6 @@ export default defineConfig({
       command:
         'uv run --package fisheye-worker fisheye-worker work --poll-seconds 0.2',
       cwd: repositoryRoot,
-      url: apiUrl,
-      reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
     {
