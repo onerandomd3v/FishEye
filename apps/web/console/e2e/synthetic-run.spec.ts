@@ -78,7 +78,9 @@ test('a bundled synthetic dataset runs through API, worker, storage, and console
     page.getByRole('heading', { name: 'Compare methods' }),
   ).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Findings' })).toBeVisible();
-  await expect(page.getByText('Results on the evaluation data')).toBeVisible();
+  await expect(
+    page.getByRole('columnheader', { name: 'Score cutoff' }),
+  ).toBeVisible();
 
   await page.goto('/investigations');
   await expect(
