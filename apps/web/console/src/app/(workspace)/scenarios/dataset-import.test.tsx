@@ -107,7 +107,15 @@ describe('development evaluation run flow', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<DatasetImport />);
     fireEvent.change(screen.getByLabelText('Synthetic events CSV'), {
-      target: { files: [file('events.csv', 'csv', 'text/csv')] },
+      target: {
+        files: [
+          new File(
+            [new Uint8Array([0xef, 0xbb, 0xbf, 0x63, 0x73, 0x76])],
+            'events.csv',
+            { type: 'text/csv' },
+          ),
+        ],
+      },
     });
     fireEvent.change(screen.getByLabelText('Synthetic employee context JSON'), {
       target: { files: [file('context.json', context, 'application/json')] },
@@ -130,6 +138,15 @@ describe('development evaluation run flow', () => {
     const createRequest = fetchMock.mock.calls[2]?.[0] as Request;
     expect(createRequest.url).toContain('/api/v1/runs');
     expect(createRequest.headers.get('Idempotency-Key')).toBeTruthy();
+    const validationRequest = fetchMock.mock.calls[0]?.[0] as Request;
+    const importRequest = fetchMock.mock.calls[1]?.[0] as Request;
+    const originalCsvBytes = [0xef, 0xbb, 0xbf, 0x63, 0x73, 0x76];
+    expect(
+      Array.from(new Uint8Array(await validationRequest.arrayBuffer())),
+    ).toEqual(originalCsvBytes);
+    expect(
+      Array.from(new Uint8Array(await importRequest.arrayBuffer())),
+    ).toEqual(originalCsvBytes);
   });
 
   it('reuses the run idempotency key when retrying the same submission after an uncertain response', async () => {

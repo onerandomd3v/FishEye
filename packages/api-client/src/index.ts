@@ -1,2 +1,2 @@
-export { createFishEyeApiClient } from './client';
+export { createFishEyeApiClient, postCsv } from './client';
 export type { components, paths } from './generated/schema';

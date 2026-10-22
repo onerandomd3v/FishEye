@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Button } from '@fisheye/ui';
-import { createFishEyeApiClient, type components } from '@fisheye/api-client';
+import {
+  createFishEyeApiClient,
+  postCsv,
+  type components,
+} from '@fisheye/api-client';
 
 type ValidationResponse = components['schemas']['DatasetValidationResponse'];
 type RunResponse = components['schemas']['EvaluationRunResponse'];
@@ -106,15 +110,10 @@ export function DatasetImport({
       }
       const syntheticContext = context as Record<string, unknown>;
 
-      const validation = await client.POST(
+      const validation = await postCsv(
+        client,
         '/api/v1/datasets/imports/validate',
-        {
-          headers: {
-            'Content-Type': 'text/csv',
-            'X-FishEye-Synthetic-Data-Confirmed': 'true',
-          },
-          body: await csv.text(),
-        },
+        csv,
       );
       if (!validation.response.ok)
         throw new Error(
@@ -136,13 +135,7 @@ export function DatasetImport({
         status: 'working',
         step: 'Importing the confirmed synthetic dataset…',
       });
-      const imported = await client.POST('/api/v1/datasets/imports', {
-        headers: {
-          'Content-Type': 'text/csv',
-          'X-FishEye-Synthetic-Data-Confirmed': 'true',
-        },
-        body: await csv.text(),
-      });
+      const imported = await postCsv(client, '/api/v1/datasets/imports', csv);
       if (!imported.response.ok || !imported.data)
         throw new Error(apiMessage(imported.error, imported.response.status));
 
