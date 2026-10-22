@@ -6,6 +6,7 @@ import type { components } from '@fisheye/api-client';
 import { Button, Notice } from '@fisheye/ui';
 import { EmptyState, MetricCard } from '../shared';
 import { apiBaseUrl, investigationApi } from '../investigations/data';
+import { formatDetectorName } from '../evaluation-format';
 
 type Run = components['schemas']['EvaluationRunResponse'];
 type Finding = components['schemas']['RunFindingResponse'];
@@ -129,11 +130,10 @@ export function LiveOverview() {
   if (!run) {
     return (
       <EmptyState title="No completed evaluation runs">
-        Overview counts and findings will appear after a development worker
-        completes a run.
+        Counts and findings will appear here after an evaluation finishes.
         <span className="empty-state-action">
           <Link className="fe-button fe-button-primary" href="/scenarios">
-            Start a synthetic evaluation
+            Start an evaluation
           </Link>
         </span>
       </EmptyState>
@@ -148,18 +148,14 @@ export function LiveOverview() {
 
   return (
     <>
-      <Notice title="Synthetic development results">
-        Run {run.run_id} · {run.claim_status}. These provisional results are not
-        benchmark claims and are not validated on real banking activity.
-      </Notice>
       <section
         className="metrics-grid"
         aria-label="Latest completed evaluation run metrics"
       >
         <MetricCard
-          label="Employee-days evaluated"
+          label="Person-days evaluated"
           value={count(metrics.evaluation_unit_count)}
-          help="Unit: employee-day UTC"
+          help="One count per person per day"
         />
         <MetricCard
           label="Contextual findings"
@@ -167,25 +163,24 @@ export function LiveOverview() {
           help="From this completed run"
         />
         <MetricCard
-          label="False positives"
+          label="False alarms"
           value={count(confusion.false_positive)}
-          help="Evaluation split; contextual detector"
+          help={`Evaluation split; ${formatDetectorName('contextual')}`}
         />
         <MetricCard
-          label="Missed threats"
+          label="Threats missed"
           value={count(confusion.false_negative)}
-          help="Evaluation split; contextual detector"
+          help={`Evaluation split; ${formatDetectorName('contextual')}`}
         />
       </section>
       <section className="card section-card" aria-labelledby="priority-title">
         <div className="section-title-row">
           <div>
-            <h2 id="priority-title">Latest contextual findings</h2>
+            <h2 id="priority-title">Latest findings</h2>
             <p className="card-intro">
-              Stored employee-day findings from run {run.run_id.slice(0, 8)}.
+              Findings from run {run.run_id.slice(0, 8)}.
             </p>
           </div>
-          <span className="fixture-tag">Synthetic data</span>
         </div>
         {findings.length === 0 ? (
           <p className="below-table-note">
@@ -195,8 +190,7 @@ export function LiveOverview() {
           <div className="table-wrap">
             <table className="data-table">
               <caption className="visually-hidden">
-                Latest contextual findings in a completed synthetic evaluation
-                run
+                Latest findings in a completed evaluation run
               </caption>
               <thead>
                 <tr>

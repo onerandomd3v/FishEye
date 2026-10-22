@@ -11,6 +11,7 @@ const links = [
   { href: '/investigations', label: 'Investigations' },
   { href: '/evaluation', label: 'Evaluation' },
   { href: '/scenarios', label: 'Scenario lab' },
+  { href: '/guide', label: 'Guide' },
 ];
 
 export function ConsoleShell({ children }: { children: React.ReactNode }) {
@@ -89,8 +90,7 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         <div className="sidebar-bottom">
-          <strong>Research workspace</strong>
-          <span>Synthetic data only</span>
+          <strong>Workspace</strong>
         </div>
       </aside>
 
@@ -113,10 +113,10 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
         </div>
         <header className="topbar flex items-center justify-between text-fe-secondary">
           <div className="breadcrumbs">
-            FishEye&nbsp; / &nbsp;{current?.label ?? 'Research workspace'}
+            FishEye&nbsp; / &nbsp;{current?.label ?? 'Workspace'}
           </div>
           <div className="flex items-center gap-3">
-            <span className="fixture-chip">Development fixture</span>
+            <span className="fixture-chip">Synthetic data</span>
             {signOutError && (
               <span role="alert">Could not sign out. Try again.</span>
             )}

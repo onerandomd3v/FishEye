@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import { Button } from '@fisheye/ui';
 import {
   createFishEyeApiClient,
@@ -8,6 +9,7 @@ import {
   type components,
 } from '@fisheye/api-client';
 import { apiBaseUrl } from '../investigations/data';
+import { formatDetectorName } from '../evaluation-format';
 
 type ValidationResponse = components['schemas']['DatasetValidationResponse'];
 type RunResponse = components['schemas']['EvaluationRunResponse'];
@@ -31,7 +33,7 @@ function apiMessage(error: unknown, status: number): string {
       if (Array.isArray(errors)) return errors.join(' ');
     }
   }
-  return `The development API request failed (${status}).`;
+  return `The API request failed (${status}).`;
 }
 
 function isValidationResponse(value: unknown): value is ValidationResponse {
@@ -132,7 +134,7 @@ export function DatasetImport({
 
       setState({
         status: 'working',
-        step: 'Importing the confirmed synthetic dataset…',
+        step: 'Importing your files…',
       });
       const imported = await postCsv(client, '/api/v1/datasets/imports', csv);
       if (!imported.response.ok || !imported.data)
@@ -204,12 +206,9 @@ export function DatasetImport({
     >
       <div className="dataset-import-heading">
         <div>
-          <p className="metric-label">DEVELOPMENT · SYNTHETIC DATA ONLY</p>
           <h2 id="dataset-import-title">Run an evaluation</h2>
           <p className="card-intro">
-            Upload an events v2 CSV and its employee context JSON. The API
-            stores the dataset, queues a durable run, and a worker processes it.
-            The experimental method has not been benchmarked.
+            Choose an events CSV and a file with employee roles and schedules.
           </p>
         </div>
         <a
@@ -223,7 +222,7 @@ export function DatasetImport({
 
       <form className="dataset-import-form" onSubmit={startEvaluation}>
         <div className="field">
-          <label htmlFor="synthetic-csv">Synthetic events CSV</label>
+          <label htmlFor="synthetic-csv">Events CSV</label>
           <input
             id="synthetic-csv"
             type="file"
@@ -237,14 +236,12 @@ export function DatasetImport({
             }}
           />
           <p className="field-help">
-            Events v2 with baseline, calibration, and evaluation partitions;
-            maximum 10 MiB.
+            Include baseline data, calibration data for tuning, and evaluation
+            data for comparison. Maximum 10 MiB.
           </p>
         </div>
         <div className="field">
-          <label htmlFor="synthetic-context">
-            Synthetic employee context JSON
-          </label>
+          <label htmlFor="synthetic-context">Roles and schedules (JSON)</label>
           <input
             id="synthetic-context"
             type="file"
@@ -257,8 +254,8 @@ export function DatasetImport({
             }}
           />
           <p className="field-help">
-            Must define role permissions and schedules for every role and
-            employee in the CSV.{' '}
+            List each role&apos;s allowed systems and each employee&apos;s work
+            hours.{' '}
             <a href="/templates/fisheye-context-v1.json" download>
               Download context template
             </a>
@@ -271,7 +268,7 @@ export function DatasetImport({
             onChange={(event) => setConfirmedSynthetic(event.target.checked)}
           />
           <span>
-            I confirm both files contain synthetic employee and event data only.
+            I confirm both files contain fictional people and activity only.
           </span>
         </label>
         <p className="field-help synthetic-caveat">
@@ -288,9 +285,7 @@ export function DatasetImport({
               state.status === 'working'
             }
           >
-            {state.status === 'working'
-              ? 'Processing…'
-              : 'Import and run evaluation'}
+            {state.status === 'working' ? 'Processing…' : 'Run evaluation'}
           </Button>
           {csv ? (
             <span className="selected-file">
@@ -336,20 +331,41 @@ function RunSummary({
     <div className="import-state" role="status">
       <strong>
         {run.status === 'completed'
-          ? 'Evaluation run completed'
+          ? 'Evaluation complete'
           : run.status === 'failed'
-            ? 'Evaluation run failed'
+            ? 'Evaluation failed'
             : `Run ${run.status}`}
       </strong>
-      <p>
-        Dataset {datasetId} · Run {run.run_id} · {run.methodology_version}
-      </p>
-      {run.error_code ? <p>Worker error: {run.error_code}</p> : null}
+      {run.status === 'failed' ? (
+        <p>The run could not be processed. Check the files and try again.</p>
+      ) : null}
       {run.metrics ? <RunMetrics metrics={run.metrics} /> : null}
-      <p className="import-result-caveat">
-        {run.claim_status}. Synthetic development result only; this is not
-        evidence of real-world detection performance.
-      </p>
+      <Link className="inline-guide-link" href="/guide#results">
+        About evaluation results
+      </Link>
+      <details className="run-technical-details">
+        <summary>Run details</summary>
+        <dl className="dataset-import-details">
+          <div>
+            <dt>Dataset</dt>
+            <dd>{datasetId}</dd>
+          </div>
+          <div>
+            <dt>Run</dt>
+            <dd>{run.run_id}</dd>
+          </div>
+          <div>
+            <dt>Method</dt>
+            <dd>{run.methodology_version}</dd>
+          </div>
+          {run.error_code ? (
+            <div>
+              <dt>Error code</dt>
+              <dd>{run.error_code}</dd>
+            </div>
+          ) : null}
+        </dl>
+      </details>
     </div>
   );
 }
@@ -360,13 +376,13 @@ function RunMetrics({ metrics }: { metrics: Record<string, unknown> }) {
   return (
     <div className="table-wrap">
       <table className="data-table">
-        <caption>Held-out synthetic employee-day comparison</caption>
+        <caption>Results on the evaluation data</caption>
         <thead>
           <tr>
             <th scope="col">Method</th>
-            <th scope="col">Precision</th>
-            <th scope="col">Recall</th>
-            <th scope="col">False-positive rate</th>
+            <th scope="col">Alerts correct</th>
+            <th scope="col">Threats caught</th>
+            <th scope="col">False alarm rate</th>
           </tr>
         </thead>
         <tbody>
@@ -380,18 +396,12 @@ function RunMetrics({ metrics }: { metrics: Record<string, unknown> }) {
                 ? ((report as Record<string, unknown>).metrics as
                     Record<string, unknown> | undefined)
                 : undefined;
-            const ratio = (key: string) => {
-              const item = values?.[key];
-              return typeof item === 'object' && item !== null
-                ? (item as Record<string, unknown>).value
-                : undefined;
-            };
             return (
               <tr key={name}>
-                <td>{name.replaceAll('_', ' ')}</td>
-                <td>{percent(ratio('precision'))}</td>
-                <td>{percent(ratio('recall'))}</td>
-                <td>{percent(ratio('false_positive_rate'))}</td>
+                <td>{formatDetectorName(name)}</td>
+                <td>{formatRatio(values?.precision)}</td>
+                <td>{formatRatio(values?.recall)}</td>
+                <td>{formatRatio(values?.false_positive_rate)}</td>
               </tr>
             );
           })}
@@ -401,8 +411,15 @@ function RunMetrics({ metrics }: { metrics: Record<string, unknown> }) {
   );
 }
 
-function percent(value: unknown): string {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? `${(value * 100).toFixed(1)}%`
-    : 'Unavailable';
+function formatRatio(value: unknown): string {
+  if (typeof value !== 'object' || value === null) return 'Unavailable';
+  const ratio = value as Record<string, unknown>;
+  if (typeof ratio.value !== 'number' || !Number.isFinite(ratio.value)) {
+    return 'Unavailable';
+  }
+  const percent = `${(ratio.value * 100).toFixed(1)}%`;
+  return typeof ratio.numerator === 'number' &&
+    typeof ratio.denominator === 'number'
+    ? `${percent} (${ratio.numerator} of ${ratio.denominator})`
+    : percent;
 }

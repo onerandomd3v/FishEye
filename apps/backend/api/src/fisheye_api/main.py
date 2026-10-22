@@ -39,6 +39,7 @@ from fisheye_persistence.reviews import (
     FindingReviewRecord,
     create_finding_review,
     list_finding_reviews,
+    list_latest_finding_reviews,
 )
 from fisheye_persistence.runs import (
     EvaluationRunRecord,
@@ -216,6 +217,7 @@ class RunFindingResponse(BaseModel):
     severity: str
     reason_codes: list[str]
     evidence_event_ids: list[str]
+    review_status: Literal["unreviewed", "under_review", "reviewed_benign", "escalated"]
 
 
 class RunFindingsResponse(BaseModel):
@@ -772,8 +774,25 @@ def get_evaluation_findings(
             severity=row[severity_column],
             reason_codes=row[reasons_column],
             evidence_event_ids=row[evidence_column],
+            review_status="unreviewed",
         )
         for row in page
+    ]
+    try:
+        factory = _session_factory(database_url)
+        with factory() as session:
+            latest_reviews = list_latest_finding_reviews(
+                session,
+                run_id=run_id,
+                finding_ids=[item.finding_id for item in items],
+            )
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail="Finding reviews could not be read.") from None
+    items = [
+        item.model_copy(update={"review_status": latest_reviews[item.finding_id].decision})
+        if item.finding_id in latest_reviews
+        else item
+        for item in items
     ]
     return RunFindingsResponse(
         items=items,
@@ -805,6 +824,8 @@ def get_finding_detail(run_id: str, finding_id: str) -> FindingDetailResponse:
             reviews = list_finding_reviews(session, run_id=run_id, finding_id=finding_id)
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail="Finding reviews could not be read.") from None
+    if reviews:
+        finding = finding.model_copy(update={"review_status": reviews[-1].decision})
     return FindingDetailResponse(
         finding=finding,
         events=events,
@@ -927,6 +948,7 @@ def _resolve_stored_finding(
         severity=row[f"{stem}_severity"],
         reason_codes=row[f"{stem}_reason_codes"],
         evidence_event_ids=row[f"{stem}_evidence_event_ids"],
+        review_status="unreviewed",
     )
 
 

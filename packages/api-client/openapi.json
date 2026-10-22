@@ -1842,6 +1842,16 @@
             },
             "type": "array",
             "title": "Evidence Event Ids"
+          },
+          "review_status": {
+            "type": "string",
+            "enum": [
+              "unreviewed",
+              "under_review",
+              "reviewed_benign",
+              "escalated"
+            ],
+            "title": "Review Status"
           }
         },
         "type": "object",
@@ -1854,7 +1864,8 @@
           "score",
           "severity",
           "reason_codes",
-          "evidence_event_ids"
+          "evidence_event_ids",
+          "review_status"
         ],
         "title": "RunFindingResponse"
       },

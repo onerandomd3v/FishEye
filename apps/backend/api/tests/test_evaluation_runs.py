@@ -134,6 +134,7 @@ def test_import_queue_process_and_read_real_synthetic_run(
     assert any(threat_event_id in item["evidence_event_ids"] for item in finding_items)
     assert all("ground_truth_label" not in item for item in finding_items)
     finding = next(item for item in finding_items if threat_event_id in item["evidence_event_ids"])
+    assert finding["review_status"] == "unreviewed"
 
     detail_url = f"/api/v1/runs/{result['run_id']}/findings/{finding['finding_id']}"
     detail = client.get(detail_url)
@@ -150,6 +151,13 @@ def test_import_queue_process_and_read_real_synthetic_run(
     assert review.status_code == 201
     assert review.json()["reviewer_label"] == "Local development user (not authenticated)"
     assert review.json()["decision"] == "escalated"
+    escalated_queue = client.get(f"/api/v1/runs/{result['run_id']}/findings?detector=contextual")
+    escalated_finding = next(
+        item
+        for item in escalated_queue.json()["items"]
+        if item["finding_id"] == finding["finding_id"]
+    )
+    assert escalated_finding["review_status"] == "escalated"
 
     follow_up = client.post(
         f"{detail_url}/reviews",
@@ -160,8 +168,18 @@ def test_import_queue_process_and_read_real_synthetic_run(
     assert refreshed.status_code == 200
     review_history = refreshed.json()["reviews"]
     assert [item["decision"] for item in review_history] == ["escalated", "reviewed_benign"]
-    assert refreshed.json()["finding"] == finding
+    assert refreshed.json()["finding"]["review_status"] == "reviewed_benign"
+    assert {
+        key: value for key, value in refreshed.json()["finding"].items() if key != "review_status"
+    } == {key: value for key, value in finding.items() if key != "review_status"}
     assert refreshed.json()["events"] == evidence
+    resolved_queue = client.get(f"/api/v1/runs/{result['run_id']}/findings?detector=contextual")
+    resolved_finding = next(
+        item
+        for item in resolved_queue.json()["items"]
+        if item["finding_id"] == finding["finding_id"]
+    )
+    assert resolved_finding["review_status"] == "reviewed_benign"
 
     missing_finding = client.get(
         f"/api/v1/runs/{result['run_id']}/findings/{result['run_id']}:contextual:unknown:2026-01-05"

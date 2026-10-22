@@ -35,51 +35,56 @@ test('a bundled synthetic dataset runs through API, worker, storage, and console
   await sample.getByRole('button', { name: 'Use sample' }).click();
   await page
     .getByRole('checkbox', {
-      name: 'I confirm both files contain synthetic employee and event data only.',
+      name: 'I confirm both files contain fictional people and activity only.',
     })
     .check();
-  await page.getByRole('button', { name: 'Import and run evaluation' }).click();
+  await page.getByRole('button', { name: 'Run evaluation' }).click();
 
-  await page.waitForFunction(
-    () => {
-      const panel = document.querySelector('.dataset-import');
-      return Boolean(
-        panel?.querySelector('.import-state-error') ||
-        panel?.textContent?.includes('Evaluation run completed'),
-      );
-    },
-    undefined,
-    { timeout: 180_000 },
-  );
+  try {
+    await page.waitForFunction(
+      () => {
+        const panel = document.querySelector('.dataset-import');
+        return Boolean(
+          panel?.querySelector('.import-state-error') ||
+          panel?.textContent?.includes('Evaluation complete'),
+        );
+      },
+      undefined,
+      { timeout: 180_000 },
+    );
+  } catch (error) {
+    const panelText = await page.locator('.dataset-import').innerText();
+    console.log(`[e2e] Dataset import state at timeout: ${panelText}`);
+    throw error;
+  }
   const importState = await page.locator('.dataset-import').innerText();
   console.log(`[e2e] Dataset import state:\n${importState}`);
-  expect(importState).toContain('Evaluation run completed');
-  await expect(
-    page.getByText(/Synthetic development result only/),
-  ).toBeVisible();
+  expect(importState).toContain('Evaluation complete');
+  await expect(page.getByText('Results on the evaluation data')).toBeVisible();
 
   await page.goto('/overview');
-  await expect(page.getByText('Synthetic development results')).toBeVisible();
-  await expect(page.getByText('Employee-days evaluated')).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Latest findings' }),
+  ).toBeVisible();
+  await expect(page.getByText('Person-days evaluated')).toBeVisible();
 
   await page.goto('/evaluation');
+  await expect(page.getByRole('heading', { name: 'Evaluation' })).toBeVisible();
+  await page
+    .getByRole('link', { name: /View run/ })
+    .first()
+    .click();
   await expect(
-    page.getByRole('heading', { name: 'Model evaluation' }),
+    page.getByRole('heading', { name: 'Compare methods' }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'View run' }).first().click();
+  await expect(page.getByRole('heading', { name: 'Findings' })).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: 'Confusion counts' }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'Per-scenario metrics' }),
-  ).toBeVisible();
-  await expect(
-    page.getByText('Development experiment on synthetic data only.'),
+    page.getByRole('columnheader', { name: 'Score cutoff' }),
   ).toBeVisible();
 
   await page.goto('/investigations');
   await expect(
-    page.getByRole('heading', { name: 'Findings from evaluation runs' }),
+    page.getByRole('heading', { name: 'Investigations' }),
   ).toBeVisible();
   await expect(
     page.getByRole('row').filter({ hasText: 'emp-access-demo' }).first(),

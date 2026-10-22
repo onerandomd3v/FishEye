@@ -6,6 +6,19 @@ function metricValue(value: unknown): number | null {
   return typeof number === 'number' && Number.isFinite(number) ? number : null;
 }
 
+export function formatDetectorName(value: string): string {
+  switch (value) {
+    case 'simple_rule':
+      return 'Simple rules';
+    case 'tuned_rules':
+      return 'Tuned rules';
+    case 'contextual':
+      return 'Contextual scoring';
+    default:
+      return value.replaceAll('_', ' ');
+  }
+}
+
 export function formatMetricRatio(value: unknown): string {
   const record = asRecord(value);
   if (
@@ -17,6 +30,20 @@ export function formatMetricRatio(value: unknown): string {
   }
   const number = metricValue(value);
   return number === null ? 'Unavailable' : `${(number * 100).toFixed(1)}%`;
+}
+
+export function formatMetricRatioWithCount(value: unknown): string {
+  const record = asRecord(value);
+  const formatted = formatMetricRatio(value);
+  if (
+    typeof record?.numerator !== 'number' ||
+    typeof record.denominator !== 'number' ||
+    formatted === 'Unavailable' ||
+    formatted.startsWith('Not defined')
+  ) {
+    return formatted;
+  }
+  return `${formatted} (${record.numerator} of ${record.denominator})`;
 }
 
 export function formatAlertsPer100EmployeeDays(value: unknown): string {

@@ -8,6 +8,7 @@ import { ScenarioPicker, type ScenarioPack } from './scenario-picker';
 type SampleFiles = { csv: File; context: File };
 
 export function ScenarioLab() {
+  const [inputMode, setInputMode] = useState<'sample' | 'upload'>('sample');
   const [selected, setSelected] = useState<ScenarioPack | null>(null);
   const [files, setFiles] = useState<SampleFiles | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -60,40 +61,79 @@ export function ScenarioLab() {
 
   return (
     <>
-      <ScenarioPicker
-        selectedId={selected?.id ?? null}
-        loadingId={loadingId}
-        disabled={runWorking}
-        error={error}
-        onSelect={selectScenario}
-      />
-      {files ? (
-        <div className="sample-selection" role="status">
-          {selected?.name} selected. Confirm the files are synthetic, then start
-          the run below. Download the matching{' '}
-          <a href={selected?.context} download>
-            context JSON
-          </a>{' '}
-          if you need to inspect it.{' '}
+      <div
+        className="scenario-mode"
+        role="group"
+        aria-label="Choose how to start"
+      >
+        <Button
+          type="button"
+          variant={inputMode === 'sample' ? 'primary' : 'secondary'}
+          aria-pressed={inputMode === 'sample'}
+          disabled={runWorking || loadingId !== null}
+          onClick={() => {
+            if (inputMode === 'upload') {
+              setSelected(null);
+              setFiles(null);
+            }
+            setInputMode('sample');
+          }}
+        >
+          Use a sample
+        </Button>
+        <Button
+          type="button"
+          variant={inputMode === 'upload' ? 'primary' : 'secondary'}
+          aria-pressed={inputMode === 'upload'}
+          disabled={runWorking || loadingId !== null}
+          onClick={() => {
+            setInputMode('upload');
+            setSelected(null);
+            setFiles(null);
+          }}
+        >
+          Upload files
+        </Button>
+      </div>
+
+      {inputMode === 'sample' && !files ? (
+        <ScenarioPicker
+          selectedId={selected?.id ?? null}
+          loadingId={loadingId}
+          disabled={runWorking}
+          error={error}
+          onSelect={selectScenario}
+        />
+      ) : null}
+
+      {inputMode === 'sample' && files ? (
+        <section className="sample-selection" aria-label="Selected sample">
+          <div>
+            <span className="metric-label">Selected sample</span>
+            <strong>{selected?.name}</strong>
+          </div>
           <Button
             type="button"
-            variant="ghost"
+            variant="secondary"
             disabled={runWorking}
             onClick={() => {
               setSelected(null);
               setFiles(null);
             }}
           >
-            Choose your own files
+            Change sample
           </Button>
-        </div>
+        </section>
       ) : null}
-      <DatasetImport
-        key={selected?.id ?? 'manual-upload'}
-        initialCsv={files?.csv ?? null}
-        initialContextFile={files?.context ?? null}
-        onWorkingChange={setRunWorking}
-      />
+
+      {inputMode === 'upload' || files ? (
+        <DatasetImport
+          key={selected?.id ?? 'manual-upload'}
+          initialCsv={files?.csv ?? null}
+          initialContextFile={files?.context ?? null}
+          onWorkingChange={setRunWorking}
+        />
+      ) : null}
     </>
   );
 }

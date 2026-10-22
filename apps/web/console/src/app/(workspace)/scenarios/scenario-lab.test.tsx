@@ -28,6 +28,35 @@ afterEach(() => {
 });
 
 describe('scenario lab sample workflow', () => {
+  it('prevents switching to uploads while a sample is loading', async () => {
+    vi.stubGlobal('File', NodeFile);
+    let resolveSample!: (value: Awaited<ReturnType<typeof response>>) => void;
+    const sampleResponse = new Promise<Awaited<ReturnType<typeof response>>>(
+      (resolve) => {
+        resolveSample = resolve;
+      },
+    );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => sampleResponse),
+    );
+
+    render(<ScenarioLab />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Use sample' })[0]!);
+
+    const uploadButton = screen.getByRole('button', { name: 'Upload files' });
+    expect(uploadButton.hasAttribute('disabled')).toBe(true);
+
+    resolveSample(await response(200, 'synthetic sample'));
+    expect(
+      await screen.findByText('Overtime and out-of-role activity'),
+    ).toBeTruthy();
+    await waitFor(() =>
+      expect(uploadButton.hasAttribute('disabled')).toBe(false),
+    );
+    expect(uploadButton.getAttribute('aria-pressed')).toBe('false');
+  });
+
   it('sends a selected sample through validation, import, and the real run API', async () => {
     vi.stubEnv('FISHEYE_TEST_API_URL', 'http://127.0.0.1:8000');
     vi.stubGlobal('File', NodeFile);
@@ -77,18 +106,16 @@ describe('scenario lab sample workflow', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Use sample' })[0]!);
 
     expect(
-      await screen.findByText(/Overtime and out-of-role activity selected/),
+      await screen.findByText('Overtime and out-of-role activity'),
     ).toBeTruthy();
     fireEvent.click(
       screen.getByRole('checkbox', {
-        name: /I confirm both files contain synthetic employee and event data only/i,
+        name: /I confirm both files contain fictional people and activity only/i,
       }),
     );
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Import and run evaluation' }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Run evaluation' }));
 
-    expect(await screen.findByText('Evaluation run completed')).toBeTruthy();
+    expect(await screen.findByText('Evaluation complete')).toBeTruthy();
     await waitFor(() => {
       expect(apiCalls).toEqual([
         'POST /api/v1/datasets/imports/validate',
