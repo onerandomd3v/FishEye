@@ -24,12 +24,12 @@ Start each application in a separate terminal:
 
 ```sh
 pnpm dev:landing  # Astro at http://localhost:4321
-pnpm dev:console  # Next.js at http://localhost:3000
+pnpm dev:console  # Next.js at http://127.0.0.1:3000
 pnpm dev:api      # FastAPI at http://127.0.0.1:8000
 uv run --package fisheye-worker fisheye-worker work  # Polls for durable development runs
 ```
 
-For the local landing page and console, copy each app's `.env.example` to `.env.local`. The landing app's `PUBLIC_CONSOLE_URL` points its buttons to the separate console origin (`http://localhost:3000/login`). For the local-only console demo, set `FISHEYE_DEMO_EMAIL` and `FISHEYE_DEMO_PASSWORD` and `FISHEYE_SESSION_SECRET` to a random secret of at least 32 characters. Restart both dev servers after changing environment files. The console proxies API requests from its server, so configure `API_INTERNAL_URL` there; browser code never receives API tokens or the API's private address.
+For the local landing page and console, copy each app's `.env.example` to `.env.local`. The landing app's `PUBLIC_CONSOLE_URL` points its buttons to the separate console origin (`http://127.0.0.1:3000/login`). For the local-only console demo, set `FISHEYE_DEMO_EMAIL` and `FISHEYE_DEMO_PASSWORD` and `FISHEYE_SESSION_SECRET` to a random secret of at least 32 characters. Restart both dev servers after changing environment files. The console proxies API requests from its server, so configure `API_INTERNAL_URL` there; browser code never receives API tokens or the API's private address.
 
 The console's demo login and signed session are enabled only by the Next.js development server. They provide a local UI gate for synthetic fixtures; they are not an identity provider, do not authorize FastAPI requests, and must not be used in a shared or production deployment. Keep `.env.local` files untracked.
 
