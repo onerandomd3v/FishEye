@@ -41,7 +41,7 @@ describe('development evaluation run flow', () => {
     render(<DatasetImport />);
     expect(
       screen
-        .getByRole('button', { name: 'Import and run evaluation' })
+        .getByRole('button', { name: 'Run evaluation' })
         .hasAttribute('disabled'),
     ).toBe(true);
     expect(
@@ -106,7 +106,7 @@ describe('development evaluation run flow', () => {
       .mockImplementationOnce(() => response(200, run));
     vi.stubGlobal('fetch', fetchMock);
     render(<DatasetImport />);
-    fireEvent.change(screen.getByLabelText('Synthetic events CSV'), {
+    fireEvent.change(screen.getByLabelText('Events CSV'), {
       target: {
         files: [
           new File(
@@ -117,23 +117,25 @@ describe('development evaluation run flow', () => {
         ],
       },
     });
-    fireEvent.change(screen.getByLabelText('Synthetic employee context JSON'), {
+    fireEvent.change(screen.getByLabelText('Roles and schedules (JSON)'), {
       target: { files: [file('context.json', context, 'application/json')] },
     });
     fireEvent.click(screen.getByLabelText(/I confirm both files/i));
     fireEvent.click(
-      screen.getByRole('button', { name: 'Import and run evaluation' }),
+      screen.getByRole('button', { name: 'Run evaluation' }),
     );
 
     expect(
       await screen.findByText(
-        'Evaluation run completed',
+        'Evaluation complete',
         {},
         { timeout: 5000 },
       ),
     ).toBeTruthy();
     expect(screen.getByText('50.0%')).toBeTruthy();
-    expect(screen.getByText(/not_benchmarked/)).toBeTruthy();
+    expect(
+      screen.getByRole('link', { name: 'About evaluation results' }).getAttribute('href'),
+    ).toBe('/guide#results');
     expect(fetchMock).toHaveBeenCalledTimes(4);
     const createRequest = fetchMock.mock.calls[2]?.[0] as Request;
     expect(createRequest.url).toContain('/api/v1/runs');
@@ -211,21 +213,21 @@ describe('development evaluation run flow', () => {
       .mockImplementationOnce(() => response(202, terminalRun));
     vi.stubGlobal('fetch', fetchMock);
     render(<DatasetImport />);
-    fireEvent.change(screen.getByLabelText('Synthetic events CSV'), {
+    fireEvent.change(screen.getByLabelText('Events CSV'), {
       target: { files: [file('events.csv', 'csv', 'text/csv')] },
     });
-    fireEvent.change(screen.getByLabelText('Synthetic employee context JSON'), {
+    fireEvent.change(screen.getByLabelText('Roles and schedules (JSON)'), {
       target: { files: [file('context.json', context, 'application/json')] },
     });
     fireEvent.click(screen.getByLabelText(/I confirm both files/i));
 
     const submit = screen.getByRole('button', {
-      name: 'Import and run evaluation',
+      name: 'Run evaluation',
     });
     fireEvent.click(submit);
     expect(await screen.findByRole('alert')).toBeTruthy();
     fireEvent.click(submit);
-    expect(await screen.findByText('Evaluation run completed')).toBeTruthy();
+    expect(await screen.findByText('Evaluation complete')).toBeTruthy();
 
     const firstRunRequest = fetchMock.mock.calls[2]?.[0] as Request;
     const retryRunRequest = fetchMock.mock.calls[5]?.[0] as Request;
@@ -237,15 +239,15 @@ describe('development evaluation run flow', () => {
 
   it('surfaces a clear API configuration error', async () => {
     render(<DatasetImport />);
-    fireEvent.change(screen.getByLabelText('Synthetic events CSV'), {
+    fireEvent.change(screen.getByLabelText('Events CSV'), {
       target: { files: [file('events.csv', 'csv', 'text/csv')] },
     });
-    fireEvent.change(screen.getByLabelText('Synthetic employee context JSON'), {
+    fireEvent.change(screen.getByLabelText('Roles and schedules (JSON)'), {
       target: { files: [file('context.json', context, 'application/json')] },
     });
     fireEvent.click(screen.getByLabelText(/I confirm both files/i));
     fireEvent.click(
-      screen.getByRole('button', { name: 'Import and run evaluation' }),
+      screen.getByRole('button', { name: 'Run evaluation' }),
     );
     await waitFor(() =>
       expect(screen.getByRole('alert').textContent).toContain(

@@ -77,18 +77,18 @@ describe('scenario lab sample workflow', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Use sample' })[0]!);
 
     expect(
-      await screen.findByText(/Overtime and out-of-role activity selected/),
+      await screen.findByText('Overtime and out-of-role activity'),
     ).toBeTruthy();
     fireEvent.click(
       screen.getByRole('checkbox', {
-        name: /I confirm both files contain synthetic employee and event data only/i,
+        name: /I confirm both files contain fictional people and activity only/i,
       }),
     );
     fireEvent.click(
-      screen.getByRole('button', { name: 'Import and run evaluation' }),
+      screen.getByRole('button', { name: 'Run evaluation' }),
     );
 
-    expect(await screen.findByText('Evaluation run completed')).toBeTruthy();
+    expect(await screen.findByText('Evaluation complete')).toBeTruthy();
     await waitFor(() => {
       expect(apiCalls).toEqual([
         'POST /api/v1/datasets/imports/validate',

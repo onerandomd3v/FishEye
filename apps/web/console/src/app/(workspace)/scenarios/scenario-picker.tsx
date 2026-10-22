@@ -22,11 +22,9 @@ export function ScenarioPicker({
     <section className="card section-card" aria-labelledby="scenario-title">
       <div className="section-title-row">
         <div>
-          <p className="metric-label">DEVELOPMENT · SYNTHETIC DATA ONLY</p>
           <h2 id="scenario-title">Choose a sample dataset</h2>
           <p className="card-intro">
-            Each sample includes an events CSV and matching context file. It
-            uses the same validation and worker flow as your own synthetic data.
+            Start with a ready-to-run example.
           </p>
         </div>
         <a
@@ -65,14 +63,17 @@ export function ScenarioPicker({
                   ? 'Selected'
                   : 'Use sample'}
             </Button>
-            <div className="sample-downloads">
+            <details className="sample-downloads">
+              <summary>Download files</summary>
+              <div>
               <a href={scenario.csv} download className="sample-download">
                 Download CSV
               </a>
               <a href={scenario.context} download className="sample-download">
                 Download context
               </a>
-            </div>
+              </div>
+            </details>
           </article>
         ))}
       </div>
@@ -81,10 +82,6 @@ export function ScenarioPicker({
           {error}
         </p>
       ) : null}
-      <p className="below-table-note">
-        Samples are illustrative synthetic inputs. FishEye does not claim these
-        results represent real employees, banks, or production performance.
-      </p>
     </section>
   );
 }

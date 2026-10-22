@@ -6,7 +6,7 @@ export default function ScenariosPage() {
     <>
       <PageHeading
         title="Scenario lab"
-        description="Run a bundled synthetic sample or upload your own synthetic dataset, then inspect the worker's actual results."
+        description="Choose a sample or upload files, run an evaluation, and review the results."
       />
       <ScenarioLab />
     </>

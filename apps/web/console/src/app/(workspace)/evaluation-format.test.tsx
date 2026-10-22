@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatAlertsPer100EmployeeDays,
+  formatDetectorName,
   formatMetricRatio,
 } from './evaluation-format';
 
 describe('evaluation metric formatting', () => {
   it('formats ratios as percentages', () => {
     expect(formatMetricRatio({ value: 0.5 })).toBe('50.0%');
+  });
+
+  it('uses plain-language detector names', () => {
+    expect(formatDetectorName('simple_rule')).toBe('Simple rules');
+    expect(formatDetectorName('tuned_rules')).toBe('Tuned rules');
+    expect(formatDetectorName('contextual')).toBe('Contextual scoring');
   });
 
   it('keeps alert burden in alerts per 100 employee-days', () => {

@@ -604,6 +604,12 @@ export interface components {
       reason_codes: string[];
       /** Evidence Event Ids */
       evidence_event_ids: string[];
+      /**
+       * Review Status
+       * @enum {string}
+       */
+      review_status:
+        'unreviewed' | 'under_review' | 'reviewed_benign' | 'escalated';
     };
     /** RunFindingsResponse */
     RunFindingsResponse: {

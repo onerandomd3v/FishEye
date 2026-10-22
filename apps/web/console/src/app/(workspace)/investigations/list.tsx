@@ -5,16 +5,39 @@ import { useEffect, useMemo, useState } from 'react';
 import type { components } from '@fisheye/api-client';
 import { Button, Notice } from '@fisheye/ui';
 import { EmptyState } from '../shared';
+import { formatDetectorName } from '../evaluation-format';
 import { apiBaseUrl, apiErrorMessage, investigationApi } from './data';
 
 type Run = components['schemas']['EvaluationRunResponse'];
 type Finding = components['schemas']['RunFindingResponse'];
 type RequestState = 'loading' | 'ready' | 'error';
+type ReviewStatusFilter = 'all' | Finding['review_status'];
 
-export function InvestigationList() {
+function reviewStatusLabel(status: Finding['review_status']) {
+  switch (status) {
+    case 'unreviewed':
+      return 'Needs review';
+    case 'under_review':
+      return 'Under review';
+    case 'reviewed_benign':
+      return 'Resolved';
+    case 'escalated':
+      return 'Escalated';
+  }
+}
+
+export function InvestigationList({
+  initialRunId = '',
+  initialDetector = 'contextual',
+}: {
+  initialRunId?: string;
+  initialDetector?: Finding['detector'];
+}) {
   const [runs, setRuns] = useState<Run[]>([]);
-  const [selectedRunId, setSelectedRunId] = useState('');
-  const [detector, setDetector] = useState<Finding['detector']>('contextual');
+  const [selectedRunId, setSelectedRunId] = useState(initialRunId);
+  const [detector, setDetector] =
+    useState<Finding['detector']>(initialDetector);
+  const [reviewStatus, setReviewStatus] = useState<ReviewStatusFilter>('all');
   const [findings, setFindings] = useState<Finding[]>([]);
   const [search, setSearch] = useState('');
   const [offset, setOffset] = useState(0);
@@ -116,12 +139,14 @@ export function InvestigationList() {
 
   const visibleFindings = useMemo(
     () =>
-      findings.filter((finding) =>
-        `${finding.employee_id} ${finding.employee_day_utc} ${finding.reason_codes.join(' ')}`
-          .toLowerCase()
-          .includes(search.toLowerCase()),
+      findings.filter(
+        (finding) =>
+          (reviewStatus === 'all' || finding.review_status === reviewStatus) &&
+          `${finding.employee_id} ${finding.employee_day_utc} ${finding.reason_codes.join(' ')}`
+            .toLowerCase()
+            .includes(search.toLowerCase()),
       ),
-    [findings, search],
+    [findings, reviewStatus, search],
   );
 
   function retry() {
@@ -157,8 +182,8 @@ export function InvestigationList() {
   if (runs.length === 0) {
     return (
       <EmptyState title="No evaluation runs yet">
-        Start a development evaluation with a synthetic CSV and employee
-        context. Completed findings will appear here.
+        Run an evaluation in Scenario Lab. Its findings will appear here when
+        the run is complete.
         <span className="empty-state-action">
           <Link className="fe-button fe-button-primary" href="/scenarios">
             Open scenario lab
@@ -175,12 +200,12 @@ export function InvestigationList() {
     >
       <div className="section-title-row">
         <div>
-          <h2 id="investigations-table-title">Findings from evaluation runs</h2>
+          <h2 id="investigations-table-title">Review queue</h2>
           <p className="card-intro">
-            Stored employee-day findings, evidence-led and synthetic only.
+            Check flagged activity and track follow-up. Review status does not
+            change employee access.
           </p>
         </div>
-        <span className="fixture-tag">Synthetic data</span>
       </div>
       <Notice title="Development data">
         This workspace uses synthetic data and one shared analyst login. The
@@ -218,9 +243,31 @@ export function InvestigationList() {
               setOffset(0);
             }}
           >
-            <option value="contextual">FishEye contextual</option>
-            <option value="simple_rule">Simple rules</option>
-            <option value="tuned_rules">Tuned rules</option>
+            <option value="contextual">
+              {formatDetectorName('contextual')}
+            </option>
+            <option value="simple_rule">
+              {formatDetectorName('simple_rule')}
+            </option>
+            <option value="tuned_rules">
+              {formatDetectorName('tuned_rules')}
+            </option>
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="investigation-status">Review status</label>
+          <select
+            id="investigation-status"
+            value={reviewStatus}
+            onChange={(event) =>
+              setReviewStatus(event.target.value as ReviewStatusFilter)
+            }
+          >
+            <option value="all">All statuses</option>
+            <option value="unreviewed">Needs review</option>
+            <option value="under_review">Under review</option>
+            <option value="escalated">Escalated</option>
+            <option value="reviewed_benign">Resolved</option>
           </select>
         </div>
         <div className="field search-field">
@@ -262,13 +309,12 @@ export function InvestigationList() {
         <>
           <p className="below-table-note" role="status">
             Showing {offset + 1}–{Math.min(offset + limit, total)} of {total}{' '}
-            findings. Search filters the rows on this page only.
+            findings. Status and search filters apply to this page.
           </p>
           <div className="table-wrap">
             <table className="data-table">
               <caption className="visually-hidden">
-                Stored findings for run {selectedRun.run_id}, detector{' '}
-                {detector}
+                Review queue for run {selectedRun.run_id}, detector {detector}
               </caption>
               <thead>
                 <tr>
@@ -276,6 +322,7 @@ export function InvestigationList() {
                   <th scope="col">UTC day</th>
                   <th scope="col">Priority score</th>
                   <th scope="col">Severity</th>
+                  <th scope="col">Review status</th>
                   <th scope="col">Reason codes</th>
                   <th scope="col">Evidence</th>
                 </tr>
@@ -285,7 +332,7 @@ export function InvestigationList() {
                   <tr key={finding.finding_id}>
                     <td>
                       <Link
-                        href={`/investigations/${encodeURIComponent(finding.finding_id)}`}
+                        href={`/investigations/${encodeURIComponent(finding.finding_id)}?run_id=${encodeURIComponent(selectedRun.run_id)}&detector=${detector}`}
                       >
                         {finding.employee_id}
                       </Link>
@@ -293,6 +340,11 @@ export function InvestigationList() {
                     <td>{finding.employee_day_utc}</td>
                     <td>{finding.score} / 100</td>
                     <td>{finding.severity}</td>
+                    <td>
+                      <span className="review-status">
+                        {reviewStatusLabel(finding.review_status)}
+                      </span>
+                    </td>
                     <td>
                       {finding.reason_codes.join(', ') || 'No reason codes'}
                     </td>
@@ -304,7 +356,7 @@ export function InvestigationList() {
           </div>
           {visibleFindings.length === 0 && (
             <p className="below-table-note" role="status">
-              No findings on this page match that search.
+              No findings on this page match the selected status or search.
             </p>
           )}
           <div className="table-actions">
@@ -332,8 +384,8 @@ export function InvestigationList() {
         </>
       )}
       <p className="below-table-note">
-        Run {selectedRun?.run_id}; {selectedRun?.claim_status}. Scores are
-        investigation priority, not proof of intent.
+        Run {selectedRun?.run_id}. Scores help set investigation priority; they
+        are not proof of intent.
       </p>
     </section>
   );
