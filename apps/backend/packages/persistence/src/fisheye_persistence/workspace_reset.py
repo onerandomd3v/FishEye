@@ -49,7 +49,10 @@ def workspace_counts(session: Session) -> WorkspaceCounts:
 def reset_workspace(session: Session, artifact_root: Path) -> WorkspaceResetResult:
     """Remove all run, review, dataset and referenced artifact data atomically."""
     root = artifact_root.resolve()
-    if session.bind is not None and session.bind.dialect.name == "postgresql":
+    dialect_name = session.get_bind().dialect.name
+    if dialect_name == "sqlite":
+        session.connection().exec_driver_sql("BEGIN IMMEDIATE")
+    elif dialect_name == "postgresql":
         session.execute(
             text(
                 "LOCK TABLE datasets, evaluation_runs, finding_reviews IN SHARE ROW EXCLUSIVE MODE"
@@ -66,7 +69,6 @@ def reset_workspace(session: Session, artifact_root: Path) -> WorkspaceResetResu
     paths = _artifact_paths(root, runs, datasets)
     quarantine = root / f".workspace-reset-{uuid4()}"
     moved: list[tuple[Path, Path]] = []
-    committed = False
     try:
         for original in paths:
             if not original.exists():
@@ -82,17 +84,26 @@ def reset_workspace(session: Session, artifact_root: Path) -> WorkspaceResetResu
         session.execute(delete(EvaluationRunRecord))
         session.execute(delete(DatasetRecord))
         session.commit()
-        committed = True
-    except BaseException:
-        session.rollback()
+    except BaseException as error:
+        try:
+            session.rollback()
+        except BaseException as rollback_error:
+            error.add_note(f"Workspace reset rollback failed: {rollback_error}")
+
+        restore_failed = False
         for original, quarantined in reversed(moved):
             if quarantined.exists():
-                original.parent.mkdir(parents=True, exist_ok=True)
-                quarantined.replace(original)
-        raise
-    finally:
-        if not committed and quarantine.exists():
+                try:
+                    original.parent.mkdir(parents=True, exist_ok=True)
+                    quarantined.replace(original)
+                except OSError as restore_error:
+                    restore_failed = True
+                    error.add_note(
+                        f"Could not restore {original} from {quarantined}: {restore_error}"
+                    )
+        if quarantine.exists() and not restore_failed:
             shutil.rmtree(quarantine, ignore_errors=True)
+        raise
 
     artifacts_removed = True
     if quarantine.exists():

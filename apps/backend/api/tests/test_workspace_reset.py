@@ -7,8 +7,11 @@ from fisheye_api.main import app
 from fisheye_persistence.datasets import Base, DatasetRecord, create_session_factory
 from fisheye_persistence.reviews import FindingReviewRecord
 from fisheye_persistence.runs import EvaluationRunRecord
-from sqlalchemy import create_engine, func, select
+from fisheye_persistence.workspace_reset import reset_workspace
+from sqlalchemy import create_engine, event, func, select
 from sqlalchemy.engine import URL
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 
 def configured_workspace(tmp_path: Path, monkeypatch, *, status: str = "completed"):
@@ -125,6 +128,113 @@ def test_local_reset_refuses_active_evaluations(tmp_path, monkeypatch) -> None:
     assert response.status_code == 409
     assert (artifact_root / "datasets/aa/hash/source.csv.enc").is_file()
     assert client.get("/api/v1/local-workspace").json()["run_count"] == 1
+
+
+def test_local_reset_rejects_incorrect_confirmation_without_mutating_data(
+    tmp_path, monkeypatch
+) -> None:
+    database_url, artifact_root, client = configured_workspace(tmp_path, monkeypatch)
+
+    response = client.request(
+        "DELETE",
+        "/api/v1/local-workspace/data",
+        json={"confirmation": "DELETE ALL"},
+    )
+
+    assert response.status_code == 422
+    assert (artifact_root / "datasets/aa/hash/source.csv.enc").is_file()
+    assert client.get("/api/v1/local-workspace").json()["run_count"] == 1
+    with create_session_factory(database_url)() as session:
+        assert session.scalar(select(func.count()).select_from(EvaluationRunRecord)) == 1
+        assert session.scalar(select(func.count()).select_from(DatasetRecord)) == 1
+        assert session.scalar(select(func.count()).select_from(FindingReviewRecord)) == 1
+
+
+def test_sqlite_reset_locks_before_reading_workspace_records(tmp_path, monkeypatch) -> None:
+    _, artifact_root, _ = configured_workspace(tmp_path, monkeypatch)
+    engine = create_engine(
+        str(URL.create("sqlite+pysqlite", database=str(tmp_path / "workspace.db")))
+    )
+    statements: list[str] = []
+
+    def record_statement(connection, cursor, statement, parameters, context, executemany):
+        statements.append(statement.strip().upper())
+
+    event.listen(engine, "before_cursor_execute", record_statement)
+    with Session(engine) as session:
+        reset_workspace(session, artifact_root)
+    engine.dispose()
+
+    immediate_transaction = statements.index("BEGIN IMMEDIATE")
+    first_workspace_read = min(
+        index
+        for index, statement in enumerate(statements)
+        if statement.startswith("SELECT")
+        and ("EVALUATION_RUNS" in statement or "DATASETS" in statement)
+    )
+    assert immediate_transaction < first_workspace_read
+
+
+def test_reset_commit_failure_restores_artifacts_and_database_rows(
+    tmp_path, monkeypatch
+) -> None:
+    database_url, artifact_root, client = configured_workspace(tmp_path, monkeypatch)
+
+    def fail_commit(_session):
+        raise SQLAlchemyError("forced commit failure")
+
+    monkeypatch.setattr(Session, "commit", fail_commit)
+    response = client.request(
+        "DELETE",
+        "/api/v1/local-workspace/data",
+        json={"confirmation": "CLEAR ALL DATA"},
+    )
+
+    assert response.status_code == 503
+    assert (artifact_root / "datasets/aa/hash/source.csv.enc").is_file()
+    assert (artifact_root / "datasets/aa/hash/manifest.json.enc").is_file()
+    assert (artifact_root / "run-inputs/dd/context.json.enc").is_file()
+    assert (artifact_root / "runs/run-0001/ff/analysis/scores.parquet.enc").is_file()
+    assert list(artifact_root.glob(".workspace-reset-*")) == []
+    with create_session_factory(database_url)() as session:
+        assert session.scalar(select(func.count()).select_from(EvaluationRunRecord)) == 1
+        assert session.scalar(select(func.count()).select_from(DatasetRecord)) == 1
+        assert session.scalar(select(func.count()).select_from(FindingReviewRecord)) == 1
+
+
+def test_reset_keeps_quarantine_when_an_artifact_cannot_be_restored(
+    tmp_path, monkeypatch
+) -> None:
+    database_url, artifact_root, client = configured_workspace(tmp_path, monkeypatch)
+    original_replace = Path.replace
+
+    def fail_context_restore(path: Path, target: Path):
+        in_quarantine = any(part.startswith(".workspace-reset-") for part in path.parts)
+        if in_quarantine and target.name == "context.json.enc":
+            raise OSError("forced restore failure")
+        return original_replace(path, target)
+
+    def fail_commit(_session):
+        raise SQLAlchemyError("forced commit failure")
+
+    monkeypatch.setattr(Path, "replace", fail_context_restore)
+    monkeypatch.setattr(Session, "commit", fail_commit)
+    response = client.request(
+        "DELETE",
+        "/api/v1/local-workspace/data",
+        json={"confirmation": "CLEAR ALL DATA"},
+    )
+
+    assert response.status_code == 503
+    assert (artifact_root / "datasets/aa/hash/source.csv.enc").is_file()
+    assert (artifact_root / "runs/run-0001/ff/analysis/scores.parquet.enc").is_file()
+    quarantines = list(artifact_root.glob(".workspace-reset-*"))
+    assert len(quarantines) == 1
+    assert (quarantines[0] / "run-inputs/dd/context.json.enc").is_file()
+    with create_session_factory(database_url)() as session:
+        assert session.scalar(select(func.count()).select_from(EvaluationRunRecord)) == 1
+        assert session.scalar(select(func.count()).select_from(DatasetRecord)) == 1
+        assert session.scalar(select(func.count()).select_from(FindingReviewRecord)) == 1
 
 
 def test_local_reset_is_disabled_without_explicit_opt_in(tmp_path, monkeypatch) -> None:

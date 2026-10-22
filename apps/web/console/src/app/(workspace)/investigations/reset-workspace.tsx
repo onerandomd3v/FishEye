@@ -1,14 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import type { components } from '@fisheye/api-client';
+import { apiBaseUrl, investigationApi } from './data';
 
-type WorkspaceStatus = {
-  enabled: boolean;
-  run_count: number;
-  dataset_count: number;
-  review_count: number;
-  active_run_count: number;
-};
+type WorkspaceStatus = components['schemas']['LocalWorkspaceResponse'];
 
 const CONFIRMATION = 'CLEAR ALL DATA';
 
@@ -23,15 +19,22 @@ export function ResetWorkspace() {
 
   useEffect(() => {
     let current = true;
-    void fetch('/api/backend/api/v1/local-workspace', {
-      cache: 'no-store',
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error('Workspace status is unavailable.');
-        return (await response.json()) as WorkspaceStatus;
-      })
-      .then((value) => {
-        if (current) setStatus(value);
+    if (!apiBaseUrl()) return;
+    void investigationApi()
+      .GET('/api/v1/local-workspace')
+      .then(({ data, response }) => {
+        if (current)
+          setStatus(
+            response.ok && data
+              ? data
+              : {
+                  enabled: false,
+                  run_count: 0,
+                  dataset_count: 0,
+                  review_count: 0,
+                  active_run_count: 0,
+                },
+          );
       })
       .catch(() => {
         if (current)
@@ -62,20 +65,17 @@ export function ResetWorkspace() {
     setBusy(true);
     setError('');
     try {
-      const response = await fetch('/api/backend/api/v1/local-workspace/data', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ confirmation }),
-      });
-      const result = (await response.json()) as {
-        detail?: string;
-        deleted_run_count?: number;
-        deleted_dataset_count?: number;
-        deleted_review_count?: number;
-        artifacts_removed?: boolean;
-      };
-      if (!response.ok)
-        throw new Error(result.detail ?? 'Workspace could not be cleared.');
+      const { data, error, response } = await investigationApi().DELETE(
+        '/api/v1/local-workspace/data',
+        { body: { confirmation } },
+      );
+      if (!response.ok || !data) {
+        throw new Error(
+          typeof error?.detail === 'string'
+            ? error.detail
+            : 'Workspace could not be cleared.',
+        );
+      }
       setStatus({
         enabled: true,
         run_count: 0,
@@ -84,7 +84,7 @@ export function ResetWorkspace() {
         active_run_count: 0,
       });
       setNotice(
-        result.artifacts_removed
+        data.artifacts_removed
           ? 'Saved runs, reviews, datasets, and files were cleared.'
           : 'Saved records were cleared, but some stored files still need cleanup.',
       );

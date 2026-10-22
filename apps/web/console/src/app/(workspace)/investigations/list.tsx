@@ -52,8 +52,12 @@ function formatRunDate(value: string) {
   return Number.isNaN(date.valueOf())
     ? value
     : new Intl.DateTimeFormat(undefined, {
-        dateStyle: 'medium',
-        timeStyle: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZoneName: 'short',
       }).format(date);
 }
 
@@ -264,7 +268,8 @@ export function InvestigationList({
           >
             {runs.map((run) => (
               <option key={run.run_id} value={run.run_id}>
-                {formatRunDate(run.created_at)} · {run.status}
+                {formatRunDate(run.created_at)} · {run.run_id.slice(0, 8)} ·{' '}
+                {run.status}
               </option>
             ))}
           </select>

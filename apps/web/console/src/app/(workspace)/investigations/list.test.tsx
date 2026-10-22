@@ -91,6 +91,11 @@ describe('investigation list', () => {
     expect(
       await screen.findByRole('link', { name: 'emp-synth-1' }),
     ).toBeTruthy();
+    expect(
+      screen.getByRole('option', {
+        name: /\b(?:UTC|GMT(?:[+-]\d+)?) · run-real · completed$/i,
+      }),
+    ).toBeTruthy();
     expect(screen.getByText('New device')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Review queue' })).toBeTruthy();
     expect(screen.getByRole('cell', { name: 'Needs review' })).toBeTruthy();
