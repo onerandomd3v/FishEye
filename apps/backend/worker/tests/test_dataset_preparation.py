@@ -11,6 +11,7 @@ import pytest
 from cryptography.fernet import Fernet
 from fisheye_domain.csv_schema import CSV_HEADERS
 from fisheye_domain.csv_validation import validate_events_csv
+from fisheye_persistence.artifacts import LocalArtifactStore
 from fisheye_persistence.datasets import Base, DatasetRecord, create_session_factory, import_dataset
 from fisheye_worker import dataset_preparation
 from fisheye_worker.dataset_preparation import (
@@ -259,6 +260,28 @@ def test_losing_publisher_reuses_the_winning_artifacts(imported_dataset) -> None
         assert persisted.analysis_manifest_sha256 == winner.manifest_sha256
         assert persisted.prepared_at.replace(tzinfo=UTC) == winner.prepared_at
         assert prepared.analysis_manifest_sha256 == winner.manifest_sha256
+
+
+def test_retry_after_orphaned_preparation_uses_content_addressed_prefix(imported_dataset) -> None:
+    database_url, artifact_root, encryption_key, dataset_id, _ = imported_dataset
+    factory = create_session_factory(database_url)
+    with factory() as session:
+        record = session.get(DatasetRecord, dataset_id)
+        assert record is not None
+        legacy_prefix = (Path(record.artifact_uri).parent / "analysis").as_posix()
+        LocalArtifactStore(artifact_root).write_immutable(
+            f"{legacy_prefix}/events.parquet.enc", b"orphaned artifact from old build"
+        )
+
+        prepared = prepare_dataset(session, dataset_id, artifact_root, encryption_key)
+        persisted = session.get(DatasetRecord, dataset_id)
+        assert persisted is not None
+        assert persisted.preparation_status == "prepared"
+        assert persisted.analysis_artifact_uri is not None
+        assert persisted.analysis_artifact_uri.startswith(f"{legacy_prefix}/")
+        assert len(persisted.analysis_artifact_uri.rsplit("/", 1)[-1]) == 64
+        assert (artifact_root / persisted.analysis_artifact_uri / "manifest.json.enc").is_file()
+        assert prepared.analysis_manifest_sha256 == persisted.analysis_manifest_sha256
 
 
 def test_prepare_dataset_rejects_unknown_dataset(imported_dataset) -> None:
