@@ -128,6 +128,20 @@ def test_rejects_baseline_after_evaluation_and_malformed_values() -> None:
     assert any("ending in Z" in error for error in offset_timestamp.errors)
 
 
+def test_record_count_stays_within_signed_64_bit_parquet_range() -> None:
+    maximum = list(evaluation_row("evt-test-max", "2026-01-02T10:00:00Z", "benign_scenario"))
+    maximum[9] = str(2**63 - 1)
+    overflow = list(evaluation_row("evt-test-overflow", "2026-01-02T10:00:00Z", "benign_scenario"))
+    overflow[9] = str(2**63)
+
+    accepted = validate_events_csv(make_csv(tuple(maximum)))
+    rejected = validate_events_csv(make_csv(tuple(overflow)))
+
+    assert accepted.valid is True
+    assert rejected.valid is False
+    assert any("signed 64-bit integer" in error for error in rejected.errors)
+
+
 def test_requires_exact_versioned_headers_and_utf8() -> None:
     duplicate_headers = (*CSV_HEADERS[:-1], CSV_HEADERS[0])
     duplicate = validate_events_csv(make_csv(headers=duplicate_headers))

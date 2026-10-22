@@ -18,7 +18,12 @@ dev = [
 package = false
 
 [tool.uv.workspace]
-members = ["apps/backend/api", "apps/backend/worker", "apps/backend/packages/persistence"]
+members = [
+  "apps/backend/api",
+  "apps/backend/worker",
+  "apps/backend/packages/domain",
+  "apps/backend/packages/persistence",
+]
 
 [tool.ruff]
 target-version = "py312"
@@ -30,7 +35,12 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["apps/backend/api/src", "apps/backend/worker/src", "apps/backend/packages/persistence/src"]
+files = [
+  "apps/backend/api/src",
+  "apps/backend/worker/src",
+  "apps/backend/packages/domain/src",
+  "apps/backend/packages/persistence/src",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["apps/backend/api/tests", "apps/backend/worker/tests"]

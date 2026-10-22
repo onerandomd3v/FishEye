@@ -13,6 +13,7 @@ from uuid import NAMESPACE_URL, uuid5
 
 from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy import (
+    CheckConstraint,
     DateTime,
     Integer,
     String,
@@ -32,7 +33,13 @@ class Base(DeclarativeBase):
 
 class DatasetRecord(Base):
     __tablename__ = "datasets"
-    __table_args__ = (UniqueConstraint("sha256", name="uq_datasets_sha256"),)
+    __table_args__ = (
+        UniqueConstraint("sha256", name="uq_datasets_sha256"),
+        CheckConstraint(
+            "preparation_status IN ('source_only', 'prepared')",
+            name="ck_datasets_preparation_status",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -42,6 +49,12 @@ class DatasetRecord(Base):
     artifact_uri: Mapped[str] = mapped_column(Text, nullable=False)
     manifest_uri: Mapped[str] = mapped_column(Text, nullable=False)
     manifest_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    preparation_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="source_only"
+    )
+    prepared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    analysis_artifact_uri: Mapped[str | None] = mapped_column(Text, nullable=True)
+    analysis_manifest_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
@@ -151,6 +164,15 @@ def get_dataset(session: Session, dataset_id: str) -> DatasetRecord | None:
     return session.get(DatasetRecord, dataset_id)
 
 
+def read_dataset_source(record: DatasetRecord, artifact_root: Path, encryption_key: bytes) -> bytes:
+    """Decrypt and verify the immutable source CSV for internal worker processing."""
+    try:
+        cipher = Fernet(encryption_key)
+    except (TypeError, ValueError):
+        raise RuntimeError("Dataset artifact encryption is not configured correctly.") from None
+    return _read_artifact(artifact_root, record.artifact_uri, record.sha256, cipher)
+
+
 def _publish_artifacts(
     root: Path,
     relative_dir: Path,
@@ -210,7 +232,20 @@ def _verify_artifact(
     expected_sha256: str,
     cipher: Fernet,
 ) -> None:
-    path = root / relative_uri
+    _read_artifact(root, relative_uri, expected_sha256, cipher)
+
+
+def _read_artifact(
+    root: Path,
+    relative_uri: str,
+    expected_sha256: str,
+    cipher: Fernet,
+) -> bytes:
+    path = (root / relative_uri).resolve()
+    try:
+        path.relative_to(root.resolve())
+    except ValueError:
+        raise RuntimeError("A dataset artifact path is invalid.") from None
     try:
         plaintext = cipher.decrypt(path.read_bytes())
     except (OSError, InvalidToken) as error:
@@ -220,3 +255,4 @@ def _verify_artifact(
     actual_sha256 = hashlib.sha256(plaintext).hexdigest()
     if actual_sha256 != expected_sha256:
         raise RuntimeError("A previously imported dataset artifact failed its integrity check.")
+    return plaintext

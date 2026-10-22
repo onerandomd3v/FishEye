@@ -50,9 +50,18 @@ def test_initial_migration_and_rollback() -> None:
             assert inspect(connection).has_table("alembic_version")
             assert (
                 connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-                == "0002_datasets"
+                == "0003_dataset_preparation"
             )
             assert inspect(connection).get_table_names() == ["alembic_version", "datasets"]
+            dataset_columns = {
+                column["name"] for column in inspect(connection).get_columns("datasets")
+            }
+            assert {
+                "preparation_status",
+                "prepared_at",
+                "analysis_artifact_uri",
+                "analysis_manifest_sha256",
+            }.issubset(dataset_columns)
 
         command.downgrade(config, "base")
         with engine.connect() as connection:
