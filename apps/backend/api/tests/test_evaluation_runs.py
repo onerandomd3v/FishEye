@@ -111,6 +111,10 @@ def test_import_queue_process_and_read_real_synthetic_run(
         result["metrics"]["comparisons"]["contextual"]["report"]["metrics"]["unit_count"]
         == expected_units
     )
+    contextual_report = result["metrics"]["comparisons"]["contextual"]["report"]
+    confusion = contextual_report["metrics"]["confusion"]
+    assert sum(confusion.values()) == expected_units
+    assert contextual_report["by_scenario"] == []
     assert result["result_manifest_sha256"]
 
     manifest_response = client.get(f"/api/v1/runs/{result['run_id']}/manifest")

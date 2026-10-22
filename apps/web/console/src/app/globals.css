@@ -730,6 +730,19 @@
 .evaluation-table td:first-child {
   font-weight: 600;
 }
+.evaluation-report-tables {
+  display: grid;
+  gap: 24px;
+  padding: 0 20px 20px;
+}
+.evaluation-report-tables h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 620;
+}
+.evaluation-report-tables .field-help {
+  margin: 6px 0 10px;
+}
 .evaluation-note {
   margin-top: 16px;
 }

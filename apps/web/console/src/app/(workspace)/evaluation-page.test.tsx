@@ -67,7 +67,39 @@ describe('evaluation findings requests', () => {
         created_at: '2026-01-02T00:00:00Z',
         result_manifest_sha256: 'b'.repeat(64),
         synthetic_only: true,
-        metrics: null,
+        metrics: {
+          evaluation_unit: 'employee_day_utc',
+          evaluation_unit_count: 2,
+          comparisons: {
+            contextual: {
+              threshold: 65,
+              report: {
+                metrics: {
+                  unit_count: 2,
+                  confusion: {
+                    true_positive: 1,
+                    false_positive: 0,
+                    true_negative: 1,
+                    false_negative: 0,
+                  },
+                  precision: { value: 1, numerator: 1, denominator: 1 },
+                  recall: { value: 1, numerator: 1, denominator: 1 },
+                  false_positive_rate: {
+                    value: 0,
+                    numerator: 0,
+                    denominator: 1,
+                  },
+                  alerts_per_100_employee_days: {
+                    value: 50,
+                    numerator: 1,
+                    denominator: 2,
+                  },
+                },
+                by_scenario: [],
+              },
+            },
+          },
+        },
       },
     ];
     const fetchMock = vi.fn((input: Request | string) => {
@@ -147,6 +179,17 @@ describe('evaluation findings requests', () => {
 
     expect(screen.queryByText('employee-a')).toBeNull();
     expect(screen.getByText('employee-b')).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { name: 'Confusion counts' }),
+    ).toBeTruthy();
+    expect(screen.getByText('True positives')).toBeTruthy();
+    expect(screen.getByText('Alert threshold')).toBeTruthy();
+    expect(screen.getByText('65')).toBeTruthy();
+    expect(screen.getAllByText('100.0% (1/1)')).toHaveLength(2);
+    expect(screen.getByText('50.0 (1/2)')).toBeTruthy();
+    expect(
+      screen.getByText('Scenario-level results are unavailable for this run.'),
+    ).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'View run' }));
     fireEvent.click(screen.getByRole('button', { name: 'Download manifest' }));
