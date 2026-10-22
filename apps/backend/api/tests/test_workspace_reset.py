@@ -175,9 +175,7 @@ def test_sqlite_reset_locks_before_reading_workspace_records(tmp_path, monkeypat
     assert immediate_transaction < first_workspace_read
 
 
-def test_reset_commit_failure_restores_artifacts_and_database_rows(
-    tmp_path, monkeypatch
-) -> None:
+def test_reset_commit_failure_restores_artifacts_and_database_rows(tmp_path, monkeypatch) -> None:
     database_url, artifact_root, client = configured_workspace(tmp_path, monkeypatch)
 
     def fail_commit(_session):
@@ -202,9 +200,7 @@ def test_reset_commit_failure_restores_artifacts_and_database_rows(
         assert session.scalar(select(func.count()).select_from(FindingReviewRecord)) == 1
 
 
-def test_reset_keeps_quarantine_when_an_artifact_cannot_be_restored(
-    tmp_path, monkeypatch
-) -> None:
+def test_reset_keeps_quarantine_when_an_artifact_cannot_be_restored(tmp_path, monkeypatch) -> None:
     database_url, artifact_root, client = configured_workspace(tmp_path, monkeypatch)
     original_replace = Path.replace
 
