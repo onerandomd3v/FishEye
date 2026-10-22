@@ -1,0 +1,16 @@
+.git
+.github
+.next
+.astro
+**/.next
+**/.astro
+**/node_modules
+**/dist
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+var
+.env
+.env.*
+!.env.example

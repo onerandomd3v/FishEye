@@ -39,6 +39,33 @@ Completed development runs populate the overview and investigation pages from st
 
 The Scenario lab offers two bundled synthetic CSV/context pairs for repeatable local demos. Selecting a sample only preloads those files; the console still requires the synthetic-data confirmation and sends them through the same API validation, import, durable-run, and worker processing path as manually selected files. Ground-truth labels are evaluation-only and are not sent to detector feature construction. Both sample pairs are checked against the current CSV and context contracts in backend tests.
 
+## Local Compose stack
+
+The default Compose command still starts only PostgreSQL. The `application` profile adds the API, worker and an explicit migration job. The backend image contains both Python entry points, while Compose runs them as separate containers. Dataset and result artifacts share a named volume and remain encrypted with the configured Fernet key.
+
+Create a local `.env` file and generate a development-only artifact key:
+
+```sh
+cp .env.example .env
+uv run --package fisheye-persistence python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
+```
+
+Put the generated value in `.env` as `FISHEYE_ARTIFACT_ENCRYPTION_KEY`. Keep this file local and do not reuse this key in another environment. Then start the API and worker with database migrations:
+
+```sh
+docker compose -f infra/compose.yaml --profile application up --build -d
+```
+
+The API is available at `http://127.0.0.1:8000/health/live`. API and worker use the same database URL, artifact volume and encryption key. Stop the stack with:
+
+```sh
+docker compose -f infra/compose.yaml --profile application down
+```
+
+This stack sets `FISHEYE_ENV=development`; development-only CSV and run routes remain disabled unless their flags are explicitly enabled in `.env`. It does not configure the console or authenticate users. Run the console using the local Next.js development server for its demo login, or configure a real OIDC provider before using a production console build. Do not expose this development stack to a shared network.
+
+The backend image is a local runtime build, not a hosted deployment recipe. Shared deployment still requires a hosting provider, production secret management, managed PostgreSQL, durable object storage and an OIDC provider/role mapping. Do not copy local Compose credentials or use local filesystem artifact storage in a shared environment.
+
 ## Checks
 
 ```sh
