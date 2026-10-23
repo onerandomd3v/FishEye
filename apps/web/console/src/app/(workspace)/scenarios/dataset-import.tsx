@@ -58,12 +58,30 @@ export function DatasetImport({
   onWorkingChange?: (working: boolean) => void;
 } = {}) {
   const idempotencyKeyRef = useRef<string | null>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+  const contextInputRef = useRef<HTMLInputElement>(null);
   const [csv, setCsv] = useState<File | null>(initialCsv);
   const [contextFile, setContextFile] = useState<File | null>(
     initialContextFile,
   );
   const [confirmedSynthetic, setConfirmedSynthetic] = useState(false);
   const [state, setState] = useState<FlowState>({ status: 'idle' });
+
+  function removeCsv() {
+    setCsv(null);
+    if (csvInputRef.current) csvInputRef.current.value = '';
+    setConfirmedSynthetic(false);
+    idempotencyKeyRef.current = null;
+    setState({ status: 'idle' });
+  }
+
+  function removeContextFile() {
+    setContextFile(null);
+    if (contextInputRef.current) contextInputRef.current.value = '';
+    setConfirmedSynthetic(false);
+    idempotencyKeyRef.current = null;
+    setState({ status: 'idle' });
+  }
 
   useEffect(() => {
     onWorkingChange?.(state.status === 'working');
@@ -224,6 +242,7 @@ export function DatasetImport({
         <div className="field">
           <label htmlFor="synthetic-csv">Events CSV</label>
           <input
+            ref={csvInputRef}
             id="synthetic-csv"
             type="file"
             accept=".csv,text/csv"
@@ -235,6 +254,20 @@ export function DatasetImport({
               setState({ status: 'idle' });
             }}
           />
+          {csv ? (
+            <div className="selected-upload">
+              <span className="selected-file">{csv.name}</span>
+              <button
+                className="file-remove-button"
+                type="button"
+                disabled={state.status === 'working'}
+                onClick={removeCsv}
+                aria-label={`Remove events CSV ${csv.name}`}
+              >
+                Remove
+              </button>
+            </div>
+          ) : null}
           <p className="field-help">
             Include baseline data, calibration data for tuning, and evaluation
             data for comparison. Maximum 10 MiB.
@@ -243,6 +276,7 @@ export function DatasetImport({
         <div className="field">
           <label htmlFor="synthetic-context">Roles and schedules (JSON)</label>
           <input
+            ref={contextInputRef}
             id="synthetic-context"
             type="file"
             accept=".json,application/json"
@@ -250,9 +284,24 @@ export function DatasetImport({
             onChange={(event) => {
               setContextFile(event.target.files?.[0] ?? null);
               idempotencyKeyRef.current = null;
+              setConfirmedSynthetic(false);
               setState({ status: 'idle' });
             }}
           />
+          {contextFile ? (
+            <div className="selected-upload">
+              <span className="selected-file">{contextFile.name}</span>
+              <button
+                className="file-remove-button"
+                type="button"
+                disabled={state.status === 'working'}
+                onClick={removeContextFile}
+                aria-label={`Remove context JSON ${contextFile.name}`}
+              >
+                Remove
+              </button>
+            </div>
+          ) : null}
           <p className="field-help">
             List each role&apos;s allowed systems and each employee&apos;s work
             hours.{' '}
@@ -287,12 +336,6 @@ export function DatasetImport({
           >
             {state.status === 'working' ? 'Processing…' : 'Run evaluation'}
           </Button>
-          {csv ? (
-            <span className="selected-file">
-              {csv.name}
-              {contextFile ? ` · ${contextFile.name}` : ''}
-            </span>
-          ) : null}
         </div>
       </form>
 
