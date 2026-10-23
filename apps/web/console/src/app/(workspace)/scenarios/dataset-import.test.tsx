@@ -124,14 +124,13 @@ describe('development evaluation run flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Run evaluation' }));
 
     expect(
-      await screen.findByText('Evaluation complete', {}, { timeout: 5000 }),
+      await screen.findByRole('dialog', {
+        name: 'Evaluation complete',
+      }),
     ).toBeTruthy();
-    expect(screen.getByText('50.0%')).toBeTruthy();
-    expect(
-      screen
-        .getByRole('link', { name: 'About evaluation results' })
-        .getAttribute('href'),
-    ).toBe('/guide#results');
+    expect(screen.getByRole('link', { name: 'View run' }).getAttribute('href'))
+      .toBe('/evaluation/run-1');
+    expect(screen.queryByText('50.0%')).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(4);
     const createRequest = fetchMock.mock.calls[2]?.[0] as Request;
     expect(createRequest.url).toContain('/api/v1/runs');

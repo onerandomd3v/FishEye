@@ -654,7 +654,8 @@
   color: var(--fe-text-secondary);
   font-size: 12px;
 }
-.workspace-reset-dialog {
+.workspace-reset-dialog,
+.run-completion-dialog {
   position: fixed;
   inset: 0;
   margin: auto;
@@ -668,14 +669,17 @@
   color: var(--fe-ink);
   background: white;
 }
-.workspace-reset-dialog::backdrop {
+.workspace-reset-dialog::backdrop,
+.run-completion-dialog::backdrop {
   background: rgb(0 0 0 / 36%);
 }
-.workspace-reset-dialog h2 {
+.workspace-reset-dialog h2,
+.run-completion-dialog h2 {
   margin: 0;
   font-size: 19px;
 }
-.workspace-reset-dialog > p {
+.workspace-reset-dialog > p,
+.run-completion-dialog > p {
   margin: 12px 0 18px;
   color: var(--fe-text-secondary);
   font-size: 13px;
@@ -684,12 +688,25 @@
 .workspace-reset-dialog .field {
   margin-top: 16px;
 }
-.workspace-reset-buttons {
+.workspace-reset-buttons,
+.run-completion-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: 12px;
   margin-top: 20px;
+}
+.run-completion-id {
+  padding-top: 12px;
+  border-top: 1px solid var(--fe-border);
+}
+.run-completion-id code {
+  overflow-wrap: anywhere;
+  color: var(--fe-ink);
+}
+.run-completion-inline .run-completion-actions {
+  justify-content: flex-start;
 }
 .reset-error {
   padding: 10px 12px;

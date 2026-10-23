@@ -124,7 +124,7 @@ export function EvaluationComparison({
           <h3 id="scenario-metrics-title">Results by scenario</h3>
           {scenarioRows.length === 0 ? (
             <p className="empty-state">
-              Scenario-level results are unavailable for this run.
+              No scenario-level results were recorded for this run.
             </p>
           ) : (
             <div className="table-wrap">
@@ -167,18 +167,18 @@ export function EvaluationComparison({
 function formatCount(value: unknown): string {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0
     ? String(value)
-    : 'Unavailable';
+    : 'Not recorded';
 }
 
 function formatNumber(value: unknown): string {
   return typeof value === 'number' && Number.isFinite(value)
     ? String(value)
-    : 'Unavailable';
+    : 'Not recorded';
 }
 
 function formatRateWithCount(value: unknown): string {
   const ratio = asRecord(value);
-  if (!ratio) return 'Unavailable';
+  if (!ratio) return 'Not measured';
   return `${formatAlertsPer100EmployeeDays(ratio)} (${formatCount(ratio.numerator)} of ${formatCount(ratio.denominator)})`;
 }
 
