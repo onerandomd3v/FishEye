@@ -494,7 +494,7 @@ async def import_synthetic_dataset(
     if not database_url or artifact_store is None or not artifact_encryption_key:
         raise HTTPException(
             status_code=503,
-            detail="Encrypted dataset storage is not configured for this development API.",
+            detail="Encrypted dataset storage is not configured for this API.",
         )
 
     try:
@@ -1089,13 +1089,13 @@ def _require_dev_dataset_reads() -> str:
     if not _feature_enabled("FISHEYE_ENABLE_DEV_DATASET_READS"):
         raise HTTPException(
             status_code=503,
-            detail="Dataset reads are not enabled on this development API.",
+            detail="Dataset reads are not enabled on this API.",
         )
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
         raise HTTPException(
             status_code=503,
-            detail="Dataset metadata storage is not configured for this development API.",
+            detail="Dataset metadata storage is not configured for this API.",
         )
     return database_url
 
@@ -1127,7 +1127,7 @@ def _require_dev_evaluation_runs() -> tuple[str, ArtifactStore, bytes]:
     if not _feature_enabled("FISHEYE_ENABLE_DEV_EVALUATION_RUNS"):
         raise HTTPException(
             status_code=503,
-            detail="Evaluation runs are not enabled on this development API.",
+            detail="Evaluation runs are not enabled on this API.",
         )
     database_url = os.getenv("DATABASE_URL")
     encryption_key = os.getenv("FISHEYE_ARTIFACT_ENCRYPTION_KEY")
@@ -1138,7 +1138,7 @@ def _require_dev_evaluation_runs() -> tuple[str, ArtifactStore, bytes]:
     if not database_url or artifact_store is None or not encryption_key:
         raise HTTPException(
             status_code=503,
-            detail="Database and encrypted artifact storage are required for development runs.",
+            detail="Database and encrypted artifact storage are required for evaluation runs.",
         )
     try:
         Fernet(encryption_key.encode("utf-8"))
@@ -1151,9 +1151,18 @@ def _require_dev_evaluation_runs() -> tuple[str, ArtifactStore, bytes]:
 
 
 def _feature_enabled(development_flag: str) -> bool:
-    # These routes remain local-development-only until a shared synthetic-data
-    # boundary is approved and documented in an architecture decision.
-    return os.getenv("FISHEYE_ENV") == "development" and os.getenv(development_flag) == "1"
+    environment = os.getenv("FISHEYE_ENV")
+    flag_enabled = os.getenv(development_flag) == "1"
+    if environment == "development":
+        return flag_enabled
+    # Shared production access is limited to the explicitly enabled synthetic
+    # demo. Endpoints still require analyst authentication and synthetic upload
+    # confirmation, while each route continues to validate its input.
+    return (
+        environment == "production"
+        and os.getenv("FISHEYE_SYNTHETIC_DEMO_MODE") == "1"
+        and flag_enabled
+    )
 
 
 def _local_data_reset_enabled() -> bool:

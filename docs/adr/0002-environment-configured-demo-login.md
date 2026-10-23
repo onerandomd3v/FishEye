@@ -1,6 +1,6 @@
 # ADR 0002: Environment-configured demo login
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR 0003](./0003-hosted-synthetic-demo-evaluation.md) for hosted synthetic evaluation routes
 - **Date:** 2026-10-22
 - **Supersedes:** [ADR 0001](./0001-provider-neutral-oidc.md)
 
@@ -16,7 +16,7 @@ FishEye's first shared experience is a controlled, synthetic-data demo. A hosted
 - The token is held only in an HttpOnly, SameSite=Lax cookie, marked Secure in production, and sent to FastAPI by the same-origin server-side API proxy.
 - The console and API share a randomly generated session-signing secret of at least 32 bytes. FastAPI independently verifies the token signature, issuer, audience, expiry and analyst role. The same secret signs short-lived throttle requests so the API can apply the source limit across serverless instances.
 - Keep the development-only unauthenticated API path restricted to `FISHEYE_ENV=development`.
-- Keep CSV import, run creation, and other development-only routes disabled outside local development. Login does not change their availability.
+- The original decision kept CSV import and run routes disabled outside local development. The later hosted synthetic-demo exception is documented in ADR 0003; login alone does not enable those routes.
 - This single-account flow is only for synthetic demos. It does not provide individual analyst identity, invitation, password reset, multi-tenant isolation, or production identity management.
 
 ## Alternatives
