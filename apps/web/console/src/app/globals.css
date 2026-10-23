@@ -512,6 +512,11 @@
   font-weight: 600;
   text-underline-offset: 3px;
 }
+.review-latest-update {
+  margin: 18px 0 -10px;
+  color: var(--fe-text-secondary);
+  font-size: 12px;
+}
 .review-history-page {
   max-width: 900px;
   margin-top: 14px;
@@ -557,6 +562,21 @@
   gap: 14px;
   padding-left: 0;
   padding-right: 0;
+}
+.review-history-filters {
+  grid-template-columns: minmax(180px, 0.45fr) minmax(180px, 0.45fr) minmax(
+      260px,
+      1fr
+    );
+  padding: 0 20px 18px;
+}
+.review-history-table {
+  min-width: 900px;
+}
+.review-history-note {
+  min-width: 190px;
+  max-width: 360px;
+  white-space: normal;
 }
 .form-error,
 .form-success {
@@ -1586,6 +1606,10 @@
   }
   .investigation-filters {
     grid-template-columns: 1fr;
+  }
+  .review-history-filters {
+    grid-template-columns: 1fr;
+    padding-inline: 16px;
   }
   .investigation-filters .search-field {
     grid-column: auto;

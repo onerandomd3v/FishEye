@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time, timedelta
 from hashlib import sha256
 from uuid import uuid4
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, select
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from fisheye_persistence.datasets import Base
@@ -73,6 +73,52 @@ def list_finding_reviews(
             .order_by(FindingReviewRecord.created_at, FindingReviewRecord.id)
         )
     )
+
+
+def list_finding_review_history(
+    session: Session,
+    *,
+    limit: int,
+    offset: int,
+    decision: str | None = None,
+    search: str | None = None,
+    recorded_on: date | None = None,
+) -> tuple[list[FindingReviewRecord], int]:
+    """Return a newest-first, paginated workspace review history."""
+    statement = select(FindingReviewRecord)
+    count_statement = select(func.count()).select_from(FindingReviewRecord)
+    if decision is not None:
+        statement = statement.where(FindingReviewRecord.decision == decision)
+        count_statement = count_statement.where(FindingReviewRecord.decision == decision)
+    if search:
+        pattern = f"%{search}%"
+        matching = (
+            FindingReviewRecord.finding_id.ilike(pattern)
+            | FindingReviewRecord.reviewer_label.ilike(pattern)
+            | FindingReviewRecord.note.ilike(pattern)
+        )
+        statement = statement.where(matching)
+        count_statement = count_statement.where(matching)
+    if recorded_on is not None:
+        day_start = datetime.combine(recorded_on, time.min, tzinfo=UTC)
+        next_day = day_start + timedelta(days=1)
+        date_filter = (FindingReviewRecord.created_at >= day_start) & (
+            FindingReviewRecord.created_at < next_day
+        )
+        statement = statement.where(date_filter)
+        count_statement = count_statement.where(date_filter)
+
+    total = session.scalar(count_statement) or 0
+    items = list(
+        session.scalars(
+            statement.order_by(
+                FindingReviewRecord.created_at.desc(), FindingReviewRecord.id.desc()
+            )
+            .limit(limit)
+            .offset(offset)
+        )
+    )
+    return items, total
 
 
 def list_latest_finding_reviews(

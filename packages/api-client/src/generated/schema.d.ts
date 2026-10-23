@@ -52,7 +52,7 @@ export interface paths {
     put?: never;
     /**
      * Validate Dataset Import
-     * @description Development-only schema check; this endpoint does not import or score data.
+     * @description Validate an explicitly confirmed synthetic CSV without importing or scoring it.
      */
     post: operations['validate_dataset_import_api_v1_datasets_imports_validate_post'];
     delete?: never;
@@ -72,7 +72,7 @@ export interface paths {
     put?: never;
     /**
      * Import Synthetic Dataset
-     * @description Persist a validated synthetic CSV as an immutable dev-only dataset artifact.
+     * @description Persist a validated synthetic CSV as an immutable dataset artifact.
      */
     post: operations['import_synthetic_dataset_api_v1_datasets_imports_post'];
     delete?: never;
@@ -136,6 +136,26 @@ export interface paths {
      * @description Queue a development-only synthetic evaluation for a prepared-schema dataset.
      */
     post: operations['create_evaluation_run_api_v1_runs_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/reviews': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Finding Review History
+     * @description List analyst review updates across findings for the review-history page.
+     */
+    get: operations['get_finding_review_history_api_v1_reviews_get'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -592,6 +612,39 @@ export interface components {
       decision: 'under_review' | 'reviewed_benign' | 'escalated';
       /** Note */
       note?: string | null;
+    };
+    /** FindingReviewHistoryItemResponse */
+    FindingReviewHistoryItemResponse: {
+      /** Review Id */
+      review_id: string;
+      /**
+       * Decision
+       * @enum {string}
+       */
+      decision: 'under_review' | 'reviewed_benign' | 'escalated';
+      /** Note */
+      note: string | null;
+      /** Reviewer Label */
+      reviewer_label: string;
+      /** Created At */
+      created_at: string;
+      /** Run Id */
+      run_id: string;
+      /** Finding Id */
+      finding_id: string;
+    };
+    /** FindingReviewHistoryResponse */
+    FindingReviewHistoryResponse: {
+      /** Items */
+      items: components['schemas']['FindingReviewHistoryItemResponse'][];
+      /** Limit */
+      limit: number;
+      /** Offset */
+      offset: number;
+      /** Total */
+      total: number;
+      /** Has More */
+      has_more: boolean;
     };
     /** FindingReviewResponse */
     FindingReviewResponse: {
@@ -1159,6 +1212,41 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ApiErrorResponse'];
+        };
+      };
+    };
+  };
+  get_finding_review_history_api_v1_reviews_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+        offset?: number;
+        decision?: ('under_review' | 'reviewed_benign' | 'escalated') | null;
+        search?: string | null;
+        recorded_on?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FindingReviewHistoryResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
         };
       };
     };

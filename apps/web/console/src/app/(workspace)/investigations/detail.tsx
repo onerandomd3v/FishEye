@@ -172,6 +172,7 @@ export function InvestigationDetail({
   }
 
   const finding = detail.finding;
+  const latestReview = detail.reviews.at(-1);
   return (
     <>
       <div className="detail-meta">
@@ -326,6 +327,11 @@ export function InvestigationDetail({
             </Button>
           </form>
 
+          {latestReview && (
+            <p className="review-latest-update">
+              Latest update: {reviewStatusLabel(latestReview.decision)}
+            </p>
+          )}
           <Link
             className="review-history-link"
             href={

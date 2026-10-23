@@ -8,7 +8,7 @@ import io
 import ipaddress
 import json
 import os
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal, cast
@@ -43,6 +43,7 @@ from fisheye_persistence.login_attempts import (
 from fisheye_persistence.reviews import (
     FindingReviewRecord,
     create_finding_review,
+    list_finding_review_history,
     list_finding_reviews,
     list_latest_finding_reviews,
 )
@@ -267,6 +268,19 @@ class FindingReviewResponse(BaseModel):
     note: str | None
     reviewer_label: str
     created_at: str
+
+
+class FindingReviewHistoryItemResponse(FindingReviewResponse):
+    run_id: str
+    finding_id: str
+
+
+class FindingReviewHistoryResponse(BaseModel):
+    items: list[FindingReviewHistoryItemResponse]
+    limit: int
+    offset: int
+    total: int
+    has_more: bool
 
 
 class FindingEvidenceEventResponse(BaseModel):
@@ -673,6 +687,46 @@ def get_evaluation_runs(
         raise HTTPException(status_code=503, detail="Evaluation runs could not be read.") from None
     items = [_evaluation_run_response(record) for record in records]
     return EvaluationRunListResponse(
+        items=items,
+        limit=limit,
+        offset=offset,
+        total=total,
+        has_more=offset + len(items) < total,
+    )
+
+
+@api.get("/api/v1/reviews", response_model=FindingReviewHistoryResponse)
+def get_finding_review_history(
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=1_000_000),
+    decision: Literal["under_review", "reviewed_benign", "escalated"] | None = None,
+    search: str | None = Query(default=None, max_length=160),
+    recorded_on: date | None = None,
+) -> FindingReviewHistoryResponse:
+    """List analyst review updates across findings for the review-history page."""
+    database_url, _, _ = _require_dev_evaluation_runs()
+    try:
+        factory = _session_factory(database_url)
+        with factory() as session:
+            records, total = list_finding_review_history(
+                session,
+                limit=limit,
+                offset=offset,
+                decision=decision,
+                search=search.strip() if search and search.strip() else None,
+                recorded_on=recorded_on,
+            )
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail="Review history could not be read.") from None
+    items = [
+        FindingReviewHistoryItemResponse(
+            **_finding_review_response(record).model_dump(),
+            run_id=record.run_id,
+            finding_id=record.finding_id,
+        )
+        for record in records
+    ]
+    return FindingReviewHistoryResponse(
         items=items,
         limit=limit,
         offset=offset,

@@ -611,6 +611,117 @@
         }
       }
     },
+    "/api/v1/reviews": {
+      "get": {
+        "summary": "Get Finding Review History",
+        "description": "List analyst review updates across findings for the review-history page.",
+        "operationId": "get_finding_review_history_api_v1_reviews_get",
+        "security": [
+          {
+            "FishEyeDemoBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "decision",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": ["under_review", "reviewed_benign", "escalated"],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Decision"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 160
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "recorded_on",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Recorded On"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingReviewHistoryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/local-workspace": {
       "get": {
         "summary": "Get Local Workspace",
@@ -1826,6 +1937,87 @@
         "type": "object",
         "required": ["decision"],
         "title": "FindingReviewCreateRequest"
+      },
+      "FindingReviewHistoryItemResponse": {
+        "properties": {
+          "review_id": {
+            "type": "string",
+            "title": "Review Id"
+          },
+          "decision": {
+            "type": "string",
+            "enum": ["under_review", "reviewed_benign", "escalated"],
+            "title": "Decision"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "reviewer_label": {
+            "type": "string",
+            "title": "Reviewer Label"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "finding_id": {
+            "type": "string",
+            "title": "Finding Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "review_id",
+          "decision",
+          "note",
+          "reviewer_label",
+          "created_at",
+          "run_id",
+          "finding_id"
+        ],
+        "title": "FindingReviewHistoryItemResponse"
+      },
+      "FindingReviewHistoryResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FindingReviewHistoryItemResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": ["items", "limit", "offset", "total", "has_more"],
+        "title": "FindingReviewHistoryResponse"
       },
       "FindingReviewResponse": {
         "properties": {
