@@ -35,11 +35,17 @@ database:
 /bin/uv run --no-sync --package fisheye-api alembic -c apps/backend/api/alembic.ini upgrade head
 ```
 
-Set `FISHEYE_ENV=production` on shared services. CSV validation, CSV import,
-dataset reads, and evaluation-run routes remain disabled outside local development
-under the current architecture decision, even when the authenticated console login
-is configured. Do not set development mode on a public service. A hosted upload/run
-demo needs a reviewed architecture decision before those routes can be enabled.
+Set `FISHEYE_ENV=production` on shared services. For the hosted synthetic demo,
+set `FISHEYE_SYNTHETIC_DEMO_MODE=1` and explicitly enable the required API flags:
+`FISHEYE_ENABLE_DEV_CSV_VALIDATION=1`, `FISHEYE_ENABLE_DEV_CSV_IMPORT=1`,
+`FISHEYE_ENABLE_DEV_DATASET_READS=1`, and
+`FISHEYE_ENABLE_DEV_EVALUATION_RUNS=1`. These routes remain disabled in production
+unless both the synthetic-demo mode and their individual flag are enabled. Keep
+analyst authentication, synthetic-data upload confirmation, strict CSV validation,
+PostgreSQL, and encrypted artifact storage configured. Never set
+`FISHEYE_ENV=development` on a public service or use real employee, customer, bank,
+credential, or production-log data. This exception does not enable workspace reset.
+See [ADR 0003](./adr/0003-hosted-synthetic-demo-evaluation.md).
 Set the same `FISHEYE_SESSION_SECRET` on the console and API. Configure the console's
 server-side `API_INTERNAL_URL` to the API URL, and set API `FISHEYE_CORS_ORIGINS`
 to the actual console origin. Keep the existing email/password demo login; do not

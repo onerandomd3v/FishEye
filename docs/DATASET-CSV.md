@@ -1,8 +1,9 @@
 # FishEye synthetic event CSV — v1 and v2
 
-This file defines the first user-supplied synthetic dataset format. The API has
-a development-only validation endpoint and a separate development-only import
-endpoint. Validation does not persist data. Import stores the original CSV as an
+This file defines the user-supplied synthetic dataset format. The API has a
+validation endpoint and a separate import endpoint. Both require analyst
+authentication and are enabled only for local development or the explicitly
+configured hosted synthetic demo. Validation does not persist data. Import stores the original CSV as an
 immutable source artifact, records a checksum and manifest, and creates a
 dataset record. Import does not start a run or calculate risk.
 
@@ -12,8 +13,8 @@ dataset record. Import does not start a run or calculate risk.
 - Header row: exact names and order shown below; all 12 columns are required in
   the header, including optional-value columns.
 - Each data row represents one synthetic access event.
-- Maximum development validation size: 10 MiB and 100,000 event rows. These are
-  resource bounds for the local preview, not deployment capacity targets.
+- Maximum upload size: 10 MiB and 100,000 event rows. These are request resource
+  bounds, not deployment capacity targets.
 
 ```csv
 event_id,employee_id,role_id,department_id,event_timestamp_utc,event_type,system,device_id,location_label,record_count,dataset_partition,ground_truth_label
@@ -53,17 +54,19 @@ count to keep responses bounded.
 
 The validation endpoint is `POST /api/v1/datasets/imports/validate` with
 `Content-Type: text/csv` and
-`X-FishEye-Synthetic-Data-Confirmed: true`. It is disabled unless
-`FISHEYE_ENV=development` and `FISHEYE_ENABLE_DEV_CSV_VALIDATION=1`. The
+`X-FishEye-Synthetic-Data-Confirmed: true`. It requires
+`FISHEYE_ENABLE_DEV_CSV_VALIDATION=1` and either `FISHEYE_ENV=development` or
+both `FISHEYE_ENV=production` and `FISHEYE_SYNTHETIC_DEMO_MODE=1`. The
 confirmation is a user attestation;
 CSV validation cannot establish that data is synthetic. Do not submit actual
 employee, customer, bank, credential, or production-log data.
 
 The import endpoint is `POST /api/v1/datasets/imports` with the same content
-type and confirmation header. It is disabled unless `FISHEYE_ENV=development`
-and `FISHEYE_ENABLE_DEV_CSV_IMPORT=1`. It also requires `DATABASE_URL`,
-`FISHEYE_ARTIFACT_DIR`, and `FISHEYE_ARTIFACT_ENCRYPTION_KEY` to be configured,
-and the Alembic migrations to have been run with `pnpm db:migrate`. Exact
+type and confirmation header. It requires `FISHEYE_ENABLE_DEV_CSV_IMPORT=1` and
+either `FISHEYE_ENV=development` or both `FISHEYE_ENV=production` and
+`FISHEYE_SYNTHETIC_DEMO_MODE=1`. It also requires `DATABASE_URL`, encrypted
+artifact storage, and `FISHEYE_ARTIFACT_ENCRYPTION_KEY` to be configured, and
+the Alembic migrations to have been run. Exact
 duplicate uploads are idempotent: they return the same dataset ID
 and do not create a second database record. Dataset IDs are stable for the
 same uploaded bytes. The response states `run_created: false` and
@@ -73,14 +76,14 @@ The source CSV and manifest are encrypted at rest using Fernet. The manifest
 records the source checksum, schema version, counts, and the absence of an
 uploaded random seed. It explicitly reserves ground-truth labels for evaluation.
 The original CSV is retained as the encrypted source artifact for provenance.
-Development-only `GET /api/v1/datasets` and
+`GET /api/v1/datasets` and
 `GET /api/v1/datasets/{dataset_id}` expose paginated dataset provenance and
 status metadata, but never return the artifact path, source rows or labels.
-Enable these reads only with `FISHEYE_ENV=development` and
-`FISHEYE_ENABLE_DEV_DATASET_READS=1`. These endpoints do not authenticate
-callers and must remain disabled outside local development. Production
-authentication/authorization remain future work. A development-only evaluation
-run requires a v2 dataset and a separate synthetic context JSON sidecar.
+Enable these reads with `FISHEYE_ENABLE_DEV_DATASET_READS=1` and either
+`FISHEYE_ENV=development` or both `FISHEYE_ENV=production` and
+`FISHEYE_SYNTHETIC_DEMO_MODE=1`. All protected dataset and run endpoints require
+an authenticated analyst token. A run requires a v2 dataset and a separate
+synthetic context JSON sidecar.
 
 After running migrations, a local developer can prepare an imported dataset
 using `uv run --package fisheye-worker fisheye-worker prepare-dataset
@@ -103,8 +106,10 @@ result artifacts. `GET /api/v1/runs`, `GET /api/v1/runs/{run_id}`, and
 After a run completes, `GET /api/v1/runs/{run_id}/manifest` downloads its
 verified JSON provenance manifest, including dataset, configuration, method,
 and artifact checksums. It returns `409` while a run is incomplete and `503` if
-the encrypted manifest cannot be verified. These unauthenticated endpoints
-must remain disabled outside development.
+the encrypted manifest cannot be verified. The routes require analyst
+authentication and may be enabled in production only with the synthetic-demo
+mode and the individual evaluation-run feature flag. Workspace reset remains
+local-only.
 
 The evaluation screen displays the worker's detector thresholds, aggregate
 metrics with their numerators and denominators, and confusion counts. The
@@ -123,8 +128,10 @@ Keep it in your local environment, never commit it, and keep using the same key
 for existing artifacts. Then run `pnpm db:migrate`. Start the API with
 `pnpm dev:api`. Set `API_INTERNAL_URL=http://127.0.0.1:8000` in
 `apps/web/console/.env.local` and start the console with `pnpm dev:console`.
-Start the worker in another terminal using the command above. Keep every
-development flag off outside local development.
+Start the worker in another terminal using the command above. Outside local
+development, keep these flags off except for the hosted synthetic demo, where
+only the required endpoints should be enabled together with
+`FISHEYE_SYNTHETIC_DEMO_MODE=1` and `FISHEYE_ENV=production`.
 
 Validation errors identify row numbers and rules, not submitted event values.
 Successful validation reports row and employee-day counts only. It does not
