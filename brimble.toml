@@ -1,0 +1,65 @@
+#:schema https://brimble.io/schema/brimble.json
+
+[services.fisheye-api]
+type = "web"
+region = "eu-central"
+
+[services.fisheye-api.build]
+dockerfile = "infra/docker/backend.Dockerfile"
+
+[services.fisheye-api.deploy]
+start = "/opt/venv/bin/uvicorn fisheye_api.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+before_start = "/bin/uv run --no-sync --package fisheye-api alembic -c apps/backend/api/alembic.ini upgrade head"
+port = 8000
+health = "/health/live"
+
+[services.fisheye-api.env]
+FISHEYE_ENV = "production"
+FISHEYE_SYNTHETIC_ONLY = "true"
+FISHEYE_SYNTHETIC_DEMO_MODE = "1"
+FISHEYE_ARTIFACT_STORAGE = "r2"
+FISHEYE_R2_ENDPOINT_URL = "https://297287c7a54c0d23799741cc6c40651c.r2.cloudflarestorage.com"
+FISHEYE_R2_BUCKET = "fisheye-artifacts"
+FISHEYE_R2_PREFIX = "fisheye"
+FISHEYE_CORS_ORIGINS = "https://fisheye-console.vercel.app"
+
+[services.fisheye-api.secrets]
+required = [
+  "DATABASE_URL",
+  "FISHEYE_SESSION_SECRET",
+  "FISHEYE_R2_ACCESS_KEY_ID",
+  "FISHEYE_R2_SECRET_ACCESS_KEY",
+  "FISHEYE_ARTIFACT_ENCRYPTION_KEY",
+]
+
+[services.fisheye-api.network]
+public = true
+
+[services.fisheye-worker]
+type = "worker"
+region = "eu-central"
+
+[services.fisheye-worker.build]
+dockerfile = "infra/docker/backend.Dockerfile"
+
+[services.fisheye-worker.deploy]
+start = "/opt/venv/bin/fisheye-worker work --poll-seconds 2"
+
+[services.fisheye-worker.env]
+FISHEYE_ENV = "production"
+FISHEYE_SYNTHETIC_ONLY = "true"
+FISHEYE_ARTIFACT_STORAGE = "r2"
+FISHEYE_R2_ENDPOINT_URL = "https://297287c7a54c0d23799741cc6c40651c.r2.cloudflarestorage.com"
+FISHEYE_R2_BUCKET = "fisheye-artifacts"
+FISHEYE_R2_PREFIX = "fisheye"
+
+[services.fisheye-worker.secrets]
+required = [
+  "DATABASE_URL",
+  "FISHEYE_R2_ACCESS_KEY_ID",
+  "FISHEYE_R2_SECRET_ACCESS_KEY",
+  "FISHEYE_ARTIFACT_ENCRYPTION_KEY",
+]
+
+[services.fisheye-worker.network]
+public = false
