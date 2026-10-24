@@ -111,9 +111,7 @@ def list_finding_review_history(
     total = session.scalar(count_statement) or 0
     items = list(
         session.scalars(
-            statement.order_by(
-                FindingReviewRecord.created_at.desc(), FindingReviewRecord.id.desc()
-            )
+            statement.order_by(FindingReviewRecord.created_at.desc(), FindingReviewRecord.id.desc())
             .limit(limit)
             .offset(offset)
         )
