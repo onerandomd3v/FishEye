@@ -251,6 +251,12 @@ export function InvestigationList({
             change employee access.
           </p>
         </div>
+        <Link
+          className="fe-button fe-button-secondary"
+          href="/investigations/history"
+        >
+          Review history
+        </Link>
       </div>
       <div className="filters investigation-filters">
         <div className="field">

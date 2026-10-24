@@ -9,6 +9,7 @@ import { Button } from '@fisheye/ui';
 const links = [
   { href: '/overview', label: 'Overview' },
   { href: '/investigations', label: 'Investigations' },
+  { href: '/investigations/history', label: 'Review history' },
   { href: '/evaluation', label: 'Evaluation' },
   { href: '/scenarios', label: 'Scenario lab' },
   { href: '/guide', label: 'Guide' },
@@ -22,7 +23,11 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
   const [signOutError, setSignOutError] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
-  const current = links.find((link) => pathname.startsWith(link.href));
+  const current = [...links]
+    .sort((first, second) => second.href.length - first.href.length)
+    .find(
+      (link) => pathname === link.href || pathname.startsWith(`${link.href}/`),
+    );
 
   async function signOut() {
     setSignOutError(false);

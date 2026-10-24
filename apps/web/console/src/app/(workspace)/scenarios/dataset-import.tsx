@@ -9,7 +9,6 @@ import {
   type components,
 } from '@fisheye/api-client';
 import { apiBaseUrl } from '../investigations/data';
-import { formatDetectorName } from '../evaluation-format';
 
 type ValidationResponse = components['schemas']['DatasetValidationResponse'];
 type RunResponse = components['schemas']['EvaluationRunResponse'];
@@ -58,12 +57,31 @@ export function DatasetImport({
   onWorkingChange?: (working: boolean) => void;
 } = {}) {
   const idempotencyKeyRef = useRef<string | null>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+  const contextInputRef = useRef<HTMLInputElement>(null);
   const [csv, setCsv] = useState<File | null>(initialCsv);
   const [contextFile, setContextFile] = useState<File | null>(
     initialContextFile,
   );
   const [confirmedSynthetic, setConfirmedSynthetic] = useState(false);
   const [state, setState] = useState<FlowState>({ status: 'idle' });
+  const [completionDismissed, setCompletionDismissed] = useState(false);
+
+  function removeCsv() {
+    setCsv(null);
+    if (csvInputRef.current) csvInputRef.current.value = '';
+    setConfirmedSynthetic(false);
+    idempotencyKeyRef.current = null;
+    setState({ status: 'idle' });
+  }
+
+  function removeContextFile() {
+    setContextFile(null);
+    if (contextInputRef.current) contextInputRef.current.value = '';
+    setConfirmedSynthetic(false);
+    idempotencyKeyRef.current = null;
+    setState({ status: 'idle' });
+  }
 
   useEffect(() => {
     onWorkingChange?.(state.status === 'working');
@@ -93,6 +111,7 @@ export function DatasetImport({
       status: 'working',
       step: 'Checking the CSV and context files…',
     });
+    setCompletionDismissed(false);
     try {
       let context: unknown;
       try {
@@ -224,6 +243,7 @@ export function DatasetImport({
         <div className="field">
           <label htmlFor="synthetic-csv">Events CSV</label>
           <input
+            ref={csvInputRef}
             id="synthetic-csv"
             type="file"
             accept=".csv,text/csv"
@@ -235,6 +255,20 @@ export function DatasetImport({
               setState({ status: 'idle' });
             }}
           />
+          {csv ? (
+            <div className="selected-upload">
+              <span className="selected-file">{csv.name}</span>
+              <button
+                className="file-remove-button"
+                type="button"
+                disabled={state.status === 'working'}
+                onClick={removeCsv}
+                aria-label={`Remove events CSV ${csv.name}`}
+              >
+                Remove
+              </button>
+            </div>
+          ) : null}
           <p className="field-help">
             Include baseline data, calibration data for tuning, and evaluation
             data for comparison. Maximum 10 MiB.
@@ -243,6 +277,7 @@ export function DatasetImport({
         <div className="field">
           <label htmlFor="synthetic-context">Roles and schedules (JSON)</label>
           <input
+            ref={contextInputRef}
             id="synthetic-context"
             type="file"
             accept=".json,application/json"
@@ -250,9 +285,24 @@ export function DatasetImport({
             onChange={(event) => {
               setContextFile(event.target.files?.[0] ?? null);
               idempotencyKeyRef.current = null;
+              setConfirmedSynthetic(false);
               setState({ status: 'idle' });
             }}
           />
+          {contextFile ? (
+            <div className="selected-upload">
+              <span className="selected-file">{contextFile.name}</span>
+              <button
+                className="file-remove-button"
+                type="button"
+                disabled={state.status === 'working'}
+                onClick={removeContextFile}
+                aria-label={`Remove context JSON ${contextFile.name}`}
+              >
+                Remove
+              </button>
+            </div>
+          ) : null}
           <p className="field-help">
             List each role&apos;s allowed systems and each employee&apos;s work
             hours.{' '}
@@ -282,17 +332,16 @@ export function DatasetImport({
               !csv ||
               !contextFile ||
               !confirmedSynthetic ||
-              state.status === 'working'
+              state.status === 'working' ||
+              (state.status === 'completed' && state.run.status === 'completed')
             }
           >
-            {state.status === 'working' ? 'Processing…' : 'Run evaluation'}
+            {state.status === 'working'
+              ? 'Processing…'
+              : state.status === 'completed' && state.run.status === 'completed'
+                ? 'Evaluation complete'
+                : 'Run evaluation'}
           </Button>
-          {csv ? (
-            <span className="selected-file">
-              {csv.name}
-              {contextFile ? ` · ${contextFile.name}` : ''}
-            </span>
-          ) : null}
         </div>
       </form>
 
@@ -314,7 +363,17 @@ export function DatasetImport({
         </div>
       ) : null}
       {state.status === 'completed' ? (
-        <RunSummary datasetId={state.datasetId} run={state.run} />
+        <RunSummary
+          datasetId={state.datasetId}
+          run={state.run}
+          completionDismissed={completionDismissed}
+          onDismissCompletion={() => setCompletionDismissed(true)}
+          onRunAnother={() => {
+            idempotencyKeyRef.current = null;
+            setCompletionDismissed(false);
+            setState({ status: 'idle' });
+          }}
+        />
       ) : null}
     </section>
   );
@@ -323,26 +382,42 @@ export function DatasetImport({
 function RunSummary({
   datasetId,
   run,
+  completionDismissed,
+  onDismissCompletion,
+  onRunAnother,
 }: {
   datasetId: string;
   run: RunResponse;
+  completionDismissed: boolean;
+  onDismissCompletion: () => void;
+  onRunAnother: () => void;
 }) {
+  if (run.status === 'completed') {
+    return completionDismissed ? (
+      <div className="import-state run-completion-inline" role="status">
+        <strong>Evaluation complete</strong>
+        <p>Your results are ready to review.</p>
+        <div className="run-completion-actions">
+          <Link
+            className="inline-guide-link"
+            href={`/evaluation/${encodeURIComponent(run.run_id)}`}
+          >
+            View run
+          </Link>
+          <Button type="button" variant="secondary" onClick={onRunAnother}>
+            Run another evaluation
+          </Button>
+        </div>
+      </div>
+    ) : (
+      <RunCompletionDialog run={run} onClose={onDismissCompletion} />
+    );
+  }
+
   return (
     <div className="import-state" role="status">
-      <strong>
-        {run.status === 'completed'
-          ? 'Evaluation complete'
-          : run.status === 'failed'
-            ? 'Evaluation failed'
-            : `Run ${run.status}`}
-      </strong>
-      {run.status === 'failed' ? (
-        <p>The run could not be processed. Check the files and try again.</p>
-      ) : null}
-      {run.metrics ? <RunMetrics metrics={run.metrics} /> : null}
-      <Link className="inline-guide-link" href="/guide#results">
-        About evaluation results
-      </Link>
+      <strong>Evaluation failed</strong>
+      <p>The run could not be processed. Check the files and try again.</p>
       <details className="run-technical-details">
         <summary>Run details</summary>
         <dl className="dataset-import-details">
@@ -370,56 +445,73 @@ function RunSummary({
   );
 }
 
-function RunMetrics({ metrics }: { metrics: Record<string, unknown> }) {
-  const comparisons = metrics.comparisons;
-  if (typeof comparisons !== 'object' || comparisons === null) return null;
-  return (
-    <div className="table-wrap">
-      <table className="data-table">
-        <caption>Results on the evaluation data</caption>
-        <thead>
-          <tr>
-            <th scope="col">Method</th>
-            <th scope="col">Alerts correct</th>
-            <th scope="col">Threats caught</th>
-            <th scope="col">False alarm rate</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Object.entries(comparisons).map(([name, item]) => {
-            const report =
-              typeof item === 'object' && item !== null
-                ? (item as Record<string, unknown>).report
-                : null;
-            const values =
-              typeof report === 'object' && report !== null
-                ? ((report as Record<string, unknown>).metrics as
-                    Record<string, unknown> | undefined)
-                : undefined;
-            return (
-              <tr key={name}>
-                <td>{formatDetectorName(name)}</td>
-                <td>{formatRatio(values?.precision)}</td>
-                <td>{formatRatio(values?.recall)}</td>
-                <td>{formatRatio(values?.false_positive_rate)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+function RunCompletionDialog({
+  run,
+  onClose,
+}: {
+  run: RunResponse;
+  onClose: () => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
 
-function formatRatio(value: unknown): string {
-  if (typeof value !== 'object' || value === null) return 'Unavailable';
-  const ratio = value as Record<string, unknown>;
-  if (typeof ratio.value !== 'number' || !Number.isFinite(ratio.value)) {
-    return 'Unavailable';
+  useEffect(() => {
+    const element = dialog.current;
+    if (!element || element.open) return;
+    try {
+      element.showModal();
+    } catch {
+      // Keep the completion notice accessible in browsers without dialog support.
+    }
+    if (!element.open) element.setAttribute('open', '');
+  }, []);
+
+  function close() {
+    const element = dialog.current;
+    if (element?.open) {
+      try {
+        element.close();
+      } catch {
+        // Fall back to closing the dialog element directly.
+      }
+      if (element.open) element.removeAttribute('open');
+    }
+    onClose();
   }
-  const percent = `${(ratio.value * 100).toFixed(1)}%`;
-  return typeof ratio.numerator === 'number' &&
-    typeof ratio.denominator === 'number'
-    ? `${percent} (${ratio.numerator} of ${ratio.denominator})`
-    : percent;
+
+  return (
+    <dialog
+      ref={dialog}
+      role="dialog"
+      aria-label="Evaluation complete"
+      className="run-completion-dialog"
+      aria-labelledby="run-completion-title"
+      aria-describedby="run-completion-description"
+      aria-modal="true"
+      onCancel={onClose}
+      onClose={onClose}
+      onClick={(event) => {
+        if (event.target === dialog.current) close();
+      }}
+    >
+      <h2 id="run-completion-title">Evaluation complete</h2>
+      <p id="run-completion-description">
+        Your results are ready. Open the run page to review its metrics and
+        findings.
+      </p>
+      <p className="run-completion-id">
+        Run <code>{run.run_id}</code>
+      </p>
+      <div className="run-completion-actions">
+        <Link
+          className="fe-button fe-button-primary"
+          href={`/evaluation/${encodeURIComponent(run.run_id)}`}
+        >
+          View run
+        </Link>
+        <Button type="button" variant="secondary" onClick={close}>
+          Close
+        </Button>
+      </div>
+    </dialog>
+  );
 }

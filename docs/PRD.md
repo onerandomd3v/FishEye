@@ -99,7 +99,7 @@ Numeric latency, throughput, availability and retention targets should be set **
 
 - Additional scenario types and more thorough sensitivity/stress testing.
 - Parquet import and durable processing of user-supplied **synthetic** CSV datasets after the CSV contract is proven.
-- Extended filter/search functionality and review history.
+- Advanced review-history filters and exports.
 - Optional visualizations of score distribution and delay by scenario.
 
 ### Not in v1
@@ -201,6 +201,7 @@ These are scenario requirements, **not assumptions that every unusual record is 
 - `/login` — analyst authentication.
 - `/overview` — key counts and prioritized findings.
 - `/investigations` — findings list/filter.
+- `/investigations/history` — analyst review updates across findings and runs.
 - `/investigations/:id` — evidence-led investigation and human review.
 - `/scenarios` — synthetic scenarios and run initiation.
 - `/evaluation` — clear comparator metrics, selected run and failure analysis.

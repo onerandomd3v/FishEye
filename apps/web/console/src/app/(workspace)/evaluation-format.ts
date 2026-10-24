@@ -26,10 +26,10 @@ export function formatMetricRatio(value: unknown): string {
     typeof record.undefined_reason === 'string' &&
     record.undefined_reason.trim().length > 0
   ) {
-    return `Not defined — ${record.undefined_reason}`;
+    return `Not measurable — ${record.undefined_reason}`;
   }
   const number = metricValue(value);
-  return number === null ? 'Unavailable' : `${(number * 100).toFixed(1)}%`;
+  return number === null ? 'Not measured' : `${(number * 100).toFixed(1)}%`;
 }
 
 export function formatMetricRatioWithCount(value: unknown): string {
@@ -38,8 +38,8 @@ export function formatMetricRatioWithCount(value: unknown): string {
   if (
     typeof record?.numerator !== 'number' ||
     typeof record.denominator !== 'number' ||
-    formatted === 'Unavailable' ||
-    formatted.startsWith('Not defined')
+    formatted === 'Not measured' ||
+    formatted.startsWith('Not measurable')
   ) {
     return formatted;
   }
@@ -48,7 +48,7 @@ export function formatMetricRatioWithCount(value: unknown): string {
 
 export function formatAlertsPer100EmployeeDays(value: unknown): string {
   const number = metricValue(value);
-  return number === null ? 'Unavailable' : number.toFixed(1);
+  return number === null ? 'Not measured' : number.toFixed(1);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
