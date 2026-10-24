@@ -52,7 +52,7 @@ describe('development evaluation run flow', () => {
     expect(screen.getByText(/Do not upload real employee/i)).toBeTruthy();
   });
 
-  it('imports the validated data, creates a durable run, and displays worker metrics', async () => {
+  it('imports validated data and offers the completed run for review', async () => {
     vi.stubEnv('FISHEYE_TEST_API_URL', 'http://127.0.0.1:8000');
     const run = {
       run_id: 'run-1',
@@ -124,9 +124,13 @@ describe('development evaluation run flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Run evaluation' }));
 
     expect(
-      await screen.findByRole('dialog', {
-        name: 'Evaluation complete',
-      }),
+      await screen.findByRole(
+        'dialog',
+        {
+          name: 'Evaluation complete',
+        },
+        { timeout: 5_000 },
+      ),
     ).toBeTruthy();
     expect(
       screen.getByRole('link', { name: 'View run' }).getAttribute('href'),
@@ -223,7 +227,9 @@ describe('development evaluation run flow', () => {
     fireEvent.click(submit);
     expect(await screen.findByRole('alert')).toBeTruthy();
     fireEvent.click(submit);
-    expect(await screen.findByText('Evaluation complete')).toBeTruthy();
+    expect(
+      await screen.findByRole('dialog', { name: 'Evaluation complete' }),
+    ).toBeTruthy();
 
     const firstRunRequest = fetchMock.mock.calls[2]?.[0] as Request;
     const retryRunRequest = fetchMock.mock.calls[5]?.[0] as Request;

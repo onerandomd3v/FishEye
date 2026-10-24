@@ -115,7 +115,9 @@ describe('scenario lab sample workflow', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Run evaluation' }));
 
-    expect(await screen.findByText('Evaluation complete')).toBeTruthy();
+    expect(
+      await screen.findByRole('dialog', { name: 'Evaluation complete' }),
+    ).toBeTruthy();
     await waitFor(() => {
       expect(apiCalls).toEqual([
         'POST /api/v1/datasets/imports/validate',

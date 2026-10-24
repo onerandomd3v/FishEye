@@ -15,6 +15,9 @@ export function EvaluationComparison({
     name,
     report: asRecord(asRecord(metrics[name])?.report),
   }));
+  const scenarioDataAvailable = reports.every(({ report }) =>
+    Array.isArray(report?.by_scenario),
+  );
   const scenarioRows = reports.flatMap(({ name, report }) => {
     const rows = report?.by_scenario;
     if (!Array.isArray(rows)) return [];
@@ -124,7 +127,9 @@ export function EvaluationComparison({
           <h3 id="scenario-metrics-title">Results by scenario</h3>
           {scenarioRows.length === 0 ? (
             <p className="empty-state">
-              No scenario-level results were recorded for this run.
+              {scenarioDataAvailable
+                ? 'No scenario-level results were recorded for this run.'
+                : 'Scenario-level results are unavailable for this run.'}
             </p>
           ) : (
             <div className="table-wrap">

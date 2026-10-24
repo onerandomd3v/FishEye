@@ -60,7 +60,15 @@ test('a bundled synthetic dataset runs through API, worker, storage, and console
   const importState = await page.locator('.dataset-import').innerText();
   console.log(`[e2e] Dataset import state:\n${importState}`);
   expect(importState).toContain('Evaluation complete');
-  await expect(page.getByText('Results on the evaluation data')).toBeVisible();
+  const completionDialog = page.getByRole('dialog', {
+    name: 'Evaluation complete',
+  });
+  await expect(completionDialog).toBeVisible();
+  await completionDialog.getByRole('link', { name: 'View run' }).click();
+  await expect(page).toHaveURL(/\/evaluation\/[^/]+$/);
+  await expect(
+    page.getByRole('heading', { name: 'Compare methods' }),
+  ).toBeVisible();
 
   await page.goto('/overview');
   await expect(

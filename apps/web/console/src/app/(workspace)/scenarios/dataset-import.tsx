@@ -9,7 +9,6 @@ import {
   type components,
 } from '@fisheye/api-client';
 import { apiBaseUrl } from '../investigations/data';
-import { formatDetectorName } from '../evaluation-format';
 
 type ValidationResponse = components['schemas']['DatasetValidationResponse'];
 type RunResponse = components['schemas']['EvaluationRunResponse'];
@@ -482,6 +481,8 @@ function RunCompletionDialog({
   return (
     <dialog
       ref={dialog}
+      role="dialog"
+      aria-label="Evaluation complete"
       className="run-completion-dialog"
       aria-labelledby="run-completion-title"
       aria-describedby="run-completion-description"

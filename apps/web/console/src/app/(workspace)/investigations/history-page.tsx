@@ -161,6 +161,7 @@ export function InvestigationHistoryPage() {
           <input
             id="history-search"
             type="search"
+            maxLength={160}
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
@@ -186,17 +187,23 @@ export function InvestigationHistoryPage() {
         </div>
       ) : total === 0 ? (
         <div className="section-content">
-          <EmptyState title="No investigation updates yet">
-            Updates saved from a finding will appear here.
-            <span className="empty-state-action">
-              <Link
-                className="fe-button fe-button-primary"
-                href="/investigations"
-              >
-                Open investigations
-              </Link>
-            </span>
-          </EmptyState>
+          {decision || recordedOn || search.trim() ? (
+            <EmptyState title="No matching updates">
+              Try adjusting or clearing the status, date, or search filters.
+            </EmptyState>
+          ) : (
+            <EmptyState title="No investigation updates yet">
+              Updates saved from a finding will appear here.
+              <span className="empty-state-action">
+                <Link
+                  className="fe-button fe-button-primary"
+                  href="/investigations"
+                >
+                  Open investigations
+                </Link>
+              </span>
+            </EmptyState>
+          )}
         </div>
       ) : (
         <>
