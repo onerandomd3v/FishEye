@@ -128,8 +128,9 @@ describe('development evaluation run flow', () => {
         name: 'Evaluation complete',
       }),
     ).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'View run' }).getAttribute('href'))
-      .toBe('/evaluation/run-1');
+    expect(
+      screen.getByRole('link', { name: 'View run' }).getAttribute('href'),
+    ).toBe('/evaluation/run-1');
     expect(screen.queryByText('50.0%')).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(4);
     const createRequest = fetchMock.mock.calls[2]?.[0] as Request;

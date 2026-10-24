@@ -399,7 +399,10 @@ function RunSummary({
         <strong>Evaluation complete</strong>
         <p>Your results are ready to review.</p>
         <div className="run-completion-actions">
-          <Link className="inline-guide-link" href={`/evaluation/${encodeURIComponent(run.run_id)}`}>
+          <Link
+            className="inline-guide-link"
+            href={`/evaluation/${encodeURIComponent(run.run_id)}`}
+          >
             View run
           </Link>
           <Button type="button" variant="secondary" onClick={onRunAnother}>
